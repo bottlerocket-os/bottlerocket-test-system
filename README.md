@@ -1,6 +1,7 @@
 ## Bottlerocket Test System
 
 A system for testing Bottlerocket.
+To learn more about how it works, see the initial [design](design/DESIGN.md).
 
 ## Security
 

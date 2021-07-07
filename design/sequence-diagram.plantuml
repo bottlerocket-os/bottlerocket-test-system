@@ -1,0 +1,253 @@
+' render with:
+' docker run -d -p 8080:8080 plantuml/plantuml-server:jetty
+' http://localhost:8080
+@startuml
+title TestSys Sequence Diagram
+
+participant "TestSys CLI"                  as cli
+database    "Kubernetes"                   as k8s
+control     "Controller"                   as ctl
+participant "Resource Provider A"          as raa
+participant "Resource Provider B"          as rab
+participant "Test Agent Pod"               as ta
+
+cli -> k8s: \
+Create an instance of the Test CRD
+
+''''''''''''''''''''''''''''''''''''''''''''''''''
+
+ctl -> k8s: \
+Update Test Status
+
+note over ctl:\
+Status:\n\
+  Test: **Acknowledged**\n\
+  TestAgent: NotStarted\n\
+  Resources:\n\
+    A: NotCreated\n\
+    B: NotCreated
+
+''''''''''''''''''''''''''''''''''''''''''''''''''
+' Resource Provider A
+''''''''''''''''''''''''''''''''''''''''''''''''''
+
+ctl -> k8s: \
+Run Resource Provider A
+
+note over ctl:\
+Status:\n\
+  Test: **CreatingResources**\n\
+  TestAgent: NotStarted\n\
+  Resources:\n\
+    A: **ProviderPodCreated**\n\
+    B: NotCreated
+
+''''''''''''''''''''''''''''''''''''''''''''''''''
+
+raa -> k8s: \
+Update Status
+
+note over ctl:\
+Status:\n\
+  Test: CreatingResources\n\
+  TestAgent: NotStarted\n\
+  Resources:\n\
+    A: **Running**\n\
+    B: NotCreated
+
+raa -> raa: \
+Create Resources `A`
+
+''''''''''''''''''''''''''''''''''''''''''''''''''
+
+raa -> k8s: \
+Update Status
+
+note over ctl:\
+Status:\n\
+  Test: CreatingResources\n\
+  TestAgent: NotStarted\n\
+  Resources:\n\
+    A: **Created, metadata {...}**\n\
+    B: NotCreated
+
+''''''''''''''''''''''''''''''''''''''''''''''''''
+' Resource Provider B
+''''''''''''''''''''''''''''''''''''''''''''''''''
+
+ctl -> k8s: \
+Run Resource Provider B
+
+note over ctl:\
+Status:\n\
+  Test: CreatingResources\n\
+  TestAgent: NotStarted\n\
+  Resources:\n\
+    A: Created, metadata {...}\n\
+    B: **ProviderPodCreated**
+
+''''''''''''''''''''''''''''''''''''''''''''''''''
+
+rab -> k8s: \
+Update Status
+
+note over ctl:\
+Status:\n\
+  Test: CreatingResources\n\
+  TestAgent: NotStarted\n\
+  Resources:\n\
+    A: Created, metadata {...}\n\
+    B: **Running**
+
+rab -> rab: \
+Create Resources `B`
+
+''''''''''''''''''''''''''''''''''''''''''''''''''
+
+rab -> k8s: \
+Update Status
+
+note over ctl:\
+Status:\n\
+  Test: **ResourcesCreated**\n\
+  TestAgent: NotStarted\n\
+  Resources:\n\
+    A: Created, metadata {...}\n\
+    B: **Created, metadata {...}**
+
+''''''''''''''''''''''''''''''''''''''''''''''''''
+' Run the Test
+''''''''''''''''''''''''''''''''''''''''''''''''''
+
+ctl -> k8s: \
+Run Test Pod
+
+note over ctl:\
+Status:\n\
+  Test: **TestPodCreated**\n\
+  TestAgent: NotStarted\n\
+  Resources:\n\
+    A: Created, metadata {...}\n\
+    B: Created, metadata {...}
+
+''''''''''''''''''''''''''''''''''''''''''''''''''
+
+ta -> k8s: \
+Update Status
+
+note over ctl:\
+Status:\n\
+  Test: **TestPodRunning**\n\
+  TestAgent: **Running**\n\
+  Resources:\n\
+    A: Created, metadata {...}\n\
+    B: Created, metadata {...}
+
+ta -> ta: \
+Run Test
+
+''''''''''''''''''''''''''''''''''''''''''''''''''
+
+ta -> k8s: \
+Update Status
+
+note over ctl:\
+Status:\n\
+  Test: **TestPodDone**\n\
+  TestAgent: **Pass**\n\
+  Resources:\n\
+    A: Created, metadata {...}\n\
+    B: Created, metadata {...}
+
+''''''''''''''''''''''''''''''''''''''''''''''''''
+' Cleanup
+''''''''''''''''''''''''''''''''''''''''''''''''''
+' newpage ?? not working/usable?
+
+cli -> k8s: Get any Desired Data from Test Pod
+k8s -> ta: Get Data
+k8s -> cli: Give Data
+cli -> k8s: Delete test CRD instance
+
+''''''''''''''''''''''''''''''''''''''''''''''''''
+' Delete Resource A
+''''''''''''''''''''''''''''''''''''''''''''''''''
+
+ctl -> k8s: \
+Run Resource Cleanup Pod `A`
+
+note over ctl:\
+Status:\n\
+  Test: **CleaningUpResources**\n\
+  TestAgent: Pass\n\
+  Resources:\n\
+    A: **CleanupPodCreated, metadata {...}**\n\
+    B: Created, metadata {...}
+
+raa -> k8s: \
+Update Status
+
+note over ctl:\
+Status:\n\
+  Test: CleaningUpResources\n\
+  TestAgent: Pass\n\
+  Resources:\n\
+    A: **CleanupPodRunning, metadata {...}**\n\
+    B: Created, metadata {...}
+
+raa -> raa: Delete `A` resources
+
+raa -> k8s: \
+Update Status
+
+note over ctl:\
+Status:\n\
+  Test: CleaningUpResources\n\
+  TestAgent: Pass\n\
+  Resources:\n\
+    A: **ResourcesDeleted**\n\
+    B: Created, metadata {...}
+
+''''''''''''''''''''''''''''''''''''''''''''''''''
+' Delete Resource B
+''''''''''''''''''''''''''''''''''''''''''''''''''
+
+ctl -> k8s: \
+Run Resource Cleanup Pod `B`
+
+note over ctl:\
+Status:\n\
+  Test: CleaningUpResources\n\
+  TestAgent: Pass\n\
+  Resources:\n\
+    A: ResourcesDeleted\n\
+    B: **CleanupPodCreated, metadata {...}**
+
+rab -> k8s: \
+Update Status
+
+note over ctl:\
+Status:\n\
+  Test: CleaningUpResources\n\
+  TestAgent: Pass\n\
+  Resources:\n\
+    A: ResourcesDeleted\n\
+    B: **CleanupPodRunning, metadata {...}**
+
+rab -> rab: Delete `B` resources
+
+rab -> k8s: \
+Update Status
+
+note over ctl:\
+Status:\n\
+  Test: **Done**\n\
+  TestAgent: Pass\n\
+  Resources:\n\
+    A: ResourcesDeleted\n\
+    B: **ResourcesDeleted**
+
+ctl -> k8s: Delete test pod
+ctl -> k8s: Delete test CRD instance
+
+@enduml
