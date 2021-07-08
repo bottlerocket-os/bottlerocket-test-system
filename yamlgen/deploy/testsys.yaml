@@ -1,0 +1,142 @@
+# This file is generated. Do not edit.
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: tests.testsys.bottlerocket.aws
+spec:
+  group: testsys.bottlerocket.aws
+  names:
+    kind: Test
+    plural: tests
+    singular: test
+  scope: Namespaced
+  versions:
+    - name: v1
+      schema:
+        openAPIV3Schema:
+          description: "Auto-generated derived type for TestSpec via `CustomResource`"
+          properties:
+            spec:
+              description: "A TestSys Test. The `CustomResource` derive also produces a struct named `Test` which represents a test CRD object in the k8s API."
+              properties:
+                configuration:
+                  additionalProperties: true
+                  description: "The configuration to pass to the test pod. This is 'open' to allow tests to define their own schemas."
+                  nullable: true
+                  type: object
+                image:
+                  description: The URI of the test agent container image.
+                  type: string
+              required:
+                - image
+              type: object
+            status:
+              description: The status field of the TestSys Test CRD. This is where the controller and agents will write information about the status of the test run.
+              nullable: true
+              properties:
+                agent:
+                  description: Information written by the test agent.
+                  properties:
+                    results:
+                      nullable: true
+                      properties:
+                        whatever:
+                          type: string
+                      required:
+                        - whatever
+                      type: object
+                    run_state:
+                      anyOf:
+                        - enum:
+                            - Unknown
+                            - Running
+                            - Done
+                          type: string
+                        - additionalProperties: false
+                          properties:
+                            Error:
+                              type: string
+                          required:
+                            - Error
+                          type: object
+                  required:
+                    - run_state
+                  type: object
+                controller:
+                  description: Information written by the controller.
+                  properties:
+                    whatever:
+                      type: string
+                  required:
+                    - whatever
+                  type: object
+                resources:
+                  additionalProperties:
+                    properties:
+                      whatever:
+                        type: string
+                    required:
+                      - whatever
+                    type: object
+                  description: Information written by the resource agents.
+                  type: object
+              required:
+                - agent
+                - controller
+                - resources
+              type: object
+          required:
+            - spec
+          title: Test
+          type: object
+      served: true
+      storage: true
+      subresources:
+        status: {}
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: resource-providers.testsys.bottlerocket.aws
+spec:
+  group: testsys.bottlerocket.aws
+  names:
+    kind: ResourceProvider
+    plural: resource-providers
+    shortNames:
+      - rp
+    singular: resource-provider
+  scope: Namespaced
+  versions:
+    - name: v1
+      schema:
+        openAPIV3Schema:
+          description: "Auto-generated derived type for ResourceProviderSpec via `CustomResource`"
+          properties:
+            spec:
+              description: "An object representing a container that can be run to create and destroy resources. The `CustomResource` derive also produces a struct named `ResourceProvider` which represents a resource provider object in the k8s API."
+              properties:
+                configuration:
+                  additionalProperties: true
+                  description: "The configuration to send to the resource pod. This is 'open' to allow resource providers to define their own schemas."
+                  nullable: true
+                  type: object
+                image:
+                  description: The URI of the resource agent container image.
+                  type: string
+              required:
+                - image
+              type: object
+            status:
+              description: The status field of the ResourceProvider CRD.
+              nullable: true
+              type: object
+          required:
+            - spec
+          title: ResourceProvider
+          type: object
+      served: true
+      storage: true
+      subresources:
+        status: {}
