@@ -1,5 +1,6 @@
 [workspace]
 members = [
     "client",
+    "test_agent",
     "yamlgen",
 ]
