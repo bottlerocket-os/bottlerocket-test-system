@@ -1,0 +1,10 @@
+[package]
+name = "yamlgen"
+version = "0.1.0"
+edition = "2018"
+publish = false
+
+[build-dependencies]
+client = { path = "../client" }
+kube = "0.58"
+serde_yaml = "0.8"
