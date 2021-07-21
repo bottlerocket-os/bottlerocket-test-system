@@ -32,11 +32,11 @@ pub struct TestSpec {
 #[derive(Serialize, Deserialize, Debug, Default, Eq, PartialEq, Clone, JsonSchema)]
 pub struct TestStatus {
     /// Information written by the controller.
-    pub controller: ControllerStatus,
+    pub controller: Option<ControllerStatus>,
     /// Information written by the test agent.
-    pub agent: AgentStatus,
+    pub agent: Option<AgentStatus>,
     /// Information written by the resource agents.
-    pub resources: HashMap<String, ResourceStatus>,
+    pub resources: Option<HashMap<String, ResourceStatus>>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Eq, PartialEq, Clone, JsonSchema)]
@@ -44,7 +44,7 @@ pub enum RunState {
     Unknown,
     Running,
     Done,
-    Error(String),
+    Error,
 }
 
 impl Default for RunState {
@@ -62,6 +62,11 @@ pub struct TestResults {
 #[derive(Serialize, Deserialize, Debug, Default, Eq, PartialEq, Clone, JsonSchema)]
 pub struct AgentStatus {
     pub run_state: RunState,
+    /// Due to structural OpenAPI constraints, the error message must be provided separately instead
+    /// of as a value within the `RunState::Error` variant. If the `run_state` is `Error` then there
+    /// *may* be an error message here. If there is an error message here and the `run_state` is
+    /// *not* `Error`, the this is a bad state and the `error_message` should be ignored.
+    pub error_message: Option<String>,
     pub results: Option<TestResults>,
 }
 
