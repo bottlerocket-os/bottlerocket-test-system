@@ -7,5 +7,5 @@ pub use test::{
     TestStatus,
 };
 
-pub const TESTSYS_NAMESPACE: &str = "testsys.bottlerocket.aws";
+pub const TESTSYS_NAMESPACE: &str = "testsys-bottlerocket-aws";
 pub const TESTSYS_API: &str = "testsys.bottlerocket.aws/v1";
