@@ -37,7 +37,12 @@ spec:
               properties:
                 agent:
                   description: Information written by the test agent.
+                  nullable: true
                   properties:
+                    error_message:
+                      description: "Due to structural OpenAPI constraints, the error message must be provided separately instead of as a value within the `RunState::Error` variant. If the `run_state` is `Error` then there *may* be an error message here. If there is an error message here and the `run_state` is *not* `Error`, the this is a bad state and the `error_message` should be ignored."
+                      nullable: true
+                      type: string
                     results:
                       nullable: true
                       properties:
@@ -47,24 +52,18 @@ spec:
                         - whatever
                       type: object
                     run_state:
-                      anyOf:
-                        - enum:
-                            - Unknown
-                            - Running
-                            - Done
-                          type: string
-                        - additionalProperties: false
-                          properties:
-                            Error:
-                              type: string
-                          required:
-                            - Error
-                          type: object
+                      enum:
+                        - Unknown
+                        - Running
+                        - Done
+                        - Error
+                      type: string
                   required:
                     - run_state
                   type: object
                 controller:
                   description: Information written by the controller.
+                  nullable: true
                   properties:
                     whatever:
                       type: string
@@ -80,11 +79,8 @@ spec:
                       - whatever
                     type: object
                   description: Information written by the resource agents.
+                  nullable: true
                   type: object
-              required:
-                - agent
-                - controller
-                - resources
               type: object
           required:
             - spec
