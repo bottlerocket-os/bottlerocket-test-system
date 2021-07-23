@@ -39,7 +39,7 @@ pub struct TestStatus {
     pub resources: Option<HashMap<String, ResourceStatus>>,
 }
 
-#[derive(Serialize, Deserialize, Debug, Eq, PartialEq, Clone, JsonSchema)]
+#[derive(Serialize, Deserialize, Debug, Eq, PartialEq, Clone, Copy, JsonSchema)]
 pub enum RunState {
     Unknown,
     Running,
@@ -72,8 +72,29 @@ pub struct AgentStatus {
 
 #[derive(Serialize, Deserialize, Debug, Default, Eq, PartialEq, Clone, JsonSchema)]
 pub struct ControllerStatus {
-    // TODO - create this schema
-    pub whatever: String,
+    pub lifecycle: Lifecycle,
+}
+
+#[derive(Serialize, Deserialize, Debug, Eq, PartialEq, Clone, Copy, JsonSchema)]
+pub enum Lifecycle {
+    /// A newly created test that has not yet been seen by the controller.
+    New,
+    /// The test has been seen by the controller.
+    Acknowledged,
+    /// The controller has created the test pod.
+    TestPodCreated,
+    /// The test pod is running.
+    TestPodHealthy,
+    /// The test pod is done with its test and is still running.
+    TestPodDone,
+    /// The test pod is no longer running.
+    TestPodExited,
+}
+
+impl Default for Lifecycle {
+    fn default() -> Self {
+        Lifecycle::New
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug, Default, Eq, PartialEq, Clone, JsonSchema)]
