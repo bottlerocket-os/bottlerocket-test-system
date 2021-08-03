@@ -72,6 +72,7 @@ dependencies = [
  "schemars",
  "serde",
  "serde_json",
+ "snafu",
 ]
 
 [[package]]
