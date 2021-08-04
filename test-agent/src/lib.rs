@@ -1,10 +1,15 @@
 mod agent;
 pub(crate) mod constants;
 pub mod error;
+mod k8s_bootstrap;
+mod k8s_client;
 
 pub use agent::TestAgent;
 use async_trait::async_trait;
 pub use client::model::{Configuration, TestResults};
+use client::TestClient;
+pub use k8s_bootstrap::BootstrapError;
+pub use k8s_client::ClientError;
 use std::fmt::{Debug, Display};
 
 /// The status of the test `Runner`.
@@ -98,8 +103,11 @@ pub trait Client: Sized {
         E: Debug + Display + Send + Sync;
 }
 
-// TODO - implement the default client
-pub struct DefaultClient;
+/// Provides the default [`Client`] implementation.
+pub struct DefaultClient {
+    client: TestClient,
+    name: String,
+}
 
 /// The `Bootstrap` trait provides the information needed by the test agent before a k8s client can
 /// be instantiated. For example, if some data such as the test name is provided by way of the k8s
@@ -120,5 +128,5 @@ pub struct BootstrapData {
     pub test_name: String,
 }
 
-// TODO - implement the default bootstrap
+/// Provides the default [`Bootstrap`] implementation.
 pub struct DefaultBootstrap;

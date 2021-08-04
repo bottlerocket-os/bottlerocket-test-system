@@ -150,7 +150,7 @@ impl Bootstrap for MockBootstrap {
 
     async fn read(&self) -> Result<BootstrapData, Self::E> {
         Ok(BootstrapData {
-            test_name: "mock_test".to_string(),
+            test_name: "hello-world".to_string(),
         })
     }
 }
