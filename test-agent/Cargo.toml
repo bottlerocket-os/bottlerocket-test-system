@@ -14,4 +14,4 @@ snafu = "0.6"
 tokio = { version = "1", default-features = false, features = [ "time" ] }
 
 [dev-dependencies]
-tokio = { version = "1", default-features = false, features = [ "macros", "process" ] }
+tokio = { version = "1", default-features = false, features = [ "macros", "process", "rt-multi-thread" ] }
