@@ -65,10 +65,17 @@ spec:
                   description: Information written by the controller.
                   nullable: true
                   properties:
-                    whatever:
+                    lifecycle:
+                      enum:
+                        - New
+                        - Acknowledged
+                        - TestPodCreated
+                        - TestPodHealthy
+                        - TestPodDone
+                        - TestPodExited
                       type: string
                   required:
-                    - whatever
+                    - lifecycle
                   type: object
                 resources:
                   additionalProperties:
