@@ -193,10 +193,13 @@ impl TestClient {
     where
         S: AsRef<str>,
     {
-        let ps = PatchParams::apply("TestClient").force();
         Ok(self
             .api
-            .patch_status(test_name.as_ref(), &ps, &Patch::Apply(json))
+            .patch_status(
+                test_name.as_ref(),
+                &PatchParams::default(),
+                &Patch::Merge(json),
+            )
             .await
             .context(KubeApiCall {
                 method: "patch",
