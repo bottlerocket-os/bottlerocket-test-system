@@ -1,4 +1,4 @@
-use crate::model::{AgentStatus, ControllerStatus, Test, TESTSYS, TESTSYS_API, TESTSYS_NAMESPACE};
+use crate::model::{AgentStatus, ControllerStatus, Test, API_VERSION, NAMESPACE, TESTSYS};
 use kube::api::{Patch, PatchParams};
 use kube::{Api, Resource};
 use log::trace;
@@ -54,7 +54,7 @@ impl TestClient {
     /// Create a new [`TestClient`] from an existing k8s client.
     pub fn new_from_k8s_client(k8s_client: kube::Client) -> Self {
         Self {
-            api: Api::<Test>::namespaced(k8s_client, TESTSYS_NAMESPACE),
+            api: Api::<Test>::namespaced(k8s_client, NAMESPACE),
         }
     }
 
@@ -165,7 +165,7 @@ impl TestClient {
         T: Serialize,
     {
         json!({
-            "apiVersion": TESTSYS_API,
+            "apiVersion": API_VERSION,
             "kind": "Test",
             top_key.as_ref(): {
                 sub_key.as_ref(): value
