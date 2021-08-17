@@ -21,7 +21,7 @@ use futures::stream::StreamExt;
 use kube::api::ListParams;
 use kube::Client;
 use kube_runtime::{controller, Controller};
-use log::{debug, error, info, trace, LevelFilter};
+use log::{debug, error, info, LevelFilter};
 use reconcile::reconcile;
 
 #[tokio::main]
@@ -47,18 +47,13 @@ async fn run(client: Client) {
     Controller::new(context.get_ref().api(), ListParams::default())
         .run(reconcile, handle_reconciliation_error, context)
         .for_each(|reconciliation_result| async move {
-            match reconciliation_result {
-                Ok(test) => {
-                    trace!("Reconciliation successful for test '{}'", test.0.name);
-                }
-                Err(reconciliation_err) => {
-                    match &reconciliation_err {
-                        controller::Error::ObjectNotFound { .. } => {
-                            // TODO - not sure why we get this after test deletion
-                            debug!("Object is gone: {}", reconciliation_err)
-                        }
-                        _ => error!("Error during reconciliation: {}", reconciliation_err),
+            if let Err(reconciliation_err) = reconciliation_result {
+                match &reconciliation_err {
+                    controller::Error::ObjectNotFound { .. } => {
+                        // TODO - not sure why we get this after test deletion
+                        debug!("Object is gone: {}", reconciliation_err)
                     }
+                    _ => error!("Error during reconciliation: {}", reconciliation_err),
                 }
             }
         })
@@ -66,7 +61,7 @@ async fn run(client: Client) {
 }
 
 /// The log level used when the `RUST_LOG` environment variable does not exist.
-const DEFAULT_LEVEL_FILTER: LevelFilter = LevelFilter::Debug;
+const DEFAULT_LEVEL_FILTER: LevelFilter = LevelFilter::Trace;
 
 /// Extract the value of `RUST_LOG` if it exists, otherwise log this crate at
 /// `DEFAULT_LEVEL_FILTER`.
