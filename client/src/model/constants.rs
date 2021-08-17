@@ -15,6 +15,9 @@ pub const API_VERSION: &str = testsys!("v1");
 pub const NAMESPACE: &str = "testsys-bottlerocket-aws";
 pub const TESTSYS: &str = testsys!();
 
+// Environment variables
+pub const ENV_TEST_NAME: &str = "TESTSYS_TEST_NAME";
+
 #[test]
 fn testsys_constants_macro_test() {
     assert_eq!("testsys.bottlerocket.aws", testsys!());
