@@ -23,16 +23,30 @@ spec:
             spec:
               description: "A TestSys Test. The `CustomResource` derive also produces a struct named `Test` which represents a test CRD object in the k8s API."
               properties:
-                configuration:
-                  additionalProperties: true
-                  description: "The configuration to pass to the test pod. This is 'open' to allow tests to define their own schemas."
-                  nullable: true
+                agent:
+                  description: Information about the test agent.
+                  properties:
+                    configuration:
+                      additionalProperties: true
+                      description: "The configuration to pass to the test pod. This is 'open' to allow tests to define their own schemas."
+                      nullable: true
+                      type: object
+                    image:
+                      description: The URI of the test agent container image.
+                      type: string
+                    name:
+                      description: The name of the test agent.
+                      type: string
+                    pull_secret:
+                      description: The name of an image registry pull secret if one is needed to pull the test agent image.
+                      nullable: true
+                      type: string
+                  required:
+                    - image
+                    - name
                   type: object
-                image:
-                  description: The URI of the test agent container image.
-                  type: string
               required:
-                - image
+                - agent
               type: object
             status:
               description: The status field of the TestSys Test CRD. This is where the controller and agents will write information about the status of the test run.
@@ -69,13 +83,19 @@ spec:
                   nullable: true
                   properties:
                     lifecycle:
+                      description: "What phase of the TestSys `Test` lifecycle are we in."
                       enum:
                         - New
                         - Acknowledged
                         - TestPodCreated
+                        - TestPodStarting
                         - TestPodHealthy
                         - TestPodDone
+                        - TestPodError
+                        - TestPodFailed
                         - TestPodExited
+                        - TestPodDeleting
+                        - TestPodDeleted
                       type: string
                   required:
                     - lifecycle

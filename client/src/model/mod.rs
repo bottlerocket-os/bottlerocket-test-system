@@ -2,10 +2,13 @@ mod constants;
 mod resource_provider;
 mod test;
 
-pub use constants::{API_VERSION, ENV_TEST_NAME, NAMESPACE, TESTSYS};
+pub use constants::{
+    API_VERSION, CONTROLLER, ENV_TEST_NAME, LABEL_TEST_NAME, LABEL_TEST_UID, NAMESPACE, TESTSYS,
+    TEST_AGENT, TEST_AGENT_SERVICE_ACCOUNT,
+};
 pub use resource_provider::{ResourceProvider, ResourceProviderSpec, ResourceProviderStatus};
 pub use test::{
-    AgentStatus, ControllerStatus, Lifecycle, ResourceStatus, RunState, Test, TestResults,
+    Agent, AgentStatus, ControllerStatus, Lifecycle, ResourceStatus, RunState, Test, TestResults,
     TestSpec, TestStatus,
 };
 

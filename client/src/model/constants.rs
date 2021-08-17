@@ -15,6 +15,15 @@ pub const API_VERSION: &str = testsys!("v1");
 pub const NAMESPACE: &str = "testsys-bottlerocket-aws";
 pub const TESTSYS: &str = testsys!();
 
+// Component names
+pub const CONTROLLER: &str = "testsys-controller";
+pub const TEST_AGENT: &str = "testsys-test-agent";
+pub const TEST_AGENT_SERVICE_ACCOUNT: &str = "testsys-test-agent-account";
+
+// Label keys
+pub const LABEL_TEST_NAME: &str = testsys!("test-name");
+pub const LABEL_TEST_UID: &str = testsys!("test-uid");
+
 // Environment variables
 pub const ENV_TEST_NAME: &str = "TESTSYS_TEST_NAME";
 
