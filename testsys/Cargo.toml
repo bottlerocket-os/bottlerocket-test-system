@@ -1,0 +1,17 @@
+[package]
+name = "testsys"
+version = "0.1.0"
+edition = "2018"
+publish = false
+
+[dependencies]
+env_logger = "0.9"
+log = "0.4"
+snafu = "0.6"
+structopt = "0.3"
+tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
+
+# local dependencies
+client = { path = "../client" }
+# regenerate testsys.yaml if the model has changed
+yamlgen = { path = "../yamlgen" }
