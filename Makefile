@@ -1,8 +1,25 @@
-.PHONY: example-test-agent-container
+.PHONY: sdk-openssl example-test-agent-image controller-image images
 
-# Build a container image for daemon and tools.
-example-test-agent-container:
-	docker build \
-		--network=host \
-		--tag 'example_test_agent' \
+ARCH=$(shell uname -m)
+
+images: controller-image
+
+# Augment the bottlerocket-sdk image with openssl built with the musl toolchain
+sdk-openssl:
+	docker build $(DOCKER_BUILD_FLAGS) \
+		--build-arg ARCH="$(ARCH)" \
+		--tag "bottlerocket-sdk-openssl-$(ARCH)" \
+		-f Dockerfile.sdk_openssl .
+
+# Build the container image for the example test-agent program
+example-test-agent-image: sdk-openssl
+	docker build $(DOCKER_BUILD_FLAGS) \
+		--build-arg ARCH="$(ARCH)" \
+		--tag "example-testsys-agent" \
 		-f test-agent/examples/example_test_agent/Dockerfile .
+
+controller-image: sdk-openssl
+	docker build $(DOCKER_BUILD_FLAGS) \
+		--build-arg ARCH="$(ARCH)" \
+		--tag "testsys-controller" \
+		-f controller/Dockerfile .
