@@ -7,12 +7,15 @@ metadata:
 spec:
   group: testsys.bottlerocket.aws
   names:
+    categories: []
     kind: Test
     plural: tests
+    shortNames: []
     singular: test
   scope: Namespaced
   versions:
-    - name: v1
+    - additionalPrinterColumns: []
+      name: v1
       schema:
         openAPIV3Schema:
           description: "Auto-generated derived type for TestSpec via `CustomResource`"
@@ -105,6 +108,7 @@ metadata:
 spec:
   group: testsys.bottlerocket.aws
   names:
+    categories: []
     kind: ResourceProvider
     plural: resource-providers
     shortNames:
@@ -112,7 +116,8 @@ spec:
     singular: resource-provider
   scope: Namespaced
   versions:
-    - name: v1
+    - additionalPrinterColumns: []
+      name: v1
       schema:
         openAPIV3Schema:
           description: "Auto-generated derived type for ResourceProviderSpec via `CustomResource`"

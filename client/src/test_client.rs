@@ -113,7 +113,8 @@ impl TestClient {
             .await?
             .meta()
             .finalizers
-            .to_owned();
+            .to_owned()
+            .unwrap_or(Vec::new());
         finalizers.push(finalizer);
         let json = Self::create_patch("metadata", "finalizers", &finalizers);
         let patch: Patch<&Value> = Patch::Merge(&json);
@@ -132,7 +133,8 @@ impl TestClient {
             .await?
             .meta()
             .finalizers
-            .to_owned();
+            .to_owned()
+            .unwrap_or(Vec::new());
         finalizers.retain(|item| item.as_str() != finalizer.as_str());
         let json = Self::create_patch("metadata", "finalizers", &finalizers);
         let patch: Patch<&Value> = Patch::Merge(&json);
@@ -143,6 +145,8 @@ impl TestClient {
     pub fn has_finalizer<S: AsRef<str>>(test: &Test, finalizer_name: S) -> bool {
         test.meta()
             .finalizers
+            .as_ref()
+            .unwrap_or(&Vec::new())
             .contains(&Self::create_finalizer(finalizer_name))
     }
 

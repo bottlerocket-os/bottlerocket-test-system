@@ -99,7 +99,14 @@ impl TestInterface {
 
     /// Whether the test has one or more finalizers.
     pub(crate) fn has_finalizers(&self) -> bool {
-        !self.test.meta().finalizers.is_empty()
+        !self
+            .test
+            .meta()
+            .finalizers
+            .as_ref()
+            .unwrap_or(&Vec::new())
+            .join(", ")
+            .is_empty()
     }
 
     /// Whether the test has a finalizer representing the test pod.
@@ -145,7 +152,12 @@ impl TestInterface {
             "Added finalizer '{}' to test '{}': {}",
             finalizer_name,
             self.name(),
-            self.test.meta().finalizers.join(", ")
+            self.test
+                .meta()
+                .finalizers
+                .as_ref()
+                .unwrap_or(&Vec::new())
+                .join(", ")
         );
         Ok(())
     }
@@ -165,7 +177,12 @@ impl TestInterface {
             "Removed finalizer '{}' from test '{}': {}",
             finalizer_name,
             self.name(),
-            self.test.meta().finalizers.join(", ")
+            self.test
+                .meta()
+                .finalizers
+                .as_ref()
+                .unwrap_or(&Vec::new())
+                .join(", ")
         );
         Ok(())
     }
