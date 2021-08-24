@@ -6,5 +6,5 @@ publish = false
 
 [build-dependencies]
 client = { path = "../client" }
-kube = { version = "0.59.0", default-features = false, features = ["client", "rustls-tls"] }
+kube = { version = "0.59.0", default-features = true, features = [ "derive"] }
 serde_yaml = "0.8"
