@@ -3,5 +3,6 @@ members = [
     "client",
     "controller",
     "test-agent",
+    "testsys",
     "yamlgen",
 ]
