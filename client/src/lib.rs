@@ -7,5 +7,4 @@ This library provides the Kubernetes custom resource definitions and their API c
 pub mod model;
 mod test_client;
 
-pub use test_client::Error;
-pub use test_client::TestClient;
+pub use test_client::{Error, TestClient};

@@ -1,6 +1,7 @@
 use crate::error::{self, Result};
-use client::model::{ControllerStatus, Test, TestStatus};
+use client::model::{Agent, AgentStatus, ControllerStatus, Test, TestStatus, NAMESPACE};
 use client::TestClient;
+use k8s_openapi::api::batch::v1::Job;
 use kube::{Api, Client, Resource};
 use log::trace;
 use snafu::ResultExt;
@@ -57,6 +58,22 @@ impl TestInterface {
             .map_or("", |value| value.as_str())
     }
 
+    /// Get the unique ID of the test. This is the GUID assigned by k8s. The struct field is
+    /// optional but in practice it cannot be `None` so we unwrap it with a default of `""`.
+    pub(crate) fn id(&self) -> &str {
+        self.test
+            .metadata
+            .uid
+            .as_ref()
+            .map(|s| s.as_str())
+            .unwrap_or("")
+    }
+
+    /// Get information about the test agent.
+    pub(crate) fn agent(&self) -> &Agent {
+        &self.test.spec.agent
+    }
+
     /// Return either a reference to the `ControllerStatus`, or an owned, default-constructed
     /// `ControllerStatus` if it did not already exist.
     pub(crate) fn controller_status(&self) -> Cow<'_, ControllerStatus> {
@@ -67,6 +84,20 @@ impl TestInterface {
 
         match &status.controller {
             None => Cow::Owned(ControllerStatus::default()),
+            Some(status) => Cow::Borrowed(status),
+        }
+    }
+
+    /// Return either a reference to the `AgentStatus`, or an owned, default-constructed
+    /// `AgentStatus` if it did not already exist.
+    pub(crate) fn agent_status(&self) -> Cow<'_, AgentStatus> {
+        let status: &TestStatus = match self.test.status.as_ref() {
+            Some(status) => status,
+            None => return Cow::Owned(AgentStatus::default()),
+        };
+
+        match &status.agent {
+            None => Cow::Owned(AgentStatus::default()),
             Some(status) => Cow::Borrowed(status),
         }
     }
@@ -114,6 +145,20 @@ impl TestInterface {
         TestClient::has_finalizer(&self.test, POD_FINALIZER)
     }
 
+    /// Returns `true` if the test has at most one finalizer, and that finalizer is the main
+    /// finalizer. This means that no other finalizers representing managed resources are present.
+    pub(crate) fn is_safe_to_delete(&self) -> bool {
+        let finalizer_count = self
+            .test
+            .meta()
+            .finalizers
+            .as_ref()
+            .map(|some| some.len())
+            .unwrap_or(0);
+        finalizer_count == 0
+            || (finalizer_count == 1 && TestClient::has_finalizer(&self.test, MAIN_FINALIZER))
+    }
+
     /// Remove the main finalizer to indicate that the controller is no longer managing the TestSys
     /// `Test` object so that k8s can delete it.
     pub(crate) async fn remove_main_finalizer(&mut self) -> Result<()> {
@@ -130,6 +175,16 @@ impl TestInterface {
     /// Whether or not someone has requested that k8s delete the TestSys `Test`.
     pub(crate) fn is_delete_requested(&self) -> bool {
         self.test.meta().deletion_timestamp.is_some()
+    }
+
+    /// Get a clone of the k8s `Test` API.
+    pub(crate) fn api(&self) -> Api<Test> {
+        self.context.get_ref().api()
+    }
+
+    /// Get a k8s `Job` API.
+    pub(crate) fn job_api(&self) -> Api<Job> {
+        Api::namespaced(self.api().into_client(), NAMESPACE)
     }
 
     /// Access the inner `TestClient` object with fewer keystrokes.

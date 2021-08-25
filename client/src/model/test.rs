@@ -19,8 +19,18 @@ use std::collections::HashMap;
     version = "v1"
 )]
 pub struct TestSpec {
+    /// Information about the test agent.
+    pub agent: Agent,
+}
+
+#[derive(Serialize, Deserialize, Debug, Default, Eq, PartialEq, Clone, JsonSchema)]
+pub struct Agent {
+    /// The name of the test agent.
+    pub name: String,
     /// The URI of the test agent container image.
     pub image: String,
+    /// The name of an image registry pull secret if one is needed to pull the test agent image.
+    pub pull_secret: Option<String>,
     /// The configuration to pass to the test pod. This is 'open' to allow tests to define their own
     /// schemas.
     pub configuration: Option<Map<String, Value>>,
@@ -28,7 +38,6 @@ pub struct TestSpec {
 
 /// The status field of the TestSys Test CRD. This is where the controller and agents will write
 /// information about the status of the test run.
-// TODO - these fields are strings, define appropriate objects and enums
 #[derive(Serialize, Deserialize, Debug, Default, Eq, PartialEq, Clone, JsonSchema)]
 pub struct TestStatus {
     /// Information written by the controller.
@@ -72,6 +81,7 @@ pub struct AgentStatus {
 
 #[derive(Serialize, Deserialize, Debug, Default, Eq, PartialEq, Clone, JsonSchema)]
 pub struct ControllerStatus {
+    /// What phase of the TestSys `Test` lifecycle are we in.
     pub lifecycle: Lifecycle,
 }
 
@@ -83,12 +93,22 @@ pub enum Lifecycle {
     Acknowledged,
     /// The controller has created the test pod.
     TestPodCreated,
+    /// The controller is waiting for the test pod to be in the running state.
+    TestPodStarting,
     /// The test pod is running.
     TestPodHealthy,
     /// The test pod is done with its test and is still running.
     TestPodDone,
-    /// The test pod is no longer running.
+    /// The test pod encountered an error that prevents tests from completing successfully.
+    TestPodError,
+    /// The test pod failed or exited with a non-zero exit code. It is not running.
+    TestPodFailed,
+    /// The test pod completed successfully. It is no longer running.
     TestPodExited,
+    /// The test pod is being deleted.
+    TestPodDeleting,
+    /// The test pod has been deleted.
+    TestPodDeleted,
 }
 
 impl Default for Lifecycle {

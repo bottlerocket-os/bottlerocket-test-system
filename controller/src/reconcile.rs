@@ -1,7 +1,9 @@
 use crate::action::{determine_action, Action};
 use crate::context::{Context, TestInterface};
 use crate::error::{self, Error, Result};
-use crate::test_pod::{check_test_pod, create_test_pod, delete_test_pod};
+use crate::test_pod::{
+    check_test_pod, check_test_pod_deletion, create_test_pod, delete_test_pod, get_job,
+};
 use client::model::{Lifecycle, Test};
 use kube_runtime::controller::ReconcilerAction;
 use log::{error, trace};
@@ -41,17 +43,10 @@ pub(crate) async fn reconcile(t: Test, context: Context) -> Result<ReconcilerAct
         Action::AddMainFinalizer => add_main_finalizer(&mut test).await,
         Action::CreateTestPod => create_test_pod(&mut test).await,
         Action::CheckTestPod => check_test_pod(&mut test).await,
-        Action::Delete => {
-            delete_test_pod(&mut test).await?;
-            test.remove_main_finalizer().await?;
-            ensure!(
-                !test.has_finalizers(),
-                error::DanglingFinalizers {
-                    test_name: test.name()
-                }
-            );
-            Ok(NO_REQUEUE)
-        }
+        Action::DeleteTestPod => delete_test_pod(&mut test).await,
+        Action::CheckTestPodDeletion => check_test_pod_deletion(&mut test).await,
+        Action::RemovePodFinalizer => remove_pod_finalizer(&mut test).await,
+        Action::Delete => delete_test(&mut test).await,
         Action::NoOp => Ok(REQUEUE),
     }
 }
@@ -72,4 +67,46 @@ async fn acknowledge_new_test(test: &mut TestInterface) -> Result<ReconcilerActi
 async fn add_main_finalizer(test: &mut TestInterface) -> Result<ReconcilerAction> {
     test.add_main_finalizer().await?;
     Ok(REQUEUE_IMMEDIATE)
+}
+
+/// Removes the main finalizer allowing k8s to proceed with deletion of the TestSys `Test` CRD.
+///
+/// # Precondition
+///
+/// The only remaining finalizer on the object should be the 'main' finalizer. Anything else is an
+/// error.
+///
+async fn delete_test(test: &mut TestInterface) -> Result<ReconcilerAction> {
+    ensure!(
+        test.is_safe_to_delete(),
+        error::UnsafeDelete {
+            test_name: test.name()
+        }
+    );
+    test.remove_main_finalizer().await?;
+
+    // Make sure we got the job done and that the test will be deleted by k8s.
+    ensure!(
+        !test.has_finalizers(),
+        error::DanglingFinalizers {
+            test_name: test.name()
+        }
+    );
+
+    Ok(NO_REQUEUE)
+}
+
+/// Removes the pod finalizer.
+///
+/// # Precondition
+///
+/// It is assumed that the test pod no longer exists. This is checked in debug builds only.
+///
+async fn remove_pod_finalizer(test: &mut TestInterface) -> Result<ReconcilerAction> {
+    debug_assert!(get_job(test).await?.is_none());
+    if !test.has_pod_finalizer() {
+        return Ok(REQUEUE);
+    }
+    test.remove_pod_finalizer().await?;
+    Ok(REQUEUE)
 }

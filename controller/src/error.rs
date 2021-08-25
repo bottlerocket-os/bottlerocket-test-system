@@ -24,6 +24,18 @@ pub(crate) enum Error {
     DanglingFinalizers { test_name: String },
 
     #[snafu(display(
+        "Kubernetes client error trying to {} for test '{}': {}",
+        action,
+        test_name,
+        source
+    ))]
+    KubeClient {
+        test_name: String,
+        action: String,
+        source: kube::Error,
+    },
+
+    #[snafu(display(
         "Test '{}' is in a bad state, it should not be created with finalizers.",
         test_name
     ))]
@@ -46,4 +58,24 @@ pub(crate) enum Error {
         test_name: String,
         source: client::Error,
     },
+
+    #[snafu(display(
+        "There should be only one k8s job but found {} running, {} succeeded, and {} failed for test '{}'",
+        running,
+        succeeded,
+        failed,
+        test_name
+    ))]
+    TooManyJobContainers {
+        test_name: String,
+        running: i32,
+        succeeded: i32,
+        failed: i32,
+    },
+
+    #[snafu(display(
+        "The controller tried to delete test '{}' before cleaning up finalizers.",
+        test_name
+    ))]
+    UnsafeDelete { test_name: String },
 }

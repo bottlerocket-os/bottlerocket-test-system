@@ -41,7 +41,7 @@ impl Client for DefaultClient {
     {
         let test_data = self.client.get_test(&self.name).await.context(K8s)?;
 
-        let configuration: C = match test_data.spec.configuration {
+        let configuration: C = match test_data.spec.agent.configuration {
             Some(serde_map) => {
                 serde_json::from_value(Value::Object(serde_map)).context(Deserialization)?
             }
