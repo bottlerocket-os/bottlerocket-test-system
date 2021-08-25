@@ -23,9 +23,18 @@ pub const TEST_AGENT_SERVICE_ACCOUNT: &str = "testsys-test-agent-account";
 // Label keys
 pub const LABEL_TEST_NAME: &str = testsys!("test-name");
 pub const LABEL_TEST_UID: &str = testsys!("test-uid");
+pub const LABEL_COMPONENT: &str = testsys!("component");
 
 // Environment variables
 pub const ENV_TEST_NAME: &str = "TESTSYS_TEST_NAME";
+
+// Standard tags https://kubernetes.io/docs/concepts/overview/working-with-objects/common-labels/
+pub const APP_NAME: &str = "app.kubernetes.io/name";
+pub const APP_INSTANCE: &str = "app.kubernetes.io/instance";
+pub const APP_COMPONENT: &str = "app.kubernetes.io/component";
+pub const APP_PART_OF: &str = "app.kubernetes.io/part-of";
+pub const APP_MANAGED_BY: &str = "app.kubernetes.io/managed-by";
+pub const APP_CREATED_BY: &str = "app.kubernetes.io/created-by";
 
 #[test]
 fn testsys_constants_macro_test() {
