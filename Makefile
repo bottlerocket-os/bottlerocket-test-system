@@ -1,8 +1,14 @@
-.PHONY: sdk-openssl example-test-agent-image controller-image images
+.PHONY: build sdk-openssl example-test-agent-image controller-image images
 
 ARCH=$(shell uname -m)
 
 images: controller-image
+
+# Builds, Lints and Tests the Rust workspace
+build:
+	cargo fmt -- --check
+	cargo build --locked
+	cargo test --locked
 
 # Augment the bottlerocket-sdk image with openssl built with the musl toolchain
 sdk-openssl:
