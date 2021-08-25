@@ -1,8 +1,8 @@
 [workspace]
 members = [
+    "agent/test-agent",
     "client",
     "controller",
-    "test-agent",
     "testsys",
     "yamlgen",
 ]
