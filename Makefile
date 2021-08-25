@@ -16,7 +16,7 @@ example-test-agent-image: sdk-openssl
 	docker build $(DOCKER_BUILD_FLAGS) \
 		--build-arg ARCH="$(ARCH)" \
 		--tag "example-testsys-agent" \
-		-f test-agent/examples/example_test_agent/Dockerfile .
+		-f agent/test-agent/examples/example_test_agent/Dockerfile .
 
 controller-image: sdk-openssl
 	docker build $(DOCKER_BUILD_FLAGS) \
