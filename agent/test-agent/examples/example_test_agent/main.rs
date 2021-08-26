@@ -69,7 +69,7 @@ impl test_agent::Runner for ExampleTestRunner {
             return Err("already spawned".into());
         }
         let loop_cmd = format!(
-            r#"for i in {{1..{}}}; do echo "hello {}" && sleep {}; done"#,
+            r#"i=1; while [ "$i" -le {} ]; do echo "hello {}" && sleep {}; i=$(( i + 1 )); done"#,
             self.config.hello_count, self.config.person, self.config.hello_duration_seconds
         );
 
@@ -108,11 +108,27 @@ impl test_agent::Runner for ExampleTestRunner {
 
     async fn terminate(&mut self) -> Result<(), Self::E> {
         if let Some(child) = &mut self.process {
-            // If the child process is running, we want to kill it. In a real
-            // test scenario, you might first want to send SIGTERM and wait.
-            // You may also have resources to clean up.
-            if let Err(e) = child.kill() {
-                eprintln!("unable to kill process: {}", e);
+            match child.try_wait() {
+                Ok(Some(status)) => {
+                    // Child already exited
+                    println!("child already exited with {}", status);
+                    return Ok(());
+                }
+                Ok(None) => {
+                    // Child process is still running. In a real
+                    // test scenario, you might first want to send SIGTERM and wait.
+                    // You may also have resources to clean up.
+                    if let Err(e) = child.kill() {
+                        eprintln!("unable to kill process: {}", e);
+                    }
+                }
+                Err(e) => {
+                    // If can't get child status, try to kill the child process anyways.
+                    eprintln!("unable to get child status: {}", e);
+                    if let Err(e) = child.kill() {
+                        eprintln!("unable to kill process: {}", e);
+                    }
+                }
             }
         }
         self.process = None;
