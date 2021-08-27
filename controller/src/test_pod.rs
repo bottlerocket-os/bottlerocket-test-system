@@ -2,8 +2,9 @@ use crate::context::TestInterface;
 use crate::error::{self, Result};
 use crate::reconcile::REQUEUE;
 use client::model::{
-    Lifecycle, RunState, CONTROLLER, ENV_TEST_NAME, LABEL_TEST_NAME, LABEL_TEST_UID, NAMESPACE,
-    TESTSYS, TEST_AGENT, TEST_AGENT_SERVICE_ACCOUNT,
+    Lifecycle, RunState, APP_COMPONENT, APP_CREATED_BY, APP_INSTANCE, APP_MANAGED_BY, APP_NAME,
+    APP_PART_OF, CONTROLLER, ENV_TEST_NAME, LABEL_TEST_NAME, LABEL_TEST_UID, NAMESPACE, TESTSYS,
+    TEST_AGENT, TEST_AGENT_SERVICE_ACCOUNT,
 };
 use k8s_openapi::api::batch::v1::{Job, JobSpec};
 use k8s_openapi::api::core::v1::{
@@ -294,14 +295,6 @@ async fn delete_job(test: &mut TestInterface) -> Result<()> {
     };
     test.set_controller_status(status).await
 }
-
-// Standard tags https://kubernetes.io/docs/concepts/overview/working-with-objects/common-labels/
-const APP_NAME: &str = "app.kubernetes.io/name";
-const APP_INSTANCE: &str = "app.kubernetes.io/instance";
-const APP_COMPONENT: &str = "app.kubernetes.io/component";
-const APP_PART_OF: &str = "app.kubernetes.io/part-of";
-const APP_MANAGED_BY: &str = "app.kubernetes.io/managed-by";
-const APP_CREATED_BY: &str = "app.kubernetes.io/created-by";
 
 /// Creates the labels that we will add to the test pod deployment.
 fn create_labels(test: &TestInterface) -> BTreeMap<String, String> {
