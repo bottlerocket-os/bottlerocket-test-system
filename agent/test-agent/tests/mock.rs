@@ -53,7 +53,7 @@ impl Runner for MyRunner {
         // Start the hello loop in a child process.
         let child = Command::new("sh")
             .arg("-c")
-            .arg(r#"for i in {1..5}; do echo "hello $i" && sleep 1; done"#)
+            .arg(r#"i=1; while [ "$i" -le 5 ]; do echo "hello" && sleep 0.1; i=$(( i + 1 )); done"#)
             .spawn()
             .map_err(|e| format!("{}", e))?;
 
@@ -85,11 +85,27 @@ impl Runner for MyRunner {
 
     async fn terminate(&mut self) -> Result<(), Self::E> {
         if let Some(child) = &mut self.process {
-            // If the child process is running, we want to kill it. In a real
-            // test scenario, you might first want to send SIGTERM and wait.
-            // You may also have resources to clean up.
-            if let Err(e) = child.kill().await {
-                eprintln!("unable to kill process: {}", e);
+            match child.try_wait() {
+                Ok(Some(status)) => {
+                    // Child already exited
+                    println!("child already exited with {}", status);
+                    return Ok(());
+                }
+                Ok(None) => {
+                    // Child process is still running. In a real
+                    // test scenario, you might first want to send SIGTERM and wait.
+                    // You may also have resources to clean up.
+                    if let Err(e) = child.kill().await {
+                        eprintln!("unable to kill process: {}", e);
+                    }
+                }
+                Err(e) => {
+                    // If can't get child status, try to kill the child process anyways.
+                    eprintln!("unable to get child status: {}", e);
+                    if let Err(e) = child.kill().await {
+                        eprintln!("unable to kill process: {}", e);
+                    }
+                }
             }
         }
         self.process = None;
