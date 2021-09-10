@@ -22,8 +22,10 @@ use serde_json::{Map, Value};
 pub struct ResourceProviderSpec {
     /// The URI of the resource agent container image.
     pub image: String,
-    /// The configuration to send to the resource pod. This is 'open' to allow resource providers to
-    /// define their own schemas.
+    /// The name of an image registry pull secret if one is needed to pull the resource agent image.
+    pub pull_secret: Option<String>,
+    /// The configuration to pass to the resource agent pod. This is 'open' to allow resource
+    /// agents to define their own schemas.
     pub configuration: Option<Map<String, Value>>,
 }
 

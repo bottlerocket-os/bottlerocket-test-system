@@ -1142,6 +1142,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "resource-agent"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "client",
+ "log",
+ "serde",
+ "serde_json",
+ "snafu",
+ "tokio",
+ "yamlgen",
+]
+
+[[package]]
 name = "ryu"
 version = "1.0.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"

@@ -45,8 +45,26 @@ spec:
                     - image
                     - name
                   type: object
+                resources:
+                  additionalProperties:
+                    description: "A request for construction of a resource, as needed by a `Test`."
+                    properties:
+                      configuration:
+                        additionalProperties: true
+                        description: "Customized information about the resource that is to be created. The `ResourceProvider` may define a schema to be used here."
+                        nullable: true
+                        type: object
+                      provider_name:
+                        description: "The name of the `ResourceProvider` CRD instance that can provide the needed resource."
+                        type: string
+                    required:
+                      - provider_name
+                    type: object
+                  description: Information about resources this test needs.
+                  type: object
               required:
                 - agent
+                - resources
               type: object
             status:
               description: The status field of the TestSys Test CRD. This is where the controller and agents will write information about the status of the test run.
@@ -102,11 +120,44 @@ spec:
                   type: object
                 resources:
                   additionalProperties:
+                    description: A status struct to be used by a resource agent..
                     properties:
-                      whatever:
+                      agent_info:
+                        additionalProperties: true
+                        description: Any customized information that the resource agent wants to remember.
+                        nullable: true
+                        type: object
+                      agent_state:
+                        description: The state that the resource agent is in.
+                        enum:
+                          - Unknown
+                          - Creating
+                          - Created
+                          - CreateFailed
+                          - Destroying
+                          - Destroyed
+                          - DestroyFailed
+                        type: string
+                      created_resource:
+                        additionalProperties: true
+                        description: "When the resource agent is done creating the resource, it populates this field with a description of the resource."
+                        nullable: true
+                        type: object
+                      error:
+                        description: "If the resource agent encounters an error, it is written here."
+                        nullable: true
+                        type: string
+                      error_resources:
+                        description: "If the resource agent encounters an error, it tells us whether or not resources were left behind."
+                        enum:
+                          - Orphaned
+                          - Remaining
+                          - Clear
+                          - Unknown
+                        nullable: true
                         type: string
                     required:
-                      - whatever
+                      - agent_state
                     type: object
                   description: Information written by the resource agents.
                   nullable: true
@@ -147,11 +198,15 @@ spec:
               properties:
                 configuration:
                   additionalProperties: true
-                  description: "The configuration to send to the resource pod. This is 'open' to allow resource providers to define their own schemas."
+                  description: "The configuration to pass to the resource agent pod. This is 'open' to allow resource agents to define their own schemas."
                   nullable: true
                   type: object
                 image:
                   description: The URI of the resource agent container image.
+                  type: string
+                pull_secret:
+                  description: The name of an image registry pull secret if one is needed to pull the resource agent image.
+                  nullable: true
                   type: string
               required:
                 - image
