@@ -1,6 +1,6 @@
 use crate::{Bootstrap, BootstrapData, DefaultBootstrap};
 use async_trait::async_trait;
-use client::model::ENV_TEST_NAME;
+use model::model::ENV_TEST_NAME;
 use snafu::{ResultExt, Snafu};
 use std::fmt::Debug;
 

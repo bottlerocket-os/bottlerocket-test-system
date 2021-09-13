@@ -5,6 +5,6 @@ edition = "2018"
 publish = false
 
 [build-dependencies]
-client = { path = "../client" }
 kube = { version = "0.59.0", default-features = true, features = [ "derive"] }
+model = { path = "../model" }
 serde_yaml = "0.8"

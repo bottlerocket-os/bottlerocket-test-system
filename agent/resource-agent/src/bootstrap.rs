@@ -4,7 +4,7 @@ The `bootstrap` module defines a struct and function for getting the necessary i
 container environment to construct the [`Agent`] and all of its parts.
 
 !*/
-use client::model::{
+use model::model::{
     ENV_RESOURCE_ACTION, ENV_RESOURCE_NAME, ENV_RESOURCE_PROVIDER_NAME, ENV_TEST_NAME,
 };
 use snafu::{ResultExt, Snafu};

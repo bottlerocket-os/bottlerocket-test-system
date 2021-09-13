@@ -10,7 +10,7 @@ Also provided here are a very simple mock implementations of the [`Create`] and 
 pub(crate) mod agent_client;
 pub(crate) mod info_client;
 
-use client::model::Configuration;
+use model::model::Configuration;
 use resource_agent::clients::InfoClient;
 use resource_agent::provider::{
     Create, Destroy, ProviderError, ProviderInfo, ProviderResult, Resources,

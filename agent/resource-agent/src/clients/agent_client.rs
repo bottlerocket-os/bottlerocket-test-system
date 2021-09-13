@@ -1,8 +1,8 @@
 use super::error::ClientResult;
 use crate::provider::{ProviderError, ProviderInfo};
 use crate::{Action, BootstrapData};
-use client::model::Configuration;
-use client::{ResourceProviderClient, TestClient};
+use model::model::Configuration;
+use model::{ResourceProviderClient, TestClient};
 
 /// `AgentClient` allows the [`Agent`] to communicate with Kubernetes.
 ///

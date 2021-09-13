@@ -1,11 +1,6 @@
 use crate::context::TestInterface;
 use crate::error::{self, Result};
 use crate::reconcile::REQUEUE;
-use client::model::{
-    Lifecycle, RunState, APP_COMPONENT, APP_CREATED_BY, APP_INSTANCE, APP_MANAGED_BY, APP_NAME,
-    APP_PART_OF, CONTROLLER, ENV_TEST_NAME, LABEL_TEST_NAME, LABEL_TEST_UID, NAMESPACE, TESTSYS,
-    TEST_AGENT, TEST_AGENT_SERVICE_ACCOUNT,
-};
 use k8s_openapi::api::batch::v1::{Job, JobSpec};
 use k8s_openapi::api::core::v1::{
     Container, EnvVar, LocalObjectReference, PodSpec, PodTemplateSpec,
@@ -13,6 +8,11 @@ use k8s_openapi::api::core::v1::{
 use kube::api::{DeleteParams, ListParams, ObjectMeta, PostParams, PropagationPolicy};
 use kube_runtime::controller::ReconcilerAction;
 use log::{debug, error, trace};
+use model::model::{
+    Lifecycle, RunState, APP_COMPONENT, APP_CREATED_BY, APP_INSTANCE, APP_MANAGED_BY, APP_NAME,
+    APP_PART_OF, CONTROLLER, ENV_TEST_NAME, LABEL_TEST_NAME, LABEL_TEST_UID, NAMESPACE, TESTSYS,
+    TEST_AGENT, TEST_AGENT_SERVICE_ACCOUNT,
+};
 use snafu::{ensure, ResultExt};
 use std::collections::BTreeMap;
 

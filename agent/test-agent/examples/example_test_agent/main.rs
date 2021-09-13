@@ -29,7 +29,7 @@ spec:
 !*/
 
 use async_trait::async_trait;
-use client::model::TestResults;
+use model::model::TestResults;
 use serde::{Deserialize, Serialize};
 use std::process::{Child, Command};
 use test_agent::{Configuration, RunnerStatus, TestInfo};

@@ -1,9 +1,9 @@
 use crate::error::{self, Result};
-use client::model::{Agent, AgentStatus, ControllerStatus, Test, TestStatus, NAMESPACE};
-use client::TestClient;
 use k8s_openapi::api::batch::v1::Job;
 use kube::{Api, Client, Resource};
 use log::trace;
+use model::model::{Agent, AgentStatus, ControllerStatus, Test, TestStatus, NAMESPACE};
+use model::TestClient;
 use snafu::ResultExt;
 use std::borrow::Cow;
 
