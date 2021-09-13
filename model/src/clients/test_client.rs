@@ -14,7 +14,7 @@ use snafu::{ResultExt, Snafu};
 /// # Example
 ///
 /// ```
-///# use client::TestClient;
+///# use model::clients::TestClient;
 ///# async fn no_run() {
 /// let test_client = TestClient::new().await.unwrap();
 /// let test = test_client.get_test("my-test").await.unwrap();

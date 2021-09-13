@@ -2,17 +2,17 @@ use super::error::ClientResult;
 use crate::clients::{AgentClient, ClientError, DefaultAgentClient, DefaultInfoClient, InfoClient};
 use crate::provider::{ProviderError, ProviderInfo, Resources};
 use crate::{Action, BootstrapData};
+use model::clients::{ResourceProviderClient, TestClient};
 use model::model::{Configuration, ConfigurationError, ErrorResources, ResourceAgentState};
-use model::{ResourceProviderClient, TestClient};
 
-impl From<model::Error> for ClientError {
-    fn from(e: model::Error) -> Self {
+impl From<model::clients::Error> for ClientError {
+    fn from(e: model::clients::Error) -> Self {
         ClientError::RequestFailed(Some(Box::new(e)))
     }
 }
 
-impl From<model::ResourceProviderClientError> for ClientError {
-    fn from(e: model::ResourceProviderClientError) -> Self {
+impl From<model::clients::ResourceProviderClientError> for ClientError {
+    fn from(e: model::clients::ResourceProviderClientError) -> Self {
         ClientError::RequestFailed(Some(Box::new(e)))
     }
 }

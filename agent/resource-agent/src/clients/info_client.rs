@@ -1,7 +1,7 @@
 use super::error::ClientResult;
 use crate::BootstrapData;
+use model::clients::TestClient;
 use model::model::Configuration;
-use model::TestClient;
 
 /// `InfoClient` allows [`Create`] and [`Destroy`] objects to store arbitrary information in the
 /// Kubernetes status fields associated with the resource request. For example, you might want to

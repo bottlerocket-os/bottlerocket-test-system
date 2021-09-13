@@ -14,7 +14,7 @@ pub(crate) enum Error {
     AddFinalizer {
         test_name: String,
         finalizer: String,
-        source: model::Error,
+        source: model::clients::Error,
     },
 
     #[snafu(display(
@@ -50,13 +50,13 @@ pub(crate) enum Error {
     RemoveFinalizer {
         test_name: String,
         finalizer: String,
-        source: model::Error,
+        source: model::clients::Error,
     },
 
     #[snafu(display("Unable to set controller status for test '{}': {}", test_name, source))]
     SetControllerStatus {
         test_name: String,
-        source: model::Error,
+        source: model::clients::Error,
     },
 
     #[snafu(display(

@@ -7,7 +7,7 @@ use snafu::{ResultExt, Snafu};
 /// # Example
 ///
 /// ```
-///# use client::ResourceProviderClient;
+///# use model::clients::ResourceProviderClient;
 ///# async fn no_run() {
 /// let client = ResourceProviderClient::new().await.unwrap();
 /// let rp = client.get_resource_provider("my-resource-provider").await.unwrap();
