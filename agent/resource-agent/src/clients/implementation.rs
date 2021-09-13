@@ -11,12 +11,6 @@ impl From<model::clients::Error> for ClientError {
     }
 }
 
-impl From<model::clients::ResourceProviderClientError> for ClientError {
-    fn from(e: model::clients::ResourceProviderClientError) -> Self {
-        ClientError::RequestFailed(Some(Box::new(e)))
-    }
-}
-
 impl From<ConfigurationError> for ClientError {
     fn from(e: ConfigurationError) -> Self {
         ClientError::Serialization(Some(Box::new(e)))
