@@ -1,12 +1,12 @@
 mod agent;
+mod bootstrap;
 pub(crate) mod constants;
 pub mod error;
-mod k8s_bootstrap;
 mod k8s_client;
 
 pub use agent::TestAgent;
 use async_trait::async_trait;
-pub use k8s_bootstrap::BootstrapError;
+pub use bootstrap::BootstrapError;
 pub use k8s_client::ClientError;
 use model::clients::TestClient;
 pub use model::{Configuration, TestResults};
