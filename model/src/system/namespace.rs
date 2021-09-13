@@ -1,4 +1,4 @@
-use crate::model::NAMESPACE;
+use crate::constants::NAMESPACE;
 use k8s_openapi::api::core::v1::Namespace;
 use kube::api::ObjectMeta;
 use maplit::btreemap;

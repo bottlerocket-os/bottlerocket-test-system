@@ -1,4 +1,4 @@
-use crate::model::{
+use crate::constants::{
     APP_COMPONENT, APP_MANAGED_BY, APP_PART_OF, LABEL_COMPONENT, NAMESPACE, TESTSYS,
 };
 use k8s_openapi::api::apps::v1::{

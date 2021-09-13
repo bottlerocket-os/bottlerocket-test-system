@@ -3,7 +3,8 @@ use k8s_openapi::api::batch::v1::Job;
 use kube::{Api, Client, Resource};
 use log::trace;
 use model::clients::TestClient;
-use model::model::{Agent, AgentStatus, ControllerStatus, Test, TestStatus, NAMESPACE};
+use model::constants::NAMESPACE;
+use model::{Agent, AgentStatus, ControllerStatus, Test, TestStatus};
 use snafu::ResultExt;
 use std::borrow::Cow;
 

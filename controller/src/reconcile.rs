@@ -6,7 +6,7 @@ use crate::test_pod::{
 };
 use kube_runtime::controller::ReconcilerAction;
 use log::{error, trace};
-use model::model::{Lifecycle, Test};
+use model::{Lifecycle, Test};
 use snafu::ensure;
 use std::time::Duration;
 

@@ -9,7 +9,7 @@ use async_trait::async_trait;
 pub use k8s_bootstrap::BootstrapError;
 pub use k8s_client::ClientError;
 use model::clients::TestClient;
-pub use model::model::{Configuration, TestResults};
+pub use model::{Configuration, TestResults};
 use std::fmt::{Debug, Display};
 
 /// The status of the test `Runner`.

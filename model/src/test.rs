@@ -1,4 +1,4 @@
-use crate::model::{ResourceRequest, ResourceStatus};
+use crate::{ResourceRequest, ResourceStatus};
 use kube::CustomResource;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};

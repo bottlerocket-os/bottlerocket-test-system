@@ -6,12 +6,13 @@ use kube::{
     api::{Api, Patch, PatchParams, PostParams, ResourceExt},
     Client, CustomResourceExt,
 };
-use model::model::{Test, NAMESPACE};
+use model::constants::NAMESPACE;
 use model::system::{
     agent_cluster_role, agent_cluster_role_binding, agent_service_account, controller_cluster_role,
     controller_cluster_role_binding, controller_deployment, controller_service_account,
     testsys_namespace,
 };
+use model::Test;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 use snafu::ResultExt;

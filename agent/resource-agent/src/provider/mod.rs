@@ -2,7 +2,7 @@ mod error;
 
 pub use self::error::{ProviderError, ProviderResult, Resources};
 use crate::clients::InfoClient;
-use model::model::Configuration;
+use model::Configuration;
 
 /// Information needed by providers ([`Create`] and [`Destroy`] objects) during initialization.
 #[derive(Debug, Clone)]

@@ -3,7 +3,7 @@ use crate::clients::{AgentClient, ClientError, DefaultAgentClient, DefaultInfoCl
 use crate::provider::{ProviderError, ProviderInfo, Resources};
 use crate::{Action, BootstrapData};
 use model::clients::{ResourceProviderClient, TestClient};
-use model::model::{Configuration, ConfigurationError, ErrorResources, ResourceAgentState};
+use model::{Configuration, ConfigurationError, ErrorResources, ResourceAgentState};
 
 impl From<model::clients::Error> for ClientError {
     fn from(e: model::clients::Error) -> Self {

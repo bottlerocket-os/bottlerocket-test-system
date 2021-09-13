@@ -1,6 +1,7 @@
-use crate::model::{
+use crate::constants::{API_VERSION, NAMESPACE, TESTSYS};
+use crate::{
     AgentStatus, Configuration, ConfigurationError, ControllerStatus, ErrorResources,
-    ResourceAgentState, ResourceRequest, ResourceStatus, Test, API_VERSION, NAMESPACE, TESTSYS,
+    ResourceAgentState, ResourceRequest, ResourceStatus, Test,
 };
 use kube::api::{Patch, PatchParams};
 use kube::{Api, Resource};

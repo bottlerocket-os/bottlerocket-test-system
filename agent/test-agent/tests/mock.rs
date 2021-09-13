@@ -6,7 +6,7 @@ to test a [`Runner`] with the [`TestAgent`].
 !*/
 
 use async_trait::async_trait;
-use model::model::Configuration;
+use model::Configuration;
 use serde::{Deserialize, Serialize};
 use std::fmt::{Debug, Display};
 use test_agent::{Bootstrap, BootstrapData, Client, Runner};

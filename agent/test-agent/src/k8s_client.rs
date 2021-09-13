@@ -1,6 +1,6 @@
 use async_trait::async_trait;
 use model::clients::TestClient;
-use model::model::{Configuration, RunState};
+use model::{Configuration, RunState};
 use serde_json::Value;
 use snafu::{ResultExt, Snafu};
 use std::fmt::{Debug, Display};

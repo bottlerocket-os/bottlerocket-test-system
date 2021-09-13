@@ -1,4 +1,5 @@
-use crate::model::{ResourceProvider, NAMESPACE};
+use crate::constants::NAMESPACE;
+use crate::ResourceProvider;
 use kube::Api;
 use snafu::{ResultExt, Snafu};
 

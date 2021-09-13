@@ -11,7 +11,7 @@ use crate::error::AgentResult;
 use crate::provider::{Create, Destroy};
 use crate::BootstrapData;
 use log::error;
-use model::model::Configuration;
+use model::Configuration;
 use std::marker::PhantomData;
 
 enum Provider<C, D>

@@ -1,4 +1,4 @@
-use model::model::Configuration;
+use model::Configuration;
 use resource_agent::clients::{ClientResult, InfoClient};
 use resource_agent::BootstrapData;
 
