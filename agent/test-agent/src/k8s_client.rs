@@ -1,11 +1,10 @@
+use crate::{BootstrapData, Client, DefaultClient, TestInfo, TestResults};
 use async_trait::async_trait;
 use model::clients::TestClient;
 use model::{Configuration, RunState};
 use serde_json::Value;
 use snafu::{ResultExt, Snafu};
 use std::fmt::{Debug, Display};
-
-use crate::{BootstrapData, Client, DefaultClient, RunnerStatus, TestInfo};
 
 /// The public error type for the default [`Client`].
 #[derive(Debug, Snafu)]
@@ -54,18 +53,13 @@ impl Client for DefaultClient {
         })
     }
 
-    async fn send_status(&self, status: RunnerStatus) -> Result<(), Self::E> {
+    async fn send_test_starting(&self) -> Result<(), Self::E> {
         let mut agent_status = self
             .client
             .get_agent_status(&self.name)
             .await
             .context(K8s)?;
-        let (run_state, test_results) = match status {
-            RunnerStatus::Running => (RunState::Running, None),
-            RunnerStatus::Done(test_results) => (RunState::Done, Some(test_results)),
-        };
-        agent_status.run_state = run_state;
-        agent_status.results = test_results;
+        agent_status.run_state = RunState::Running;
         let _ = self
             .client
             .set_agent_status(&self.name, agent_status)
@@ -74,10 +68,20 @@ impl Client for DefaultClient {
         Ok(())
     }
 
-    async fn is_cancelled(&self) -> Result<bool, Self::E> {
-        let _test_data = self.client.get_test(&self.name).await.context(K8s)?;
-        // TODO - check whether we are cancelled in a field of the test CRD
-        Ok(false)
+    async fn send_test_done(&self, results: TestResults) -> Result<(), Self::E> {
+        let mut agent_status = self
+            .client
+            .get_agent_status(&self.name)
+            .await
+            .context(K8s)?;
+        agent_status.run_state = RunState::Running;
+        agent_status.results = Some(results);
+        let _ = self
+            .client
+            .set_agent_status(&self.name, agent_status)
+            .await
+            .context(K8s)?;
+        Ok(())
     }
 
     async fn send_error<E>(&self, error: E) -> Result<(), Self::E>
