@@ -1,6 +1,6 @@
 use crate::constants::{SPAWN_TIMEOUT, STATUS_CHECK_WAIT, STATUS_TIMEOUT, TERMINATE_TIMEOUT};
-use crate::error::{self, Error, InnerError, Result};
-use crate::{Bootstrap, Client, Runner, RunnerStatus};
+use crate::error::{self, Error, Result};
+use crate::{BootstrapData, Client, Runner, RunnerStatus};
 use log::{debug, error};
 use snafu::ResultExt;
 use std::future::Future;
@@ -41,14 +41,8 @@ where
     /// type parameters. `TestAgent::<DefaultClient, MyRunner>::new(DefaultBootstrap::new())`. Any
     /// errors that occur during this function are fatal since we are not able to fully construct
     /// the `Runner`.
-    pub async fn new<B>(bootstrap: B) -> Result<Self, C::E, R::E>
-    where
-        B: Bootstrap,
-    {
-        let bootstrap_data = bootstrap.read().await.map_err(|e| InnerError::Bootstrap {
-            error: e.to_string(),
-        })?;
-        let client = C::new(bootstrap_data).await.map_err(|e| Error::Client(e))?;
+    pub async fn new(b: BootstrapData) -> Result<Self, C::E, R::E> {
+        let client = C::new(b).await.map_err(|e| Error::Client(e))?;
         let test_info = client.get_test_info().await.map_err(|e| Error::Client(e))?;
         let runner = R::new(test_info).await.map_err(|e| Error::Runner(e))?;
         Ok(Self { runner, client })

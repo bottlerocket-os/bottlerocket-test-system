@@ -1,8 +1,18 @@
-use crate::{Bootstrap, BootstrapData, DefaultBootstrap};
-use async_trait::async_trait;
+/*!
+
+The `bootstrap` module defines a struct and function for getting the necessary information from the
+container environment to construct the [`Agent`] and all of its parts.
+
+!*/
+
 use model::constants::ENV_TEST_NAME;
 use snafu::{ResultExt, Snafu};
-use std::fmt::Debug;
+
+/// Data that is read from the TestPod's container environment and filesystem.
+pub struct BootstrapData {
+    /// The name of the TestSys Test.
+    pub test_name: String,
+}
 
 /// The public error type for the default [`Bootstrap`].
 #[derive(Debug, Snafu)]
@@ -18,11 +28,8 @@ pub(crate) enum InnerError {
     },
 }
 
-#[async_trait]
-impl Bootstrap for DefaultBootstrap {
-    type E = BootstrapError;
-
-    async fn read(&self) -> Result<BootstrapData, Self::E> {
+impl BootstrapData {
+    pub fn from_env() -> Result<BootstrapData, BootstrapError> {
         Ok(BootstrapData {
             test_name: std::env::var(ENV_TEST_NAME).context(EnvRead { key: ENV_TEST_NAME })?,
         })

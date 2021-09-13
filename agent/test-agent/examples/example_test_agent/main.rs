@@ -32,7 +32,7 @@ use async_trait::async_trait;
 use model::TestResults;
 use serde::{Deserialize, Serialize};
 use std::process::{Child, Command};
-use test_agent::{Configuration, RunnerStatus, TestInfo};
+use test_agent::{BootstrapData, Configuration, RunnerStatus, TestInfo};
 
 struct ExampleTestRunner {
     config: ExampleConfig,
@@ -140,7 +140,7 @@ impl test_agent::Runner for ExampleTestRunner {
 async fn main() {
     let mut agent_main =
         test_agent::TestAgent::<test_agent::DefaultClient, ExampleTestRunner>::new(
-            test_agent::DefaultBootstrap,
+            BootstrapData::from_env().unwrap(),
         )
         .await
         .unwrap();

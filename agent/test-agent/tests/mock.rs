@@ -9,7 +9,7 @@ use async_trait::async_trait;
 use model::Configuration;
 use serde::{Deserialize, Serialize};
 use std::fmt::{Debug, Display};
-use test_agent::{Bootstrap, BootstrapData, Client, Runner};
+use test_agent::{BootstrapData, Client, Runner};
 use test_agent::{RunnerStatus, TestInfo, TestResults};
 use tokio::process::{Child, Command};
 
@@ -155,29 +155,15 @@ impl Client for MockClient {
     }
 }
 
-/// So that we can test [`MyRunner`] without placing it into an k8s pod with the correct environment
-/// variables and filesystem structure, we mock out the [`Bootstrap`] trait.
-struct MockBootstrap {}
-
-#[async_trait]
-impl Bootstrap for MockBootstrap {
-    /// We use a `String` as the error type for convenience.
-    type E = String;
-
-    async fn read(&self) -> Result<BootstrapData, Self::E> {
-        Ok(BootstrapData {
-            test_name: "hello-world".to_string(),
-        })
-    }
-}
-
 /// This test runs [`MyRunner`] inside a [`TestAgent`] with k8s and the container environment mocked
 /// by `MockClient` and `MockBootstrap`.
 #[tokio::test]
 async fn mock_test() -> std::io::Result<()> {
-    let mut agent_main = test_agent::TestAgent::<MockClient, MyRunner>::new(MockBootstrap {})
-        .await
-        .unwrap();
+    let mut agent_main = test_agent::TestAgent::<MockClient, MyRunner>::new(BootstrapData {
+        test_name: String::from("hello-test"),
+    })
+    .await
+    .unwrap();
     agent_main.run().await.unwrap();
     Ok(())
 }

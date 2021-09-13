@@ -6,7 +6,7 @@ mod k8s_client;
 
 pub use agent::TestAgent;
 use async_trait::async_trait;
-pub use bootstrap::BootstrapError;
+pub use bootstrap::{BootstrapData, BootstrapError};
 pub use k8s_client::ClientError;
 use model::clients::TestClient;
 pub use model::{Configuration, TestResults};
@@ -108,25 +108,3 @@ pub struct DefaultClient {
     client: TestClient,
     name: String,
 }
-
-/// The `Bootstrap` trait provides the information needed by the test agent before a k8s client can
-/// be instantiated. For example, if some data such as the test name is provided by way of the k8s
-/// downward API or ConfigMaps, the `Bootstrap` trait will provide that  information. It is offered
-/// as a trait to enable testing of a [`Runner`] outside of a k8s pod. In practice you will use the
-/// provided implementation by calling `DefaultBootstrap::new()`.
-#[async_trait]
-pub trait Bootstrap: Sized {
-    type E: Debug + Display + Send + Sync + 'static;
-
-    /// Reads data from the container's environment, filesystem, etc. and provides that information.
-    async fn read(&self) -> Result<BootstrapData, Self::E>;
-}
-
-/// Data that is read from the TestPod's container environment and filesystem.
-pub struct BootstrapData {
-    /// The name of the TestSys Test.
-    pub test_name: String,
-}
-
-/// Provides the default [`Bootstrap`] implementation.
-pub struct DefaultBootstrap;
