@@ -4,6 +4,7 @@ This library provides the Kubernetes custom resource definitions and their API c
 
 !*/
 
+pub mod clients;
 pub mod model;
 mod resource_provider_client;
 pub mod system;
