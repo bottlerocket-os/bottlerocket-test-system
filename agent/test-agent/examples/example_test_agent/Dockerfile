@@ -7,8 +7,11 @@ ADD ./ /src/
 WORKDIR /src/agent/test-agent
 RUN cargo install --locked --target ${ARCH}-bottlerocket-linux-musl --path . --example example_test_agent --root ./
 
-FROM alpine
-
+FROM scratch
+# Copy CA certificates store
+COPY --from=build /etc/ssl /etc/ssl
+COPY --from=build /etc/pki /etc/pki
+# Copy binary
 COPY --from=build /src/agent/test-agent/bin/example_test_agent ./
 
 ENTRYPOINT ["./example_test_agent"]
