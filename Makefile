@@ -1,4 +1,4 @@
-.PHONY: build sdk-openssl example-test-agent-image controller-image images
+.PHONY: build sdk-openssl example-test-agent-image example-resource-agent-image controller-image images
 
 ARCH=$(shell uname -m)
 
@@ -23,6 +23,13 @@ example-test-agent-image: sdk-openssl
 		--build-arg ARCH="$(ARCH)" \
 		--tag "example-testsys-agent" \
 		-f agent/test-agent/examples/example_test_agent/Dockerfile .
+
+# Build the container image for the example resource-agent program
+example-resource-agent-image: sdk-openssl
+	docker build $(DOCKER_BUILD_FLAGS) \
+		--build-arg ARCH="$(ARCH)" \
+		--tag "example-resource-agent" \
+		-f agent/resource-agent/examples/example_resource_agent/Dockerfile .
 
 controller-image: sdk-openssl
 	docker build $(DOCKER_BUILD_FLAGS) \
