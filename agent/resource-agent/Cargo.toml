@@ -18,4 +18,5 @@ tokio = { version = "1", default-features = false, features = [ "time" ] }
 yamlgen = { path = "../../yamlgen" }
 
 [dev-dependencies]
+nonzero_ext = "0.3"
 tokio = { version = "1", default-features = false, features = [ "macros", "rt-multi-thread" ] }
