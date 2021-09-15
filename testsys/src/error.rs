@@ -9,9 +9,12 @@ pub(crate) type Result<T> = std::result::Result<T, Error>;
 #[snafu(visibility = "pub(crate)")]
 pub(crate) enum Error {
     #[snafu(display("Unable to create client: {}", source))]
-    Client { source: kube::Error },
+    ClientCreate { source: kube::Error },
 
-    #[snafu(display("Error creating {}: {}", what, source))]
+    #[snafu(display("Unable to read kubeconfig: {}", source))]
+    ConfigRead { source: kube::Error },
+
+    #[snafu(display("Error Creating {}: {}", what, source))]
     Creation { what: String, source: kube::Error },
 
     #[snafu(display("Error creating test: {}", source))]

@@ -47,14 +47,11 @@ pub(crate) struct Install {
 }
 
 impl Install {
-    pub(crate) async fn run(&self) -> Result<()> {
-        // Initialize the k8s client from in-cluster variables or KUBECONFIG.
-        let client = Client::try_default().await.context(error::Client)?;
-
-        create_namespace(&client).await?;
-        create_crd(&client).await?;
-        create_roles(&client).await?;
-        create_service_accts(&client).await?;
+    pub(crate) async fn run(&self, k8s_client: Client) -> Result<()> {
+        create_namespace(&k8s_client).await?;
+        create_crd(&k8s_client).await?;
+        create_roles(&k8s_client).await?;
+        create_service_accts(&k8s_client).await?;
 
         let mut controller_image_pull_secret = None;
 
@@ -63,7 +60,7 @@ impl Install {
             (self.pull_username.as_ref(), self.pull_password.as_ref())
         {
             create_secret(
-                &client,
+                &k8s_client,
                 username,
                 password,
                 self.controller_uri
@@ -79,7 +76,7 @@ impl Install {
         }
 
         create_deployment(
-            &client,
+            &k8s_client,
             self.controller_uri.clone(),
             controller_image_pull_secret,
         )

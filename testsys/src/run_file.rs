@@ -1,4 +1,5 @@
 use crate::error::{self, Result};
+use kube::Client;
 use model::clients::TestClient;
 use snafu::ResultExt;
 use std::path::PathBuf;
@@ -13,14 +14,14 @@ pub(crate) struct RunFile {
 }
 
 impl RunFile {
-    pub(crate) async fn run(&self) -> Result<()> {
+    pub(crate) async fn run(&self, k8s_client: Client) -> Result<()> {
         // Create the test object from its path.
         let test_file =
             std::fs::File::open(&self.path).context(error::File { path: &self.path })?;
         let test = serde_yaml::from_reader(test_file)
             .context(error::TestFileParse { path: &self.path })?;
 
-        let tests = TestClient::new().await.context(error::TestClientNew)?;
+        let tests = TestClient::new_from_k8s_client(k8s_client);
 
         tests.create_test(test).await.context(error::CreateTest)?;
 
