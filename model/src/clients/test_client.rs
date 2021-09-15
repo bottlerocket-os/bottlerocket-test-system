@@ -4,6 +4,7 @@ use crate::{
     AgentStatus, Configuration, ControllerStatus, ErrorResources, ResourceAgentState,
     ResourceRequest, ResourceStatus, Test,
 };
+use kube::api::PostParams;
 use kube::api::{Patch, PatchParams};
 use kube::{Api, Resource};
 use log::trace;
@@ -55,6 +56,18 @@ impl TestClient {
             .await
             .context(error::KubeApiCall {
                 method: "get",
+                what: "test",
+            })?)
+    }
+
+    /// Create a TestSys [`Test`].
+    pub async fn create_test(&self, test: Test) -> Result<Test> {
+        Ok(self
+            .api
+            .create(&PostParams::default(), &test)
+            .await
+            .context(error::KubeApiCall {
+                method: "create",
                 what: "test",
             })?)
     }

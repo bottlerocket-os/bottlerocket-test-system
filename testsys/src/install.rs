@@ -1,11 +1,9 @@
 use crate::error::{self, Result};
+use crate::k8s::{create_or_update, DockerConfigJson};
 use apiexts::CustomResourceDefinition;
 use k8s_openapi::api::core::v1::Secret;
 use k8s_openapi::apiextensions_apiserver::pkg::apis::apiextensions::v1 as apiexts;
-use kube::{
-    api::{Api, Patch, PatchParams, PostParams, ResourceExt},
-    Client, CustomResourceExt,
-};
+use kube::{Api, Client, CustomResourceExt};
 use model::constants::NAMESPACE;
 use model::system::{
     agent_cluster_role, agent_cluster_role_binding, agent_service_account, controller_cluster_role,
@@ -13,10 +11,8 @@ use model::system::{
     testsys_namespace,
 };
 use model::Test;
-use serde::de::DeserializeOwned;
-use serde::Serialize;
 use snafu::ResultExt;
-use std::collections::{BTreeMap, HashMap};
+use std::collections::BTreeMap;
 use std::fmt::Debug;
 use structopt::StructOpt;
 
@@ -227,44 +223,4 @@ async fn create_deployment(client: &Client, uri: String, secret: Option<String>)
     // If the controller deployment already exists, update it with the new one using Patch.
     // If not create a new controller deployment.
     create_or_update(&deps, controller_deployment, "namespace").await
-}
-
-async fn create_or_update<T>(api: &Api<T>, data: T, what: &str) -> Result<()>
-where
-    T: Clone + DeserializeOwned + Debug + kube::Resource + Serialize,
-{
-    // If the data already exists, update it with the new one using Patch. If not create a new one.
-    match api.get(&data.name()).await {
-        Ok(deployment) => {
-            api.patch(
-                &deployment.name(),
-                &PatchParams::default(),
-                &Patch::Merge(data),
-            )
-            .await
-        }
-        Err(_err) => api.create(&PostParams::default(), &data).await,
-    }
-    .context(error::Creation { what })?;
-
-    Ok(())
-}
-
-#[derive(Serialize)]
-struct DockerConfigJson {
-    auths: HashMap<String, DockerConfigAuth>,
-}
-
-#[derive(Serialize)]
-struct DockerConfigAuth {
-    auth: String,
-}
-
-impl DockerConfigJson {
-    fn new(username: &str, password: &str, registry: &str) -> DockerConfigJson {
-        let mut auths = HashMap::new();
-        let auth = base64::encode(format!("{}:{}", username, password));
-        auths.insert(registry.to_string(), DockerConfigAuth { auth });
-        DockerConfigJson { auths }
-    }
 }
