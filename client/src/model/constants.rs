@@ -26,6 +26,10 @@ pub const LABEL_TEST_UID: &str = testsys!("test-uid");
 pub const LABEL_COMPONENT: &str = testsys!("component");
 
 // Environment variables
+pub const ENV_PROVIDER_NAME: &str = "TESTSYS_PROVIDER_NAME";
+pub const ENV_RESOURCE_ACTION: &str = "TESTSYS_RESOURCE_ACTION";
+pub const ENV_RESOURCE_NAME: &str = "TESTSYS_RESOURCE_NAME";
+pub const ENV_RESOURCE_PROVIDER_NAME: &str = "TESTSYS_RESOURCE_PROVIDER";
 pub const ENV_TEST_NAME: &str = "TESTSYS_TEST_NAME";
 
 // Standard tags https://kubernetes.io/docs/concepts/overview/working-with-objects/common-labels/

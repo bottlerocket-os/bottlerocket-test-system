@@ -1,8 +1,9 @@
+use crate::model::{ResourceRequest, ResourceStatus};
 use kube::CustomResource;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 
 /// A TestSys Test. The `CustomResource` derive also produces a struct named `Test` which represents
 /// a test CRD object in the k8s API.
@@ -19,6 +20,8 @@ use std::collections::HashMap;
     version = "v1"
 )]
 pub struct TestSpec {
+    /// Information about resources this test needs.
+    pub resources: BTreeMap<String, ResourceRequest>,
     /// Information about the test agent.
     pub agent: Agent,
 }
@@ -45,7 +48,7 @@ pub struct TestStatus {
     /// Information written by the test agent.
     pub agent: Option<AgentStatus>,
     /// Information written by the resource agents.
-    pub resources: Option<HashMap<String, ResourceStatus>>,
+    pub resources: Option<BTreeMap<String, ResourceStatus>>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Eq, PartialEq, Clone, Copy, JsonSchema)]
@@ -115,10 +118,4 @@ impl Default for Lifecycle {
     fn default() -> Self {
         Lifecycle::New
     }
-}
-
-#[derive(Serialize, Deserialize, Debug, Default, Eq, PartialEq, Clone, JsonSchema)]
-pub struct ResourceStatus {
-    // TODO - create this schema
-    pub whatever: String,
 }
