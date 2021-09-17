@@ -51,9 +51,6 @@ pub struct AgentError(InnerError);
 #[derive(Debug, Snafu)]
 #[snafu(visibility = "pub(crate)")]
 pub(crate) enum InnerError {
-    #[snafu(display("Bootstrap error: {}", error))]
-    Bootstrap { error: String },
-
     #[snafu(display("Timeout waiting more than {:?} for {}: {}", duration, op, source))]
     Timeout {
         duration: Duration,

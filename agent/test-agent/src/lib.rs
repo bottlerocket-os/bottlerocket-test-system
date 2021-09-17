@@ -1,25 +1,15 @@
 mod agent;
-pub(crate) mod constants;
+mod bootstrap;
 pub mod error;
-mod k8s_bootstrap;
 mod k8s_client;
 
 pub use agent::TestAgent;
 use async_trait::async_trait;
-pub use k8s_bootstrap::BootstrapError;
+pub use bootstrap::{BootstrapData, BootstrapError};
 pub use k8s_client::ClientError;
 use model::clients::TestClient;
 pub use model::{Configuration, TestResults};
 use std::fmt::{Debug, Display};
-
-/// The status of the test `Runner`.
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub enum RunnerStatus {
-    /// The test process has not encountered any fatal errors and is proceeding.
-    Running,
-    /// The test process has concluded (irrespective of tests passing or failing).
-    Done(TestResults),
-}
 
 /// Information that a test [`Runner`] needs before it can begin a test.
 #[derive(Debug, Clone)]
@@ -33,9 +23,7 @@ pub struct TestInfo<C: Configuration> {
 ///
 /// The [`TestAgent`] will call your implementation of the `Runner` trait as follows:
 /// - `new` will be called to instantiate the object.
-/// - `spawn` will be called to begin the test process. You will run your test process in a separate
-///   thread/process and return from `spawn` once the test has been kicked off.
-/// - `status` will be repeatedly called after spawn until either an `Error` or `Done` is received.
+/// - `run` will be called to run the test(s).
 /// - `terminate` will be called before the program exits.
 ///
 /// You will also define a [`Configuration`] type to define data that your test needs when it
@@ -54,22 +42,11 @@ pub trait Runner: Sized {
     /// Creates a new instance of the `Runner`.
     async fn new(test_info: TestInfo<Self::C>) -> Result<Self, Self::E>;
 
-    /// Starts the testing process. The testing process should run in a separate thread or child
-    /// process and `spawn` should return as soon as that process is running successfully. `spawn`
-    /// has a timeout (see [`SPAWN_TIMEOUT`]).
-    async fn spawn(&mut self) -> Result<(), Self::E>;
+    /// Runs the test(s) and returns when they are done. If the tests cannot be completed, returns
+    /// an error.
+    async fn run(&mut self) -> Result<TestResults, Self::E>;
 
-    /// Checks and returns the status of the test. If possible, `status` should check that the
-    /// testing process has not failed and is still on track to finish successfully, in which case
-    /// `status` should return [`Status::Running`]. If the testing process has completed (regardless
-    /// of whether tests have passed or failed), `status` should return [`Status::Done`]. If the
-    /// test process has encountered an error and cannot continue, `status` should return an error.
-    /// `status` has a timeout (see [`STATUS_TIMEOUT`].
-    async fn status(&mut self) -> Result<RunnerStatus, Self::E>;
-
-    /// Cleans up prior to program exit. `terminate` can be called either because the testing has
-    /// completed successfully, or because the test run has been cancelled. `terminate` has a
-    /// timeout (see [`TERMINATE_TIMEOUT`]).
+    /// Cleans up prior to program exit.
     async fn terminate(&mut self) -> Result<(), Self::E>;
 }
 
@@ -91,11 +68,11 @@ pub trait Client: Sized {
     where
         C: Configuration;
 
-    /// Send the test [`Runner`]'s status to the k8s API.
-    async fn send_status(&self, status: RunnerStatus) -> Result<(), Self::E>;
+    /// Set the appropriate status field to represent that the test has started.
+    async fn send_test_starting(&self) -> Result<(), Self::E>;
 
-    /// Check the k8s API to find out if this test run is cancelled.
-    async fn is_cancelled(&self) -> Result<bool, Self::E>;
+    /// Set the appropriate status fields once the test has finished.
+    async fn send_test_done(&self, results: TestResults) -> Result<(), Self::E>;
 
     /// Send an error to the k8s API.
     async fn send_error<E>(&self, error: E) -> Result<(), Self::E>
@@ -108,25 +85,3 @@ pub struct DefaultClient {
     client: TestClient,
     name: String,
 }
-
-/// The `Bootstrap` trait provides the information needed by the test agent before a k8s client can
-/// be instantiated. For example, if some data such as the test name is provided by way of the k8s
-/// downward API or ConfigMaps, the `Bootstrap` trait will provide that  information. It is offered
-/// as a trait to enable testing of a [`Runner`] outside of a k8s pod. In practice you will use the
-/// provided implementation by calling `DefaultBootstrap::new()`.
-#[async_trait]
-pub trait Bootstrap: Sized {
-    type E: Debug + Display + Send + Sync + 'static;
-
-    /// Reads data from the container's environment, filesystem, etc. and provides that information.
-    async fn read(&self) -> Result<BootstrapData, Self::E>;
-}
-
-/// Data that is read from the TestPod's container environment and filesystem.
-pub struct BootstrapData {
-    /// The name of the TestSys Test.
-    pub test_name: String,
-}
-
-/// Provides the default [`Bootstrap`] implementation.
-pub struct DefaultBootstrap;
