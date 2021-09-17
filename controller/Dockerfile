@@ -9,8 +9,9 @@ RUN cargo install --locked --target ${ARCH}-bottlerocket-linux-musl --path . --r
 
 FROM scratch
 # Copy CA certificates store
-COPY --from=public.ecr.aws/amazonlinux/amazonlinux:2 /etc/ssl /etc/ssl
-COPY --from=public.ecr.aws/amazonlinux/amazonlinux:2 /etc/pki /etc/pki
+COPY --from=build /etc/ssl /etc/ssl
+COPY --from=build /etc/pki /etc/pki
+# Copy binary
 COPY --from=build /src/controller/bin/controller ./
 
 ENTRYPOINT ["./controller"]
