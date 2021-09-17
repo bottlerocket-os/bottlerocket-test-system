@@ -2,8 +2,8 @@
 members = [
     "agent/resource-agent",
     "agent/test-agent",
-    "client",
     "controller",
+    "model",
     "testsys",
     "yamlgen",
 ]

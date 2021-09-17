@@ -1,20 +1,22 @@
-use crate::model::{
-    AgentStatus, Configuration, ConfigurationError, ControllerStatus, ErrorResources,
-    ResourceAgentState, ResourceRequest, ResourceStatus, Test, API_VERSION, NAMESPACE, TESTSYS,
+use super::error::{self, Result};
+use crate::constants::{API_VERSION, NAMESPACE, TESTSYS};
+use crate::{
+    AgentStatus, Configuration, ControllerStatus, ErrorResources, ResourceAgentState,
+    ResourceRequest, ResourceStatus, Test,
 };
 use kube::api::{Patch, PatchParams};
 use kube::{Api, Resource};
 use log::trace;
 use serde::Serialize;
 use serde_json::{json, Map, Value};
-use snafu::{ResultExt, Snafu};
+use snafu::ResultExt;
 
 /// An API Client for TestSys Test CRD objects.
 ///
 /// # Example
 ///
 /// ```
-///# use client::TestClient;
+///# use model::clients::TestClient;
 ///# async fn no_run() {
 /// let test_client = TestClient::new().await.unwrap();
 /// let test = test_client.get_test("my-test").await.unwrap();
@@ -25,47 +27,13 @@ pub struct TestClient {
     api: Api<Test>,
 }
 
-/// The `Result` type returned by [`TestClient`].
-pub type Result<T> = std::result::Result<T, Error>;
-
-/// The public error type for `TestClient`.
-#[derive(Debug, Snafu)]
-pub struct Error(InnerError);
-
-/// The private error type for `TestClient`.
-#[derive(Debug, Snafu)]
-pub(crate) enum InnerError {
-    #[snafu(display("{}", source))]
-    ConfigSerde { source: ConfigurationError },
-
-    #[snafu(display("Error serializing object '{}': {}", what, source))]
-    Serde {
-        what: String,
-        source: serde_json::Error,
-    },
-
-    #[snafu(display("Error initializing the Kubernetes client: {}", source))]
-    Initialization { source: kube::Error },
-
-    #[snafu(display("Unable to {} {}: {}", method, what, source))]
-    KubeApiCall {
-        method: String,
-        what: String,
-        source: kube::Error,
-    },
-}
-
-impl From<ConfigurationError> for Error {
-    fn from(e: ConfigurationError) -> Self {
-        Error(InnerError::ConfigSerde { source: e })
-    }
-}
-
 impl TestClient {
     /// Create a new [`TestClient`] using either `KUBECONFIG` or the in-cluster environment
     /// variables.
     pub async fn new() -> Result<Self> {
-        let k8s_client = kube::Client::try_default().await.context(Initialization)?;
+        let k8s_client = kube::Client::try_default()
+            .await
+            .context(error::Initialization)?;
         Ok(Self::new_from_k8s_client(k8s_client))
     }
 
@@ -81,10 +49,14 @@ impl TestClient {
     where
         S: AsRef<str>,
     {
-        Ok(self.api.get(name.as_ref()).await.context(KubeApiCall {
-            method: "get",
-            what: "test",
-        })?)
+        Ok(self
+            .api
+            .get(name.as_ref())
+            .await
+            .context(error::KubeApiCall {
+                method: "get",
+                what: "test",
+            })?)
     }
 
     pub async fn get_resource_request(
@@ -334,7 +306,7 @@ impl TestClient {
             .api
             .patch(test_name.as_ref(), &PatchParams::default(), &patch)
             .await
-            .context(KubeApiCall {
+            .context(error::KubeApiCall {
                 method: "patch",
                 what,
             })?)
@@ -353,7 +325,7 @@ impl TestClient {
                 &Patch::Merge(json),
             )
             .await
-            .context(KubeApiCall {
+            .context(error::KubeApiCall {
                 method: "patch",
                 what,
             })?)
@@ -418,7 +390,7 @@ fn resource_status_patch_surgical(
     if let Some(agent_state) = agent_state {
         map.insert(
             "agent_state".into(),
-            serde_json::to_value(agent_state).context(Serde {
+            serde_json::to_value(agent_state).context(error::Serde {
                 what: "ResourceAgentState",
             })?,
         );
@@ -435,7 +407,7 @@ fn resource_status_patch_surgical(
     if let Some(error_resources) = error_resources {
         map.insert(
             "error_resources".into(),
-            serde_json::to_value(error_resources).context(Serde {
+            serde_json::to_value(error_resources).context(error::Serde {
                 what: "ErrorResources",
             })?,
         );
@@ -454,7 +426,7 @@ fn resource_status_patch_surgical(
 fn resources_status_patch_initialize(resource_name: &str) -> Result<Value> {
     Ok(create_resource_status_patch_json(
         resource_name,
-        serde_json::to_value(ResourceStatus::default()).context(Serde {
+        serde_json::to_value(ResourceStatus::default()).context(error::Serde {
             what: "ResourceStatus",
         })?,
     ))

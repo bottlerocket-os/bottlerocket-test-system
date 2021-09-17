@@ -1,6 +1,6 @@
 use crate::context::TestInterface;
 use crate::error::Result;
-use client::model::Lifecycle;
+use model::Lifecycle;
 
 /// The action that the controller needs to take in order to reconcile the `Test`.
 pub(crate) enum Action {

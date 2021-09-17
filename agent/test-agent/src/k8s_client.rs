@@ -1,6 +1,6 @@
 use async_trait::async_trait;
-use client::model::{Configuration, RunState};
-use client::TestClient;
+use model::clients::TestClient;
+use model::{Configuration, RunState};
 use serde_json::Value;
 use snafu::{ResultExt, Snafu};
 use std::fmt::{Debug, Display};
@@ -18,7 +18,7 @@ pub(crate) enum InnerError {
     /// `DefaultClient` is in a better position to provide context than we are, so we forward the
     /// error message.
     #[snafu(display("{}", source))]
-    K8s { source: client::Error },
+    K8s { source: model::clients::Error },
 
     #[snafu(display("Unable to deserialize test configuration: {}", source))]
     Deserialization { source: serde_json::Error },

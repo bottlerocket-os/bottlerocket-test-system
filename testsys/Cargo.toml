@@ -19,7 +19,7 @@ structopt = "0.3"
 tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
 
 # local dependencies
-client = { path = "../client" }
+model = { path = "../model" }
 # regenerate testsys.yaml if the model has changed
 yamlgen = { path = "../yamlgen" }
 

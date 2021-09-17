@@ -6,10 +6,10 @@ mod k8s_client;
 
 pub use agent::TestAgent;
 use async_trait::async_trait;
-pub use client::model::{Configuration, TestResults};
-use client::TestClient;
 pub use k8s_bootstrap::BootstrapError;
 pub use k8s_client::ClientError;
+use model::clients::TestClient;
+pub use model::{Configuration, TestResults};
 use std::fmt::{Debug, Display};
 
 /// The status of the test `Runner`.

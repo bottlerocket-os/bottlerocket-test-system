@@ -14,4 +14,4 @@ pub mod provider;
 
 pub use agent::{Agent, Types};
 pub use bootstrap::{Action, BootstrapData};
-pub use client::model::Configuration;
+pub use model::Configuration;

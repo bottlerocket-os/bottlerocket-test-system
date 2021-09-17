@@ -1,16 +1,18 @@
 use crate::error::{self, Result};
 use apiexts::CustomResourceDefinition;
-use client::model::{Test, NAMESPACE};
-use client::system::{
-    agent_cluster_role, agent_cluster_role_binding, agent_service_account, controller_cluster_role,
-    controller_cluster_role_binding, controller_deployment, controller_service_account,
-};
 use k8s_openapi::api::core::v1::Secret;
 use k8s_openapi::apiextensions_apiserver::pkg::apis::apiextensions::v1 as apiexts;
 use kube::{
     api::{Api, Patch, PatchParams, PostParams, ResourceExt},
     Client, CustomResourceExt,
 };
+use model::constants::NAMESPACE;
+use model::system::{
+    agent_cluster_role, agent_cluster_role_binding, agent_service_account, controller_cluster_role,
+    controller_cluster_role_binding, controller_deployment, controller_service_account,
+    testsys_namespace,
+};
+use model::Test;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 use snafu::ResultExt;
@@ -94,7 +96,7 @@ impl Install {
 async fn create_namespace(client: &Client) -> Result<()> {
     // Add the namespace to the cluster.
     let api: Api<k8s_openapi::api::core::v1::Namespace> = Api::all(client.clone());
-    let ns = client::system::testsys_namespace();
+    let ns = testsys_namespace();
 
     create_or_update(&api, ns, "namespace").await?;
 

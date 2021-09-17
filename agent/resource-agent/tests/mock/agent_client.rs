@@ -1,4 +1,4 @@
-use client::model::Configuration;
+use model::Configuration;
 use resource_agent::clients::{AgentClient, ClientResult};
 use resource_agent::provider::{ProviderError, ProviderInfo};
 use resource_agent::{Action, BootstrapData};

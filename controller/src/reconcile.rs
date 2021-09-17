@@ -4,9 +4,9 @@ use crate::error::{self, Error, Result};
 use crate::test_pod::{
     check_test_pod, check_test_pod_deletion, create_test_pod, delete_test_pod, get_job,
 };
-use client::model::{Lifecycle, Test};
 use kube_runtime::controller::ReconcilerAction;
 use log::{error, trace};
+use model::{Lifecycle, Test};
 use snafu::ensure;
 use std::time::Duration;
 

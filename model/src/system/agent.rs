@@ -1,4 +1,4 @@
-use crate::model::{NAMESPACE, TESTSYS, TEST_AGENT_SERVICE_ACCOUNT};
+use crate::constants::{NAMESPACE, TESTSYS, TEST_AGENT_SERVICE_ACCOUNT};
 use k8s_openapi::api::core::v1::ServiceAccount;
 use k8s_openapi::api::rbac::v1::{ClusterRole, ClusterRoleBinding, PolicyRule, RoleRef, Subject};
 use kube::api::ObjectMeta;

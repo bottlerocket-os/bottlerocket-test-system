@@ -10,8 +10,8 @@ use crate::clients::{AgentClient, InfoClient};
 use crate::error::AgentResult;
 use crate::provider::{Create, Destroy};
 use crate::BootstrapData;
-use client::model::Configuration;
 use log::error;
+use model::Configuration;
 use std::marker::PhantomData;
 
 enum Provider<C, D>

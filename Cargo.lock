@@ -133,30 +133,16 @@ dependencies = [
 ]
 
 [[package]]
-name = "client"
-version = "0.1.0"
-dependencies = [
- "k8s-openapi",
- "kube",
- "log",
- "maplit",
- "schemars",
- "serde",
- "serde_json",
- "snafu",
-]
-
-[[package]]
 name = "controller"
 version = "0.1.0"
 dependencies = [
- "client",
  "env_logger",
  "futures",
  "k8s-openapi",
  "kube",
  "kube-runtime",
  "log",
+ "model",
  "schemars",
  "serde",
  "serde_json",
@@ -785,6 +771,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "model"
+version = "0.1.0"
+dependencies = [
+ "k8s-openapi",
+ "kube",
+ "log",
+ "maplit",
+ "schemars",
+ "serde",
+ "serde_json",
+ "snafu",
+]
+
+[[package]]
 name = "native-tls"
 version = "0.2.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1146,8 +1146,8 @@ name = "resource-agent"
 version = "0.1.0"
 dependencies = [
  "async-trait",
- "client",
  "log",
+ "model",
  "serde",
  "serde_json",
  "snafu",
@@ -1412,8 +1412,8 @@ name = "test-agent"
 version = "0.1.0"
 dependencies = [
  "async-trait",
- "client",
  "log",
+ "model",
  "serde",
  "serde_json",
  "snafu",
@@ -1426,12 +1426,12 @@ version = "0.1.0"
 dependencies = [
  "assert_cmd",
  "base64",
- "client",
  "env_logger",
  "k8s-openapi",
  "kube",
  "kube-runtime",
  "log",
+ "model",
  "serde",
  "serde_json",
  "serde_yaml",
@@ -1792,7 +1792,7 @@ dependencies = [
 name = "yamlgen"
 version = "0.1.0"
 dependencies = [
- "client",
  "kube",
+ "model",
  "serde_yaml",
 ]

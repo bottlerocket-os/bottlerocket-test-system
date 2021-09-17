@@ -7,13 +7,13 @@ can call `cargo build --package yamlgen`.
 
 !*/
 
-use client::model::{ResourceProvider, Test};
-use client::system::{
+use kube::CustomResourceExt;
+use model::system::{
     agent_cluster_role, agent_cluster_role_binding, agent_service_account, controller_cluster_role,
     controller_cluster_role_binding, controller_deployment, controller_service_account,
     testsys_namespace,
 };
-use kube::CustomResourceExt;
+use model::{ResourceProvider, Test};
 use std::env;
 use std::fs::File;
 use std::io::Write;
