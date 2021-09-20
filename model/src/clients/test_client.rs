@@ -4,8 +4,7 @@ use crate::{
     AgentStatus, Configuration, ControllerStatus, ErrorResources, ResourceAgentState,
     ResourceRequest, ResourceStatus, Test,
 };
-use kube::api::PostParams;
-use kube::api::{Patch, PatchParams};
+use kube::api::{Patch, PatchParams, PostParams};
 use kube::{Api, Resource};
 use log::trace;
 use serde::Serialize;

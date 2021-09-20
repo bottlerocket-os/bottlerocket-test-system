@@ -1,9 +1,10 @@
 use crate::error::{self, Result};
-use kube::api::{Api, Patch, PatchParams, PostParams, ResourceExt};
-use kube::config::{KubeConfigOptions, Kubeconfig};
-use kube::{Client, Config};
-use serde::de::DeserializeOwned;
-use serde::Serialize;
+use kube::{
+    api::{Api, Patch, PatchParams, PostParams, ResourceExt},
+    config::{KubeConfigOptions, Kubeconfig},
+    Client, Config,
+};
+use serde::{de::DeserializeOwned, Serialize};
 use snafu::ResultExt;
 use std::collections::HashMap;
 use std::convert::TryInto;

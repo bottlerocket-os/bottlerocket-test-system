@@ -1,8 +1,9 @@
 use crate::error::{self, Result};
 use crate::k8s::{create_or_update, DockerConfigJson};
 use apiexts::CustomResourceDefinition;
-use k8s_openapi::api::core::v1::Secret;
-use k8s_openapi::apiextensions_apiserver::pkg::apis::apiextensions::v1 as apiexts;
+use k8s_openapi::{
+    api::core::v1::Secret, apiextensions_apiserver::pkg::apis::apiextensions::v1 as apiexts,
+};
 use kube::{Api, Client, CustomResourceExt};
 use model::constants::NAMESPACE;
 use model::system::{

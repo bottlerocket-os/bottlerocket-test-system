@@ -5,6 +5,7 @@ members = [
     "agent/sonobuoy-test-agent",
     "controller",
     "model",
+    "selftest",
     "testsys",
     "yamlgen",
 ]

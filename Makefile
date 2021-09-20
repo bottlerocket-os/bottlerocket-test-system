@@ -1,4 +1,4 @@
-.PHONY: build sdk-openssl example-test-agent-image example-resource-agent-image controller-image images sonobuoy-test-agent-image
+.PHONY: build sdk-openssl example-test-agent-image example-resource-agent-image controller-image images sonobuoy-test-agent-image integ-test
 
 UNAME_ARCH=$(shell uname -m)
 ARCH ?= $(lastword $(subst :, ,$(filter $(UNAME_ARCH):%,x86_64:amd64 aarch64:arm64)))
@@ -44,3 +44,8 @@ sonobuoy-test-agent-image: sdk-openssl
 		--build-arg ARCH="$(ARCH)" \
 		--tag "sonobuoy-test-agent" \
 		-f agent/sonobuoy-test-agent/Dockerfile .
+
+integ-test: controller-image example-test-agent-image
+	docker tag example-testsys-agent example-testsys-agent:integ
+	docker tag testsys-controller testsys-controller:integ
+	cargo test --features integ
