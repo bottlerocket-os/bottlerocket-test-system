@@ -65,10 +65,27 @@ impl Default for RunState {
     }
 }
 
+#[derive(Serialize, Deserialize, Debug, Eq, PartialEq, Copy, Clone, JsonSchema)]
+pub enum Outcome {
+    Pass,
+    Fail,
+    Timeout,
+    Unknown,
+}
+
+impl Default for Outcome {
+    fn default() -> Self {
+        Self::Unknown
+    }
+}
+
 #[derive(Serialize, Deserialize, Debug, Default, Eq, PartialEq, Clone, JsonSchema)]
 pub struct TestResults {
-    // TODO - create this schema
-    pub whatever: String,
+    pub outcome: Outcome,
+    pub num_passed: u64,
+    pub num_failed: u64,
+    pub num_skipped: u64,
+    pub other_info: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Default, Eq, PartialEq, Clone, JsonSchema)]

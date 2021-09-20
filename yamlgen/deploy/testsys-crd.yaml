@@ -81,10 +81,33 @@ spec:
                     results:
                       nullable: true
                       properties:
-                        whatever:
+                        num_failed:
+                          format: uint64
+                          minimum: 0.0
+                          type: integer
+                        num_passed:
+                          format: uint64
+                          minimum: 0.0
+                          type: integer
+                        num_skipped:
+                          format: uint64
+                          minimum: 0.0
+                          type: integer
+                        other_info:
+                          nullable: true
+                          type: string
+                        outcome:
+                          enum:
+                            - Pass
+                            - Fail
+                            - Timeout
+                            - Unknown
                           type: string
                       required:
-                        - whatever
+                        - num_failed
+                        - num_passed
+                        - num_skipped
+                        - outcome
                       type: object
                     run_state:
                       enum:
