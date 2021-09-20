@@ -2,6 +2,7 @@
 members = [
     "agent/resource-agent",
     "agent/test-agent",
+    "agent/sonobuoy-test-agent",
     "controller",
     "model",
     "testsys",

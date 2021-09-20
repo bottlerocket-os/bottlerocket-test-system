@@ -15,6 +15,7 @@ jobs:
          - "controller-image"
          - "example-resource-agent-image"
          - "example-test-agent-image"
+         - "sonobuoy-test-agent-image"
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
