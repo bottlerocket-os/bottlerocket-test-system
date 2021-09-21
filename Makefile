@@ -45,7 +45,8 @@ sonobuoy-test-agent-image: sdk-openssl
 		--tag "sonobuoy-test-agent" \
 		-f agent/sonobuoy-test-agent/Dockerfile .
 
-integ-test: controller-image example-test-agent-image
+integ-test: controller-image example-test-agent-image example-resource-agent-image
 	docker tag example-testsys-agent example-testsys-agent:integ
 	docker tag testsys-controller testsys-controller:integ
+	docker tag example-resource-agent example-resource-agent:integ
 	cargo test --features integ

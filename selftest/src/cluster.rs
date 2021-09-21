@@ -5,7 +5,7 @@ use kube::{
     config::{KubeConfigOptions, Kubeconfig},
     Api, Client, Config,
 };
-use model::constants::{LABEL_COMPONENT, LABEL_TEST_NAME, NAMESPACE};
+use model::constants::{LABEL_COMPONENT, LABEL_PROVIDER_NAME, LABEL_TEST_NAME, NAMESPACE};
 use std::convert::TryInto;
 use std::path::{Path, PathBuf};
 use tempfile::TempDir;
@@ -102,6 +102,31 @@ impl Cluster {
         let pods = pod_api
             .list(&ListParams {
                 label_selector: Some(format!("{}={}", LABEL_TEST_NAME, test_name)),
+                ..Default::default()
+            })
+            .await?;
+        for pod in pods {
+            if pod
+                .status
+                .unwrap_or_default()
+                .phase
+                .clone()
+                .unwrap_or_default()
+                == "Running"
+            {
+                return Ok(true);
+            }
+        }
+        Ok(false)
+    }
+
+    /// Returns `true` if the `ResourceProvider` named `provider_name` is in the running state.
+    pub async fn is_provider_running(&self, provider_name: &str) -> Result<bool> {
+        let client = self.k8s_client().await?;
+        let pod_api = Api::<Pod>::namespaced(client, NAMESPACE);
+        let pods = pod_api
+            .list(&ListParams {
+                label_selector: Some(format!("{}={}", LABEL_PROVIDER_NAME, provider_name)),
                 ..Default::default()
             })
             .await?;
