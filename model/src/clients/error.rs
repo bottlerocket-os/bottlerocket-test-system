@@ -30,6 +30,28 @@ pub(crate) enum InnerError {
         what: String,
         source: kube::Error,
     },
+
+    #[snafu(display("Unable to {} for '{}': {}", operation, name, source))]
+    KubeApiCallFor {
+        /// What we were trying to do, e.g. 'initialize status field'.
+        operation: String,
+        /// The name of the k8s object we were trying to do this for, e.g. 'my-test'.
+        name: String,
+        /// The error from kube-rs.
+        source: kube::Error,
+    },
+
+    #[snafu(display(
+        "An attempt was made to add the finalizer '{}' more than once",
+        finalizer,
+    ))]
+    DuplicateFinalizer { finalizer: String },
+
+    #[snafu(display(
+        "An attempt was made to delete the non-existant finalizer '{}'",
+        finalizer,
+    ))]
+    DeleteMissingFinalizer { finalizer: String },
 }
 
 impl From<ConfigurationError> for Error {

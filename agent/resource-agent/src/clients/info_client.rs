@@ -1,6 +1,6 @@
 use super::error::ClientResult;
 use crate::BootstrapData;
-use model::clients::TestClient;
+use model::clients::ResourceClient;
 use model::Configuration;
 
 /// `InfoClient` allows [`Create`] and [`Destroy`] objects to store arbitrary information in the
@@ -35,5 +35,5 @@ pub trait InfoClient: Sized + Send + Sync {
 #[derive(Clone)]
 pub struct DefaultInfoClient {
     pub(super) data: BootstrapData,
-    pub(super) client: TestClient,
+    pub(super) client: ResourceClient,
 }

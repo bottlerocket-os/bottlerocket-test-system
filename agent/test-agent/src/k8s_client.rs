@@ -1,7 +1,7 @@
 use crate::{BootstrapData, Client, DefaultClient, TestInfo, TestResults};
 use async_trait::async_trait;
-use model::clients::TestClient;
-use model::{Configuration, RunState};
+use model::clients::{CrdClient, TestClient};
+use model::{Configuration, TaskState};
 use serde_json::Value;
 use snafu::{ResultExt, Snafu};
 use std::fmt::{Debug, Display};
@@ -35,7 +35,7 @@ impl Client for DefaultClient {
     }
 
     async fn keep_running(&self) -> Result<bool, Self::E> {
-        let test_data = self.client.get_test(&self.name).await.context(K8s)?;
+        let test_data = self.client.get(&self.name).await.context(K8s)?;
         Ok(test_data.spec.agent.keep_running)
     }
 
@@ -43,7 +43,7 @@ impl Client for DefaultClient {
     where
         C: Configuration,
     {
-        let test_data = self.client.get_test(&self.name).await.context(K8s)?;
+        let test_data = self.client.get(&self.name).await.context(K8s)?;
 
         let configuration: C = match test_data.spec.agent.configuration {
             Some(serde_map) => {
@@ -59,31 +59,16 @@ impl Client for DefaultClient {
     }
 
     async fn send_test_starting(&self) -> Result<(), Self::E> {
-        let mut agent_status = self
-            .client
-            .get_agent_status(&self.name)
-            .await
-            .context(K8s)?;
-        agent_status.run_state = RunState::Running;
-        let _ = self
-            .client
-            .set_agent_status(&self.name, agent_status)
+        self.client
+            .send_agent_task_state(&self.name, TaskState::Running)
             .await
             .context(K8s)?;
         Ok(())
     }
 
     async fn send_test_done(&self, results: TestResults) -> Result<(), Self::E> {
-        let mut agent_status = self
-            .client
-            .get_agent_status(&self.name)
-            .await
-            .context(K8s)?;
-        agent_status.run_state = RunState::Done;
-        agent_status.results = Some(results);
-        let _ = self
-            .client
-            .set_agent_status(&self.name, agent_status)
+        self.client
+            .send_test_completed(&self.name, results)
             .await
             .context(K8s)?;
         Ok(())
@@ -93,16 +78,8 @@ impl Client for DefaultClient {
     where
         E: Debug + Display + Send + Sync,
     {
-        let mut agent_status = self
-            .client
-            .get_agent_status(&self.name)
-            .await
-            .context(K8s)?;
-        agent_status.run_state = RunState::Error;
-        agent_status.error_message = Some(error.to_string());
-        let _ = self
-            .client
-            .set_agent_status(&self.name, agent_status)
+        self.client
+            .send_agent_error(&self.name, &error.to_string())
             .await
             .context(K8s)?;
         Ok(())

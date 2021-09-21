@@ -1,9 +1,9 @@
 use super::error::ClientResult;
 use crate::clients::{AgentClient, ClientError, DefaultAgentClient, DefaultInfoClient, InfoClient};
-use crate::provider::{ProviderError, ProviderInfo, Resources};
-use crate::{Action, BootstrapData};
-use model::clients::{ResourceProviderClient, TestClient};
-use model::{Configuration, ConfigurationError, ErrorResources, ResourceAgentState};
+use crate::provider::{ProviderError, Resources};
+use crate::{BootstrapData, ResourceAction};
+use model::clients::{CrdClient, ResourceClient};
+use model::{Configuration, ConfigurationError, ErrorResources, ResourceError, TaskState};
 
 impl From<model::clients::Error> for ClientError {
     fn from(e: model::clients::Error) -> Self {
@@ -31,7 +31,7 @@ impl From<Resources> for ErrorResources {
 #[async_trait::async_trait]
 impl InfoClient for DefaultInfoClient {
     async fn new(data: BootstrapData) -> ClientResult<Self> {
-        let client = TestClient::new()
+        let client = ResourceClient::new()
             .await
             .map_err(|e| ClientError::InitializationFailed(Some(Box::new(e))))?;
         Ok(Self { data, client })
@@ -41,30 +41,16 @@ impl InfoClient for DefaultInfoClient {
     where
         Info: Configuration,
     {
-        let maybe_info = if let Some(status) = self
-            .client
-            .get_resource_status(&self.data.test_name, &self.data.resource_name)
-            .await?
-        {
-            status.agent_info
-        } else {
-            return Ok(Info::default());
-        };
-        let map = if let Some(map) = maybe_info {
-            map
-        } else {
-            return Ok(Info::default());
-        };
-        let info: Info = Configuration::from_map(map)?;
-        Ok(info)
+        Ok(self.client.get_agent_info(&self.data.resource_name).await?)
     }
 
     async fn send_info<Info>(&self, info: Info) -> ClientResult<()>
     where
         Info: Configuration,
     {
-        self.client
-            .set_resource_agent_info(&self.data.test_name, &self.data.resource_name, info)
+        let _ = self
+            .client
+            .send_agent_info(&self.data.resource_name, info)
             .await?;
         Ok(())
     }
@@ -75,98 +61,50 @@ impl AgentClient for DefaultAgentClient {
     async fn new(data: BootstrapData) -> ClientResult<Self> {
         Ok(Self {
             data,
-            test_client: TestClient::new()
-                .await
-                .map_err(|e| ClientError::InitializationFailed(Some(Box::new(e))))?,
-            resource_provider_client: ResourceProviderClient::new()
+            resource_client: ResourceClient::new()
                 .await
                 .map_err(|e| ClientError::InitializationFailed(Some(Box::new(e))))?,
         })
     }
 
-    async fn send_initialization_error(&self, action: Action, error: &str) -> ClientResult<()> {
-        let state = match action {
-            Action::Create => ResourceAgentState::CreateFailed,
-            Action::Destroy => ResourceAgentState::DestroyFailed,
+    async fn send_init_error(&self, action: ResourceAction, error: &str) -> ClientResult<()> {
+        let e = ResourceError {
+            error: error.into(),
+            error_resources: ErrorResources::Unknown,
         };
-
-        let _ = self
-            .test_client
-            .set_resource_agent_error(
-                &self.data.test_name,
-                &self.data.resource_name,
-                state,
-                error,
-                ErrorResources::Unknown,
-            )
+        self.resource_client
+            .send_error(&self.data.resource_name, action, &e)
             .await?;
         Ok(())
-    }
-
-    async fn get_provider_info<Config>(&self) -> ClientResult<ProviderInfo<Config>>
-    where
-        Config: Configuration,
-    {
-        let resource_provider = self
-            .resource_provider_client
-            .get_resource_provider(&self.data.resource_provider_name)
-            .await?;
-
-        let configuration: Config = match resource_provider.spec.configuration {
-            Some(map) => Configuration::from_map(map)?,
-            None => Config::default(),
-        };
-        Ok(ProviderInfo { configuration })
     }
 
     async fn get_request<Request>(&self) -> ClientResult<Request>
     where
         Request: Configuration,
     {
-        let request = self
-            .test_client
-            .get_resource_request(&self.data.test_name, &self.data.resource_name)
-            .await?
-            .ok_or_else(|| {
-                ClientError::MissingData(Some(
-                    format!("the resource '{}' was not found", self.data.resource_name).into(),
-                ))
-            })?;
-        let config_map = match request.configuration {
-            Some(map) => map,
-            None => return Ok(Request::default()),
-        };
-        Ok(Configuration::from_map(config_map)?)
+        Ok(self
+            .resource_client
+            .get_resource_request(&self.data.resource_name)
+            .await?)
     }
 
-    async fn get_resource<Resource>(&self) -> ClientResult<Option<Resource>>
+    async fn get_created_resource<Resource>(&self) -> ClientResult<Option<Resource>>
     where
         Resource: Configuration,
     {
-        let resource_status = if let Some(rs) = self
-            .test_client
-            .get_resource_status(&self.data.test_name, &self.data.resource_name)
-            .await?
-        {
-            rs
-        } else {
-            return Ok(None);
-        };
-        Ok(match resource_status.created_resource {
-            None => None,
-            Some(resource) => {
-                let resource: Resource = Configuration::from_map(resource)?;
-                Some(resource)
-            }
-        })
+        Ok(self
+            .resource_client
+            .get_created_resource(&self.data.resource_name)
+            .await?)
     }
 
     async fn send_create_starting(&self) -> ClientResult<()> {
-        self.test_client
-            .set_resource_agent_state(
-                &self.data.test_name,
+        let _ = self
+            .resource_client
+            .send_task_state(
                 &self.data.resource_name,
-                ResourceAgentState::Creating,
+                ResourceAction::Create,
+                TaskState::Running,
             )
             .await?;
         Ok(())
@@ -177,43 +115,46 @@ impl AgentClient for DefaultAgentClient {
         Resource: Configuration,
     {
         let _ = self
-            .test_client
-            .set_resource_created(&self.data.test_name, &self.data.resource_name, resource)
+            .resource_client
+            .send_creation_success(&self.data.resource_name, resource)
             .await?;
         Ok(())
     }
 
     async fn send_create_failed(&self, error: &ProviderError) -> ClientResult<()> {
         let _ = self
-            .test_client
-            .set_resource_agent_error(
-                &self.data.test_name,
+            .resource_client
+            .send_error(
                 &self.data.resource_name,
-                ResourceAgentState::CreateFailed,
-                error.to_string(),
-                error.resources().into(),
+                ResourceAction::Create,
+                &ResourceError {
+                    error: format!("{}", error),
+                    error_resources: error.resources().into(),
+                },
             )
             .await?;
         Ok(())
     }
 
     async fn send_destroy_starting(&self) -> ClientResult<()> {
-        self.test_client
-            .set_resource_agent_state(
-                &self.data.test_name,
+        let _ = self
+            .resource_client
+            .send_task_state(
                 &self.data.resource_name,
-                ResourceAgentState::Destroying,
+                ResourceAction::Destroy,
+                TaskState::Running,
             )
             .await?;
         Ok(())
     }
 
     async fn send_destroy_succeeded(&self) -> ClientResult<()> {
-        self.test_client
-            .set_resource_agent_state(
-                &self.data.test_name,
+        let _ = self
+            .resource_client
+            .send_task_state(
                 &self.data.resource_name,
-                ResourceAgentState::Destroyed,
+                ResourceAction::Destroy,
+                TaskState::Completed,
             )
             .await?;
         Ok(())
@@ -221,13 +162,14 @@ impl AgentClient for DefaultAgentClient {
 
     async fn send_destroy_failed(&self, error: &ProviderError) -> ClientResult<()> {
         let _ = self
-            .test_client
-            .set_resource_agent_error(
-                &self.data.test_name,
+            .resource_client
+            .send_error(
                 &self.data.resource_name,
-                ResourceAgentState::DestroyFailed,
-                error.to_string(),
-                error.resources().into(),
+                ResourceAction::Destroy,
+                &ResourceError {
+                    error: format!("{}", error),
+                    error_resources: error.resources().into(),
+                },
             )
             .await?;
         Ok(())

@@ -4,13 +4,6 @@ pub use self::error::{ProviderError, ProviderResult, Resources};
 use crate::clients::InfoClient;
 use model::Configuration;
 
-/// Information needed by providers ([`Create`] and [`Destroy`] objects) during initialization.
-#[derive(Debug, Clone)]
-pub struct ProviderInfo<Config: Configuration> {
-    /// Customizable configuration information for the provider.
-    pub configuration: Config,
-}
-
 /// You implement the [`Create`] trait in order to create resources. This type is then injected into
 /// the [`Agent`] object which drives the resource agent program in a Kubernetes-launched container.
 ///
@@ -35,15 +28,9 @@ pub struct ProviderInfo<Config: Configuration> {
 ///
 #[async_trait::async_trait]
 pub trait Create: Sized + Send + Sync {
-    type Config: Configuration;
     type Info: Configuration;
     type Request: Configuration;
     type Resource: Configuration;
-
-    /// Instantiate a new `Create` object.
-    async fn new<I>(info: ProviderInfo<Self::Config>, client: &I) -> ProviderResult<Self>
-    where
-        I: InfoClient;
 
     /// Create resources as defined by the `request`. You may use `client` to record information
     /// with the Kubernetes CRD.
@@ -72,20 +59,20 @@ pub trait Create: Sized + Send + Sync {
 ///
 #[async_trait::async_trait]
 pub trait Destroy: Sized {
-    type Config: Configuration;
     type Info: Configuration;
+    type Request: Configuration;
     type Resource: Configuration;
-
-    /// Instantiate a new `Destroy` object.
-    async fn new<I>(info: ProviderInfo<Self::Config>, client: &I) -> ProviderResult<Self>
-    where
-        I: InfoClient;
 
     /// Destroy the resources. If a `Create` object returned an error or a Kubernetes call failed,
     /// then it might be possible that the `Resource` information cannot be obtained. If this
     /// happens, `destroy` will be called with `resource` as `None` and it is hoped that you can
     /// retrieve the necessary info with the `client` to clean up any resources that may exist.
-    async fn destroy<I>(&self, resource: Option<Self::Resource>, client: &I) -> ProviderResult<()>
+    async fn destroy<I>(
+        &self,
+        request: Option<Self::Request>,
+        resource: Option<Self::Resource>,
+        client: &I,
+    ) -> ProviderResult<()>
     where
         I: InfoClient;
 }

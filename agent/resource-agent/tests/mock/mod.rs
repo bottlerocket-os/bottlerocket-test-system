@@ -12,23 +12,15 @@ pub(crate) mod info_client;
 
 use model::Configuration;
 use resource_agent::clients::InfoClient;
-use resource_agent::provider::{
-    Create, Destroy, ProviderError, ProviderInfo, ProviderResult, Resources,
-};
+use resource_agent::provider::{Create, Destroy, ProviderError, ProviderResult, Resources};
 use serde::{Deserialize, Serialize};
 
-/// InstanceCreator pretends to create instances for the sake demonstrating a mock test.
+/// InstanceCreator pretends to create instances for the sake demonstrating a mock resource provider.
 pub(crate) struct InstanceCreator {}
 
-/// InstanceDestroyer pretends to destroy instances for the sake demonstrating a mock test.
+/// InstanceDestroyer pretends to destroy instances for the sake demonstrating a mock resource
+/// provider.
 pub(crate) struct InstanceDestroyer {}
-
-#[derive(Clone, Debug, Default, Eq, PartialEq, Serialize, Deserialize)]
-pub struct ProviderConfig {
-    default_region: String,
-}
-
-impl Configuration for ProviderConfig {}
 
 #[derive(Clone, Debug, Default, Eq, PartialEq, Serialize, Deserialize)]
 pub struct Memo {
@@ -54,24 +46,9 @@ impl Configuration for CreatedInstances {}
 
 #[async_trait::async_trait]
 impl Create for InstanceCreator {
-    type Config = ProviderConfig;
     type Info = Memo;
     type Request = InstanceRequest;
     type Resource = CreatedInstances;
-
-    async fn new<I>(_info: ProviderInfo<Self::Config>, client: &I) -> ProviderResult<Self>
-    where
-        I: InfoClient,
-    {
-        client
-            .send_info(Memo {
-                information: String::from("Create initializing"),
-            })
-            .await
-            .map_err(|e| ProviderError::new_with_source(Resources::Clear, e))?;
-
-        Ok(Self {})
-    }
 
     async fn create<I>(&self, request: Self::Request, client: &I) -> ProviderResult<Self::Resource>
     where
@@ -91,25 +68,16 @@ impl Create for InstanceCreator {
 
 #[async_trait::async_trait]
 impl Destroy for InstanceDestroyer {
-    type Config = ProviderConfig;
     type Info = Memo;
+    type Request = InstanceRequest;
     type Resource = CreatedInstances;
 
-    async fn new<I>(_info: ProviderInfo<Self::Config>, client: &I) -> ProviderResult<Self>
-    where
-        I: InfoClient,
-    {
-        client
-            .send_info(Memo {
-                information: String::from("Destroy initializing"),
-            })
-            .await
-            .map_err(|e| ProviderError::new_with_source(Resources::Remaining, e))?;
-
-        Ok(Self {})
-    }
-
-    async fn destroy<I>(&self, resource: Option<Self::Resource>, client: &I) -> ProviderResult<()>
+    async fn destroy<I>(
+        &self,
+        _request: Option<Self::Request>,
+        resource: Option<Self::Resource>,
+        client: &I,
+    ) -> ProviderResult<()>
     where
         I: InfoClient,
     {

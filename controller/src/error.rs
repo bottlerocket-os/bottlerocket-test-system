@@ -1,81 +1,33 @@
-use snafu::Snafu;
+use std::fmt::{Debug, Display, Formatter};
 
+pub(crate) type Error = anyhow::Error;
 pub(crate) type Result<T> = std::result::Result<T, Error>;
 
-#[derive(Debug, Snafu)]
-#[snafu(visibility = "pub(crate)")]
-pub(crate) enum Error {
-    #[snafu(display(
-        "Unable to add finalizer '{}' for test '{}': {}",
-        finalizer,
-        test_name,
-        source
-    ))]
-    AddFinalizer {
-        test_name: String,
-        finalizer: String,
-        source: model::clients::Error,
-    },
+/// `anyhow::Error` does not implement `std::error::Error` but `kube-rs` wants this, so we create
+/// a thin wrapper.
+pub(crate) struct ReconciliationError(anyhow::Error);
+pub(crate) type ReconciliationResult<T> = std::result::Result<T, ReconciliationError>;
 
-    #[snafu(display(
-        "Unable to remove all finalizers for test '{}', zombie cannot be deleted.",
-        test_name
-    ))]
-    DanglingFinalizers { test_name: String },
+impl Display for ReconciliationError {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        Display::fmt(&self.0, f)
+    }
+}
 
-    #[snafu(display(
-        "Kubernetes client error trying to {} for test '{}': {}",
-        action,
-        test_name,
-        source
-    ))]
-    KubeClient {
-        test_name: String,
-        action: String,
-        source: kube::Error,
-    },
+impl Debug for ReconciliationError {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        Debug::fmt(&self.0, f)
+    }
+}
 
-    #[snafu(display(
-        "Test '{}' is in a bad state, it should not be created with finalizers.",
-        test_name
-    ))]
-    NewTestWithFinalizers { test_name: String },
+impl std::error::Error for ReconciliationError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        self.0.source()
+    }
+}
 
-    #[snafu(display(
-        "Unable to remove finalizer '{}' for test '{}': {}",
-        finalizer,
-        test_name,
-        source
-    ))]
-    RemoveFinalizer {
-        test_name: String,
-        finalizer: String,
-        source: model::clients::Error,
-    },
-
-    #[snafu(display("Unable to set controller status for test '{}': {}", test_name, source))]
-    SetControllerStatus {
-        test_name: String,
-        source: model::clients::Error,
-    },
-
-    #[snafu(display(
-        "There should be only one k8s job but found {} running, {} succeeded, and {} failed for test '{}'",
-        running,
-        succeeded,
-        failed,
-        test_name
-    ))]
-    TooManyJobContainers {
-        test_name: String,
-        running: i32,
-        succeeded: i32,
-        failed: i32,
-    },
-
-    #[snafu(display(
-        "The controller tried to delete test '{}' before cleaning up finalizers.",
-        test_name
-    ))]
-    UnsafeDelete { test_name: String },
+impl From<anyhow::Error> for ReconciliationError {
+    fn from(e: anyhow::Error) -> Self {
+        ReconciliationError(e)
+    }
 }

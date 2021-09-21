@@ -9,9 +9,9 @@ use model::constants::NAMESPACE;
 use model::system::{
     agent_cluster_role, agent_cluster_role_binding, agent_service_account, controller_cluster_role,
     controller_cluster_role_binding, controller_deployment, controller_service_account,
-    testsys_namespace,
+    testsys_namespace, AgentType,
 };
-use model::{ResourceProvider, Test};
+use model::{Resource, Test};
 use snafu::ResultExt;
 use std::collections::BTreeMap;
 use std::fmt::Debug;
@@ -51,8 +51,11 @@ impl Install {
     pub(crate) async fn run(&self, k8s_client: Client) -> Result<()> {
         create_namespace(&k8s_client).await?;
         create_crd(&k8s_client).await?;
-        create_roles(&k8s_client).await?;
-        create_service_accts(&k8s_client).await?;
+        create_roles(&k8s_client, AgentType::Test).await?;
+        create_roles(&k8s_client, AgentType::Resource).await?;
+        create_service_accts(&k8s_client, AgentType::Test).await?;
+        create_service_accts(&k8s_client, AgentType::Resource).await?;
+        create_controller_service_acct(&k8s_client).await?;
 
         let mut controller_image_pull_secret = None;
 
@@ -113,19 +116,19 @@ async fn create_crd(client: &Client) -> Result<()> {
     let crds: Api<CustomResourceDefinition> = Api::all(client.clone());
     // Create the `Test` crd.
     let testcrd = Test::crd();
-    // Create the `ResourceAgent` crd.
-    let resourcecrd = ResourceProvider::crd();
+    // Create the `Resource` crd.
+    let resourcecrd = Resource::crd();
 
     create_or_update(&crds, testcrd, "Test CRD").await?;
     create_or_update(&crds, resourcecrd, "Resource Provider CRD").await
 }
 
-async fn create_roles(client: &Client) -> Result<()> {
+async fn create_roles(client: &Client, agent_type: AgentType) -> Result<()> {
     let roles: Api<k8s_openapi::api::rbac::v1::ClusterRole> = Api::all(client.clone());
 
     // If the role exists merge the new role, if not create the role.
-    let agent_cluster_role = agent_cluster_role();
-    create_or_update(&roles, agent_cluster_role, "Agent Cluster Role").await?;
+    let test_agent_cluster_role = agent_cluster_role(agent_type);
+    create_or_update(&roles, test_agent_cluster_role, "Agent Cluster Role").await?;
 
     // If the role already exists, update it with the new one using Patch. If not create a new role.
     let controller_cluster_role = controller_cluster_role();
@@ -136,7 +139,7 @@ async fn create_roles(client: &Client) -> Result<()> {
 
     // If the cluster role binding already exists, update it with the new one using Patch. If not
     // create a new cluster role binding.
-    let agent_cluster_role_binding = agent_cluster_role_binding();
+    let agent_cluster_role_binding = agent_cluster_role_binding(agent_type);
     create_or_update(
         &rolesbinding,
         agent_cluster_role_binding,
@@ -157,13 +160,13 @@ async fn create_roles(client: &Client) -> Result<()> {
     Ok(())
 }
 
-async fn create_service_accts(client: &Client) -> Result<()> {
+async fn create_service_accts(client: &Client, agent_type: AgentType) -> Result<()> {
     let service_accts: Api<k8s_openapi::api::core::v1::ServiceAccount> =
         Api::namespaced(client.clone(), NAMESPACE);
 
     // If the service accounts already exist, update them with the new ones using Patch.
     // If not create new service accounts.
-    let agent_service_account = agent_service_account();
+    let agent_service_account = agent_service_account(agent_type);
     create_or_update(
         &service_accts,
         agent_service_account,
@@ -171,6 +174,12 @@ async fn create_service_accts(client: &Client) -> Result<()> {
     )
     .await?;
 
+    Ok(())
+}
+
+async fn create_controller_service_acct(client: &Client) -> Result<()> {
+    let service_accts: Api<k8s_openapi::api::core::v1::ServiceAccount> =
+        Api::namespaced(client.clone(), NAMESPACE);
     let controller_service_account = controller_service_account();
     create_or_update(
         &service_accts,

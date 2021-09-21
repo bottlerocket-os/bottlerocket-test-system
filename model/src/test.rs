@@ -1,9 +1,11 @@
-use crate::{ResourceRequest, ResourceStatus};
+use crate::constants::FINALIZER_MAIN;
+use crate::crd_ext::CrdExt;
+use crate::{Agent, TaskState};
+use k8s_openapi::apimachinery::pkg::apis::meta::v1::ObjectMeta;
 use kube::CustomResource;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use serde_json::{Map, Value};
-use std::{collections::BTreeMap, fmt::Display};
+use std::borrow::Cow;
 
 /// A TestSys Test. The `CustomResource` derive also produces a struct named `Test` which represents
 /// a test CRD object in the k8s API.
@@ -20,25 +22,11 @@ use std::{collections::BTreeMap, fmt::Display};
     version = "v1"
 )]
 pub struct TestSpec {
-    /// Information about resources this test needs.
-    pub resources: BTreeMap<String, ResourceRequest>,
+    /// The list of resources required by this test. The test controller will wait for these
+    /// resources to become ready before running the test agent.
+    pub resources: Vec<String>,
     /// Information about the test agent.
     pub agent: Agent,
-}
-
-#[derive(Serialize, Deserialize, Debug, Default, Eq, PartialEq, Clone, JsonSchema)]
-pub struct Agent {
-    /// The name of the test agent.
-    pub name: String,
-    /// The URI of the test agent container image.
-    pub image: String,
-    /// The name of an image registry pull secret if one is needed to pull the test agent image.
-    pub pull_secret: Option<String>,
-    /// Determine if the pod should keep running after it has finished or encountered and error.
-    pub keep_running: bool,
-    /// The configuration to pass to the test pod. This is 'open' to allow tests to define their own
-    /// schemas.
-    pub configuration: Option<Map<String, Value>>,
 }
 
 /// The status field of the TestSys Test CRD. This is where the controller and agents will write
@@ -46,33 +34,12 @@ pub struct Agent {
 #[derive(Serialize, Deserialize, Debug, Default, Eq, PartialEq, Clone, JsonSchema)]
 pub struct TestStatus {
     /// Information written by the controller.
-    pub controller: Option<ControllerStatus>,
+    pub controller: ControllerStatus,
     /// Information written by the test agent.
-    pub agent: Option<AgentStatus>,
-    /// Information written by the resource agents.
-    pub resources: Option<BTreeMap<String, ResourceStatus>>,
+    pub agent: AgentStatus,
 }
 
-#[derive(Serialize, Deserialize, Debug, Eq, PartialEq, Clone, Copy, JsonSchema)]
-pub enum RunState {
-    Unknown,
-    Running,
-    Done,
-    Error,
-}
-
-impl Default for RunState {
-    fn default() -> Self {
-        RunState::Unknown
-    }
-}
-
-impl Display for RunState {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{:?}", self)
-    }
-}
-
+/// The `Outcome` of a test run, reported by the test agent.
 #[derive(Serialize, Deserialize, Debug, Eq, PartialEq, Copy, Clone, JsonSchema)]
 pub enum Outcome {
     Pass,
@@ -96,57 +63,129 @@ pub struct TestResults {
     pub other_info: Option<String>,
 }
 
+impl TestResults {
+    /// The sum of all tests counted, whether passed, failed or skipped.
+    pub fn total(&self) -> u64 {
+        self.num_passed + self.num_failed + self.num_skipped
+    }
+}
+
 #[derive(Serialize, Deserialize, Debug, Default, Eq, PartialEq, Clone, JsonSchema)]
 pub struct AgentStatus {
-    pub run_state: RunState,
+    pub task_state: TaskState,
     /// Due to structural OpenAPI constraints, the error message must be provided separately instead
     /// of as a value within the `RunState::Error` variant. If the `run_state` is `Error` then there
     /// *may* be an error message here. If there is an error message here and the `run_state` is
     /// *not* `Error`, the this is a bad state and the `error_message` should be ignored.
-    pub error_message: Option<String>,
+    pub error: Option<String>,
     pub results: Option<TestResults>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Default, Eq, PartialEq, Clone, JsonSchema)]
 pub struct ControllerStatus {
-    /// What phase of the TestSys `Test` lifecycle are we in.
-    pub lifecycle: Lifecycle,
+    pub resource_error: Option<String>,
 }
 
-#[derive(Serialize, Deserialize, Debug, Eq, PartialEq, Clone, Copy, JsonSchema)]
-pub enum Lifecycle {
-    /// A newly created test that has not yet been seen by the controller.
-    New,
-    /// The test has been seen by the controller.
-    Acknowledged,
-    /// The controller has created the test pod.
-    TestPodCreated,
-    /// The controller is waiting for the test pod to be in the running state.
-    TestPodStarting,
-    /// The test pod is running.
-    TestPodHealthy,
-    /// The test pod is done with its test and is still running.
-    TestPodDone,
-    /// The test pod encountered an error that prevents tests from completing successfully.
-    TestPodError,
-    /// The test pod failed or exited with a non-zero exit code. It is not running.
-    TestPodFailed,
-    /// The test pod completed successfully. It is no longer running.
-    TestPodExited,
-    /// The test pod is being deleted.
-    TestPodDeleting,
-    /// The test pod has been deleted.
-    TestPodDeleted,
+/// A simplified summary of the test's current state. This can be used by a user interface to
+/// describe what is happening with the test. This is not included in the model, but is derived
+/// from the state of the `Test` CRD. Note that resource state cannot be represented here
+/// because the `Resource` CRDs would need to be queried.
+#[derive(Serialize, Deserialize, Debug, Eq, PartialEq, Clone, Copy)]
+pub enum TestUserState {
+    /// The test state cannot be determined.
+    Unknown,
+    /// The test has not yet started its test agent, it might be waiting for resources.
+    Starting,
+    /// The test agent container is running.
+    Running,
+    /// The test agent container finished successfully but reported no tests.
+    NoTests,
+    /// The test agent reported no failing tests.
+    Passed,
+    /// The test agent reported one or more test failures.
+    Failed,
+    /// The test agent reported an error.
+    Error,
+    /// Resource creation failed and the test will not be started.
+    ResourceError,
+    /// The test is in the process of being deleted.
+    Deleting,
 }
 
-impl Default for Lifecycle {
+impl Default for TestUserState {
     fn default() -> Self {
-        Lifecycle::New
+        Self::Unknown
     }
 }
 
-impl Display for Lifecycle {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{:?}", self)
+serde_plain::derive_display_from_serialize!(TestUserState);
+
+impl Test {
+    pub fn agent_status(&self) -> Cow<'_, AgentStatus> {
+        match self.status.as_ref() {
+            None => Cow::Owned(AgentStatus::default()),
+            Some(status) => Cow::Borrowed(&status.agent),
+        }
+    }
+
+    pub fn agent_error(&self) -> Option<&str> {
+        self.status
+            .as_ref()
+            .map(|test_status| &test_status.agent)
+            .and_then(|agent_status| agent_status.error.as_deref())
+    }
+
+    pub fn resource_error(&self) -> Option<&String> {
+        self.status
+            .as_ref()
+            .map(|some| &some.controller)
+            .and_then(|some| some.resource_error.as_ref())
+    }
+
+    pub fn test_user_state(&self) -> TestUserState {
+        let agent_status = self.agent_status();
+        if self.is_delete_requested() && !matches!(agent_status.task_state, TaskState::Unknown) {
+            return TestUserState::Deleting;
+        }
+        if self.resource_error().is_some() {
+            return TestUserState::ResourceError;
+        }
+        match agent_status.task_state {
+            TaskState::Unknown => {
+                if self.has_finalizer(FINALIZER_MAIN) {
+                    TestUserState::Starting
+                } else {
+                    TestUserState::Unknown
+                }
+            }
+            TaskState::Running => TestUserState::Running,
+            TaskState::Completed => {
+                if let Some(results) = &agent_status.results {
+                    match results.outcome {
+                        Outcome::Pass => TestUserState::Passed,
+                        Outcome::Fail => TestUserState::Failed,
+                        Outcome::Timeout => TestUserState::Failed,
+                        Outcome::Unknown => {
+                            if results.total() == 0 {
+                                TestUserState::NoTests
+                            } else if results.num_failed == 0 {
+                                TestUserState::Passed
+                            } else {
+                                TestUserState::Failed
+                            }
+                        }
+                    }
+                } else {
+                    TestUserState::NoTests
+                }
+            }
+            TaskState::Error => TestUserState::Error,
+        }
+    }
+}
+
+impl CrdExt for Test {
+    fn object_meta(&self) -> &ObjectMeta {
+        &self.metadata
     }
 }

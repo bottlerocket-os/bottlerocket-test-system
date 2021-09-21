@@ -60,6 +60,27 @@ pub fn controller_cluster_role() -> ClusterRole {
                 ..Default::default()
             },
             PolicyRule {
+                api_groups: Some(vec![TESTSYS.to_string()]),
+                resources: Some(vec![
+                    "resources".to_string(),
+                    "resources/status".to_string(),
+                ]),
+                verbs: vec![
+                    "create",
+                    "delete",
+                    "deletecollection",
+                    "get",
+                    "list",
+                    "patch",
+                    "update",
+                    "watch",
+                ]
+                .iter()
+                .map(|s| s.to_string())
+                .collect(),
+                ..Default::default()
+            },
+            PolicyRule {
                 api_groups: Some(vec!["apps".to_string()]),
                 resources: Some(vec!["deployments".to_string()]),
                 verbs: vec![

@@ -1,7 +1,7 @@
 use crate::error::{self, Result};
 use kube::Client;
-use model::clients::TestClient;
-use model::{Lifecycle, RunState, Test};
+use model::clients::{CrdClient, TestClient};
+use model::{Test, TestUserState};
 use serde::{Deserialize, Serialize};
 use snafu::ResultExt;
 use std::collections::HashMap;
@@ -33,11 +33,8 @@ impl Status {
             failures = Vec::new();
             status_results = StatusResults::new();
             let tests = match self.test_name.as_ref() {
-                Some(test_name) => vec![tests_api
-                    .get_test(test_name)
-                    .await
-                    .context(error::GetTest)?],
-                None => tests_api.get_all_tests().await.context(error::GetTest)?,
+                Some(test_name) => vec![tests_api.get(test_name).await.context(error::GetTest)?],
+                None => tests_api.get_all().await.context(error::GetTest)?,
             };
             let mut all_finished = true;
             for test in tests {
@@ -80,8 +77,7 @@ struct StatusResults {
 #[derive(Debug, Serialize, Deserialize)]
 struct TestResult {
     name: String,
-    lifecycle: Option<Lifecycle>,
-    run_state: Option<RunState>,
+    state: TestUserState,
     passed: Option<u64>,
     failed: Option<u64>,
     skipped: Option<u64>,
@@ -115,26 +111,16 @@ impl TestResult {
         let mut passed = None;
         let mut failed = None;
         let mut skipped = None;
-        let mut lifecycle = None;
-        let mut run_state = None;
-        if let Some(status) = &test.status {
-            if let Some(controller) = &status.controller {
-                lifecycle = Some(controller.lifecycle);
-            }
-            if let Some(agent) = &status.agent {
-                if let Some(results) = &agent.results {
-                    passed = Some(results.num_passed);
-                    failed = Some(results.num_failed);
-                    skipped = Some(results.num_skipped);
-                }
-                run_state = Some(agent.run_state);
-            }
+        let test_user_state = test.test_user_state();
+        if let Some(results) = &test.agent_status().results {
+            passed = Some(results.num_passed);
+            failed = Some(results.num_failed);
+            skipped = Some(results.num_skipped);
         }
 
         Self {
             name,
-            lifecycle,
-            run_state,
+            state: test_user_state,
             passed,
             failed,
             skipped,
@@ -142,23 +128,26 @@ impl TestResult {
     }
 
     fn is_finished(&self) -> bool {
-        if let Some(run_state) = self.run_state {
-            if run_state == RunState::Done || run_state == RunState::Error {
-                return true;
-            }
-        } else if let Some(lifecycle) = self.lifecycle {
-            if lifecycle == Lifecycle::TestPodDone || lifecycle == Lifecycle::TestPodError {
-                return true;
-            }
+        match self.state {
+            TestUserState::Unknown | TestUserState::Starting | TestUserState::Running => false,
+            TestUserState::NoTests
+            | TestUserState::Passed
+            | TestUserState::Failed
+            | TestUserState::Error
+            | TestUserState::ResourceError
+            | TestUserState::Deleting => true,
         }
-        false
     }
 
     fn failed(&self) -> bool {
-        if let Some(run_state) = self.run_state {
-            run_state == RunState::Error
-        } else {
-            false
+        match self.state {
+            TestUserState::Unknown
+            | TestUserState::Starting
+            | TestUserState::Running
+            | TestUserState::NoTests
+            | TestUserState::Passed => false,
+            TestUserState::Failed | TestUserState::Error | TestUserState::ResourceError => true,
+            TestUserState::Deleting => false,
         }
     }
 }
@@ -166,16 +155,7 @@ impl TestResult {
 impl Display for TestResult {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         writeln!(f, "Test Name: {}", self.name)?;
-        writeln!(
-            f,
-            "Controller State: {}",
-            self.lifecycle.map_or("".to_string(), |l| l.to_string())
-        )?;
-        writeln!(
-            f,
-            "Agent State: {}",
-            self.run_state.map_or("".to_string(), |r| r.to_string())
-        )?;
+        writeln!(f, "Test State: {}", self.state)?;
         writeln!(
             f,
             "Passed: {}",

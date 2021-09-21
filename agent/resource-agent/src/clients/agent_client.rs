@@ -1,7 +1,7 @@
 use super::error::ClientResult;
-use crate::provider::{ProviderError, ProviderInfo};
-use crate::{Action, BootstrapData};
-use model::clients::{ResourceProviderClient, TestClient};
+use crate::provider::ProviderError;
+use crate::{BootstrapData, ResourceAction};
+use model::clients::ResourceClient;
 use model::Configuration;
 
 /// `AgentClient` allows the [`Agent`] to communicate with Kubernetes.
@@ -15,12 +15,7 @@ pub trait AgentClient: Sized {
     async fn new(data: BootstrapData) -> ClientResult<Self>;
 
     /// If there is a problem during the `Agent::new` function, this will be used to send the error.
-    async fn send_initialization_error(&self, action: Action, error: &str) -> ClientResult<()>;
-
-    /// Get information about this resource provider.
-    async fn get_provider_info<Config>(&self) -> ClientResult<ProviderInfo<Config>>
-    where
-        Config: Configuration;
+    async fn send_init_error(&self, action: ResourceAction, error: &str) -> ClientResult<()>;
 
     /// Get the resource request that this resource provider is responsible for.
     async fn get_request<Request>(&self) -> ClientResult<Request>
@@ -28,7 +23,7 @@ pub trait AgentClient: Sized {
         Request: Configuration;
 
     /// Get the resource that this resource provider created. `None` if it hasn't been created.
-    async fn get_resource<Resource>(&self) -> ClientResult<Option<Resource>>
+    async fn get_created_resource<Resource>(&self) -> ClientResult<Option<Resource>>
     where
         Resource: Configuration;
 
@@ -58,6 +53,5 @@ pub trait AgentClient: Sized {
 #[derive(Clone)]
 pub struct DefaultAgentClient {
     pub(super) data: BootstrapData,
-    pub(super) resource_provider_client: ResourceProviderClient,
-    pub(super) test_client: TestClient,
+    pub(super) resource_client: ResourceClient,
 }
