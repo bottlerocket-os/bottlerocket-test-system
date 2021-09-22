@@ -1300,6 +1300,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "simplelog"
+version = "0.10.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "59d0fe306a0ced1c88a58042dc22fc2ddd000982c26d75f6aa09a394547c41e0"
+dependencies = [
+ "chrono",
+ "log",
+ "termcolor",
+]
+
+[[package]]
 name = "slab"
 version = "0.4.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1342,6 +1353,22 @@ checksum = "9e3dfc207c526015c632472a77be09cf1b6e46866581aecae5cc38fb4235dea2"
 dependencies = [
  "libc",
  "winapi",
+]
+
+[[package]]
+name = "sonobuoy-test-agent"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "base64",
+ "log",
+ "model",
+ "serde",
+ "serde_json",
+ "simplelog",
+ "snafu",
+ "test-agent",
+ "tokio",
 ]
 
 [[package]]

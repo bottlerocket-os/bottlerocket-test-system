@@ -6,7 +6,7 @@ to test a [`Runner`] with the [`TestAgent`].
 !*/
 
 use async_trait::async_trait;
-use model::Configuration;
+use model::{Configuration, Outcome};
 use serde::{Deserialize, Serialize};
 use std::fmt::{Debug, Display};
 use test_agent::{BootstrapData, Client, Runner};
@@ -48,7 +48,8 @@ impl Runner for MyRunner {
         }
 
         Ok(TestResults {
-            whatever: "pass".into(),
+            outcome: Outcome::Pass,
+            ..TestResults::default()
         })
     }
 

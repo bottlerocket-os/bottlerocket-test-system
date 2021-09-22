@@ -29,7 +29,7 @@ spec:
 !*/
 
 use async_trait::async_trait;
-use model::TestResults;
+use model::{Outcome, TestResults};
 use serde::{Deserialize, Serialize};
 use test_agent::{BootstrapData, Configuration, TestInfo};
 use tokio::time::{sleep, Duration};
@@ -71,7 +71,8 @@ impl test_agent::Runner for ExampleTestRunner {
             .await
         }
         Ok(TestResults {
-            whatever: "pass".into(),
+            outcome: Outcome::Pass,
+            ..TestResults::default()
         })
     }
 

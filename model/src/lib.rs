@@ -16,6 +16,6 @@ pub use configuration::{Configuration, ConfigurationError};
 pub use resource::{ErrorResources, ResourceAgentState, ResourceRequest, ResourceStatus};
 pub use resource_provider::{ResourceProvider, ResourceProviderSpec, ResourceProviderStatus};
 pub use test::{
-    Agent, AgentStatus, ControllerStatus, Lifecycle, RunState, Test, TestResults, TestSpec,
-    TestStatus,
+    Agent, AgentStatus, ControllerStatus, Lifecycle, Outcome, RunState, Test, TestResults,
+    TestSpec, TestStatus,
 };
