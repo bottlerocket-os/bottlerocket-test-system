@@ -6,6 +6,9 @@ This is the command line interface for setting up a TestSys Cluster and running 
 
 pub(crate) mod error;
 pub(crate) mod install;
+mod k8s;
+pub(crate) mod run;
+pub(crate) mod run_file;
 
 use env_logger::Builder;
 use error::Result;
@@ -31,6 +34,8 @@ struct Args {
 enum Command {
     /// Install TestSys components into the cluster.
     Install(install::Install),
+    /// Run a testsys test.
+    Run(run::Run),
 }
 
 #[tokio::main]
@@ -46,6 +51,7 @@ async fn main() {
 async fn run(args: Args) -> Result<()> {
     match args.command {
         Command::Install(install) => install.run().await,
+        Command::Run(run) => run.run().await,
     }
 }
 
