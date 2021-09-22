@@ -8,9 +8,14 @@ on:
       - '**.md'
     branches: [develop]
 jobs:
-  build:
+  build-images:
+    strategy:
+      matrix:
+        make_target:
+         - "controller-image"
+         - "example-resource-agent-image"
+         - "example-test-agent-image"
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-      - run: make images
-      - run: make example-test-agent-image
+      - run: make ${{ matrix.make_target }}
