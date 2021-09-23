@@ -3,7 +3,7 @@ use kube::CustomResource;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
-use std::collections::BTreeMap;
+use std::{collections::BTreeMap, fmt::Display};
 
 /// A TestSys Test. The `CustomResource` derive also produces a struct named `Test` which represents
 /// a test CRD object in the k8s API.
@@ -62,6 +62,12 @@ pub enum RunState {
 impl Default for RunState {
     fn default() -> Self {
         RunState::Unknown
+    }
+}
+
+impl Display for RunState {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:?}", self)
     }
 }
 
@@ -134,5 +140,11 @@ pub enum Lifecycle {
 impl Default for Lifecycle {
     fn default() -> Self {
         Lifecycle::New
+    }
+}
+
+impl Display for Lifecycle {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:?}", self)
     }
 }

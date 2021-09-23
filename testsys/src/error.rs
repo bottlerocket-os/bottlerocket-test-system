@@ -20,11 +20,17 @@ pub(crate) enum Error {
     #[snafu(display("Error creating test: {}", source))]
     CreateTest { source: model::clients::Error },
 
+    #[snafu(display("The following tests failed to run '{:?}'", tests))]
+    FailedTest { tests: Vec<String> },
+
     #[snafu(display("Unable to open file '{}': {}", path.display(), source))]
     File {
         path: PathBuf,
         source: std::io::Error,
     },
+
+    #[snafu(display("Unable to get test: {}", source))]
+    GetTest { source: model::clients::Error },
 
     #[snafu(display("Could not serialize object: {}", source))]
     JsonSerialize { source: serde_json::Error },

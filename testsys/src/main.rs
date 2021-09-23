@@ -9,6 +9,7 @@ mod install;
 mod k8s;
 mod run;
 mod run_file;
+mod status;
 
 use crate::k8s::k8s_client;
 use env_logger::Builder;
@@ -35,8 +36,10 @@ struct Args {
 enum Command {
     /// Install TestSys components into the cluster.
     Install(install::Install),
-    /// Run a testsys test.
+    /// Run a TestSys test.
     Run(run::Run),
+    /// Check the status of a TestSys test.
+    Status(status::Status),
 }
 
 #[tokio::main]
@@ -54,6 +57,7 @@ async fn run(args: Args) -> Result<()> {
     match args.command {
         Command::Install(install) => install.run(k8s_client).await,
         Command::Run(run) => run.run(k8s_client).await,
+        Command::Status(status) => status.run(k8s_client).await,
     }
 }
 
