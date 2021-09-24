@@ -4,12 +4,13 @@ This is the command line interface for setting up a TestSys Cluster and running 
 
 !*/
 
-pub(crate) mod error;
-pub(crate) mod install;
+mod error;
+mod install;
 mod k8s;
-pub(crate) mod run;
-pub(crate) mod run_file;
+mod run;
+mod run_file;
 
+use crate::k8s::k8s_client;
 use env_logger::Builder;
 use error::Result;
 use log::LevelFilter;
@@ -23,8 +24,8 @@ struct Args {
     /// is present, it overrides the default logging behavior. See https://docs.rs/env_logger/latest
     #[structopt(long = "log-level", default_value = "info")]
     log_level: LevelFilter,
-    /// Path to the kubeconfig file.
-    #[structopt(long = "kubeconfig", env = "KUBECONFIG")]
+    /// Path to the kubeconfig file. Also can be passed with the KUBECONFIG environment variable.
+    #[structopt(long = "kubeconfig")]
     kubeconfig: Option<PathBuf>,
     #[structopt(subcommand)]
     command: Command,
@@ -49,9 +50,10 @@ async fn main() {
 }
 
 async fn run(args: Args) -> Result<()> {
+    let k8s_client = k8s_client(&args.kubeconfig).await?;
     match args.command {
-        Command::Install(install) => install.run().await,
-        Command::Run(run) => run.run().await,
+        Command::Install(install) => install.run(k8s_client).await,
+        Command::Run(run) => run.run(k8s_client).await,
     }
 }
 

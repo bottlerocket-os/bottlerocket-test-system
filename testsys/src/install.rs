@@ -1,8 +1,9 @@
 use crate::error::{self, Result};
 use crate::k8s::{create_or_update, DockerConfigJson};
 use apiexts::CustomResourceDefinition;
-use k8s_openapi::api::core::v1::Secret;
-use k8s_openapi::apiextensions_apiserver::pkg::apis::apiextensions::v1 as apiexts;
+use k8s_openapi::{
+    api::core::v1::Secret, apiextensions_apiserver::pkg::apis::apiextensions::v1 as apiexts,
+};
 use kube::{Api, Client, CustomResourceExt};
 use model::constants::NAMESPACE;
 use model::system::{
@@ -47,14 +48,11 @@ pub(crate) struct Install {
 }
 
 impl Install {
-    pub(crate) async fn run(&self) -> Result<()> {
-        // Initialize the k8s client from in-cluster variables or KUBECONFIG.
-        let client = Client::try_default().await.context(error::Client)?;
-
-        create_namespace(&client).await?;
-        create_crd(&client).await?;
-        create_roles(&client).await?;
-        create_service_accts(&client).await?;
+    pub(crate) async fn run(&self, k8s_client: Client) -> Result<()> {
+        create_namespace(&k8s_client).await?;
+        create_crd(&k8s_client).await?;
+        create_roles(&k8s_client).await?;
+        create_service_accts(&k8s_client).await?;
 
         let mut controller_image_pull_secret = None;
 
@@ -63,7 +61,7 @@ impl Install {
             (self.pull_username.as_ref(), self.pull_password.as_ref())
         {
             create_secret(
-                &client,
+                &k8s_client,
                 username,
                 password,
                 self.controller_uri
@@ -79,7 +77,7 @@ impl Install {
         }
 
         create_deployment(
-            &client,
+            &k8s_client,
             self.controller_uri.clone(),
             controller_image_pull_secret,
         )

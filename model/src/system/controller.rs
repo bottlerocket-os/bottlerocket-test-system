@@ -200,7 +200,7 @@ pub fn controller_deployment(
                     }),
                     containers: vec![Container {
                         image: Some(controller_image),
-                        image_pull_policy: Some("Always".to_string()),
+                        image_pull_policy: None,
                         name: "controller".to_string(),
                         ..Default::default()
                     }],

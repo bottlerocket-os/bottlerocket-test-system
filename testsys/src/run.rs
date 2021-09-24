@@ -1,5 +1,6 @@
 use crate::error::Result;
 use crate::run_file;
+use kube::Client;
 use structopt::StructOpt;
 
 /// Run testsys tests.
@@ -16,9 +17,9 @@ enum Command {
 }
 
 impl Run {
-    pub(crate) async fn run(&self) -> Result<()> {
+    pub(crate) async fn run(&self, k8s_client: Client) -> Result<()> {
         match &self.command {
-            Command::File(run_file) => run_file.run().await,
+            Command::File(run_file) => run_file.run(k8s_client).await,
         }
     }
 }

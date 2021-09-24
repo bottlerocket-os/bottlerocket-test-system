@@ -113,6 +113,5 @@ spec:
                       - amd64
       containers:
         - image: "6456745674567.dkr.ecr.us-west-2.amazonaws.com/controller:v0.1.2"
-          imagePullPolicy: Always
           name: controller
       serviceAccountName: testsys-controller-service-account

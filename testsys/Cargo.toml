@@ -25,3 +25,8 @@ yamlgen = { path = "../yamlgen" }
 
 [dev-dependencies]
 assert_cmd = "2.0"
+selftest = { path = "../selftest" }
+
+[features]
+# The `integ` feature enables integration tests. These tests require docker and kind.
+integ = []

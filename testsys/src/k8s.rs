@@ -1,10 +1,31 @@
 use crate::error::{self, Result};
-use kube::api::{Api, Patch, PatchParams, PostParams, ResourceExt};
-use serde::de::DeserializeOwned;
-use serde::Serialize;
+use kube::{
+    api::{Api, Patch, PatchParams, PostParams, ResourceExt},
+    config::{KubeConfigOptions, Kubeconfig},
+    Client, Config,
+};
+use serde::{de::DeserializeOwned, Serialize};
 use snafu::ResultExt;
 use std::collections::HashMap;
+use std::convert::TryInto;
 use std::fmt::Debug;
+use std::path::PathBuf;
+
+/// Create the k8s client. If the `kubeconfig` path is given then we use it. If not, then we
+/// construct use the `Client`'s default construction which attempts to use environment variables
+/// (e.g. `KUBECONFIG`).
+pub(crate) async fn k8s_client(kubeconfig: &Option<PathBuf>) -> Result<Client> {
+    match kubeconfig {
+        None => Ok(Client::try_default().await.context(error::ClientCreate)?),
+        Some(config_path) => {
+            let kubeconfig = Kubeconfig::read_from(config_path).context(error::ConfigRead)?;
+            let config = Config::from_custom_kubeconfig(kubeconfig, &KubeConfigOptions::default())
+                .await
+                .context(error::ClientCreate)?;
+            Ok(config.try_into().context(error::ClientCreate)?)
+        }
+    }
+}
 
 const MAX_RETRIES: i32 = 3;
 const BACKOFF_MS: u64 = 500;
