@@ -1489,6 +1489,7 @@ dependencies = [
  "serde_json",
  "serde_yaml",
  "snafu",
+ "sonobuoy-test-agent",
  "structopt",
  "tokio",
  "yamlgen",

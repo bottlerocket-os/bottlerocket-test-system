@@ -6,11 +6,16 @@ use kube::{
     Api, Client, Config,
 };
 use model::constants::{LABEL_COMPONENT, LABEL_PROVIDER_NAME, LABEL_TEST_NAME, NAMESPACE};
-use std::convert::TryInto;
-use std::path::{Path, PathBuf};
+use std::{convert::TryInto, fs::File};
+use std::{
+    io::Write,
+    path::{Path, PathBuf},
+};
+
 use tempfile::TempDir;
 
 pub const KUBECONFIG_FILENAME: &str = "kubeconfig.yaml";
+pub const KUBECONFIG_INTERNAL_FILENAME: &str = "kubeconfig_internal.yaml";
 
 /// Represents a `kind` cluster. The `Drop` trait is implemented deleting the `kind` cluster when it
 /// goes out of scope.
@@ -34,6 +39,36 @@ impl Cluster {
             name: cluster_name.into(),
             kubeconfig_dir,
         })
+    }
+
+    /// Creates a kubeconfig for use within the kind network and returns its path.
+    pub fn get_internal_kubeconfig(&self) -> Result<PathBuf> {
+        use std::process::Command;
+        let output = Command::new("kind")
+            .arg("get")
+            .arg("kubeconfig")
+            .arg("--internal")
+            .arg("--name")
+            .arg(&self.name)
+            .output()?;
+        if !output.status.success() {
+            return Err(format_err!(
+                "'kind get kubeconfig --internal' with exit status '{}'\n\n{}\n\n{}",
+                output.status.code().unwrap_or(1),
+                String::from_utf8_lossy(&output.stdout),
+                String::from_utf8_lossy(&output.stderr),
+            ));
+        }
+        let mut kubeconfig_internal = File::create(
+            self.kubeconfig_dir
+                .path()
+                .join(KUBECONFIG_INTERNAL_FILENAME),
+        )?;
+        kubeconfig_internal.write_all(&output.stdout)?;
+        Ok(self
+            .kubeconfig_dir
+            .path()
+            .join(KUBECONFIG_INTERNAL_FILENAME))
     }
 
     /// Returns the path to the kubeconfig file in the `TempDir` created for the cluster.

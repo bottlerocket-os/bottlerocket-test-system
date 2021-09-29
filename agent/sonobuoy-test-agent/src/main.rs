@@ -35,13 +35,13 @@ spec:
 use async_trait::async_trait;
 use log::info;
 use model::{Outcome, TestResults};
-use serde::{Deserialize, Serialize};
 use simplelog::{Config as LogConfig, LevelFilter, SimpleLogger};
 use snafu::{ensure, OptionExt, ResultExt, Snafu};
+use sonobuoy_test_agent::SonobuoyConfig;
 use std::path::Path;
 use std::process::Command;
 use std::{fs, process};
-use test_agent::{BootstrapData, ClientError, Configuration, DefaultClient, TestAgent, TestInfo};
+use test_agent::{BootstrapData, ClientError, DefaultClient, TestAgent, TestInfo};
 
 const TEST_CLUSTER_KUBECONFIG: &str = "/local/test-cluster.kubeconfig";
 
@@ -72,18 +72,6 @@ enum SonobuoyError {
 struct SonobuoyTestRunner {
     config: SonobuoyConfig,
 }
-
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-struct SonobuoyConfig {
-    // FIXME: need a better way of passing test cluster information
-    kubeconfig_base64: String,
-    plugin: String,
-    mode: String,
-    kubernetes_version: Option<String>,
-    kube_conformance_image: Option<String>,
-}
-
-impl Configuration for SonobuoyConfig {}
 
 #[async_trait]
 impl test_agent::Runner for SonobuoyTestRunner {
