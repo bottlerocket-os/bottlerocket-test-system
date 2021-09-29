@@ -1,6 +1,7 @@
 use crate::error::{self, Error, Result};
 use crate::{BootstrapData, Client, Runner};
 use log::{debug, error};
+use std::time::Duration;
 
 /// The `TestAgent` is the main entrypoint for the program running in a TestPod. It starts a test
 /// run, regularly checks the health of the test run, observes cancellation of a test run, and sends
@@ -43,8 +44,30 @@ where
         Ok(Self { runner, client })
     }
 
-    /// Run the `TestAgent`. This function returns once the test has completed.
+    /// Run the `TestAgent`. This function returns once the test has completed and `keep_running`
+    /// is `false`.
     pub async fn run(&mut self) -> Result<(), C::E, R::E> {
+        let result = self.run_inner().await;
+        loop {
+            let keep_running = match self.client.keep_running().await {
+                Err(e) => {
+                    error!("Unable to communicate with Kuberenetes: '{}'", e);
+                    // If we can't communicate Kubernetes, its safest to
+                    // stay running in case some debugging is needed.
+                    true
+                }
+                Ok(value) => value,
+            };
+            if !keep_running {
+                break;
+            }
+            tokio::time::sleep(Duration::from_millis(2000)).await;
+        }
+        result
+    }
+
+    /// Run the `TestAgent`. This function returns once the test has completed.
+    async fn run_inner(&mut self) -> Result<(), C::E, R::E> {
         debug!("running test");
         self.client
             .send_test_starting()

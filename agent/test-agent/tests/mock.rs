@@ -100,6 +100,10 @@ impl Client for MockClient {
         println!("MockClient::send_error {}", error);
         Ok(())
     }
+
+    async fn keep_running(&self) -> Result<bool, Self::E> {
+        Ok(false)
+    }
 }
 
 /// This test runs [`MyRunner`] inside a [`TestAgent`] with k8s and the container environment mocked
