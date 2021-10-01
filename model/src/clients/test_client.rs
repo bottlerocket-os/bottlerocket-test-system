@@ -4,7 +4,7 @@ use crate::{
     AgentStatus, Configuration, ControllerStatus, ErrorResources, ResourceAgentState,
     ResourceRequest, ResourceStatus, Test,
 };
-use kube::api::{Patch, PatchParams, PostParams};
+use kube::api::{ListParams, Patch, PatchParams, PostParams};
 use kube::{Api, Resource};
 use log::trace;
 use serde::Serialize;
@@ -57,6 +57,19 @@ impl TestClient {
                 method: "get",
                 what: "test",
             })?)
+    }
+
+    /// Get all of the TestSys [`Test`]s.
+    pub async fn get_all_tests(&self) -> Result<Vec<Test>> {
+        Ok(self
+            .api
+            .list(&ListParams::default())
+            .await
+            .context(error::KubeApiCall {
+                method: "get",
+                what: "all test",
+            })?
+            .items)
     }
 
     /// Create a TestSys [`Test`].
