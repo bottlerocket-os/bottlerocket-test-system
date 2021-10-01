@@ -17,7 +17,8 @@ RUN curl -O -sSL https://www.openssl.org/source/openssl-${OPENSSL_VERSION}.tar.g
     echo "${OPENSSL_SHA256SUM} openssl-${OPENSSL_VERSION}.tar.gz" | sha256sum --check && \
     tar -xzf openssl-${OPENSSL_VERSION}.tar.gz && \
     cd openssl-${OPENSSL_VERSION} && \
-    ./Configure no-shared no-async -fPIC --prefix=/musl --openssldir=/musl/ssl linux-${ARCH} && \
+    if [ ${ARCH} = "aarch64" ]; then CONFIGURE_ARGS="-mno-outline-atomics"; else CONFIGURE_ARGS=""; fi && \
+    ./Configure no-shared no-async ${CONFIGURE_ARGS} -fPIC --prefix=/musl --openssldir=/musl/ssl linux-${ARCH} && \
     env C_INCLUDE_PATH=/musl/include/ make depend 2> /dev/null && \
     make -j && \
     make install && \
