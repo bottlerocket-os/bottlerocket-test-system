@@ -11,7 +11,7 @@ use model::system::{
     controller_cluster_role_binding, controller_deployment, controller_service_account,
     testsys_namespace,
 };
-use model::Test;
+use model::{ResourceProvider, Test};
 use snafu::ResultExt;
 use std::collections::BTreeMap;
 use std::fmt::Debug;
@@ -109,12 +109,15 @@ async fn create_namespace(client: &Client) -> Result<()> {
 }
 
 async fn create_crd(client: &Client) -> Result<()> {
-    // Manage the cluster CRDs.
+    // Manage the cluster crds.
     let crds: Api<CustomResourceDefinition> = Api::all(client.clone());
-    // Create the CRD.
+    // Create the `Test` crd.
     let testcrd = Test::crd();
+    // Create the `ResourceAgent` crd.
+    let resourcecrd = ResourceProvider::crd();
 
-    create_or_update(&crds, testcrd, "Test CRD").await
+    create_or_update(&crds, testcrd, "Test CRD").await?;
+    create_or_update(&crds, resourcecrd, "Resource Provider CRD").await
 }
 
 async fn create_roles(client: &Client) -> Result<()> {

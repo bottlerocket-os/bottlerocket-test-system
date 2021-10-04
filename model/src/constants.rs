@@ -23,6 +23,7 @@ pub const TEST_AGENT_SERVICE_ACCOUNT: &str = "testsys-test-agent-account";
 // Label keys
 pub const LABEL_TEST_NAME: &str = testsys!("test-name");
 pub const LABEL_TEST_UID: &str = testsys!("test-uid");
+pub const LABEL_PROVIDER_NAME: &str = testsys!("provider-name");
 pub const LABEL_COMPONENT: &str = testsys!("component");
 
 // Environment variables

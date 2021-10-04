@@ -4,6 +4,8 @@ This is the command line interface for setting up a TestSys Cluster and running 
 
 !*/
 
+mod add;
+mod add_file;
 mod error;
 mod install;
 mod k8s;
@@ -40,6 +42,8 @@ enum Command {
     Run(run::Run),
     /// Check the status of a TestSys test.
     Status(status::Status),
+    /// Add various components to the cluster.
+    Add(add::Add),
 }
 
 #[tokio::main]
@@ -58,6 +62,7 @@ async fn run(args: Args) -> Result<()> {
         Command::Install(install) => install.run(k8s_client).await,
         Command::Run(run) => run.run(k8s_client).await,
         Command::Status(status) => status.run(k8s_client).await,
+        Command::Add(add) => add.run(k8s_client).await,
     }
 }
 

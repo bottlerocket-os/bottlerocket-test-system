@@ -1,0 +1,10 @@
+apiVersion: testsys.bottlerocket.aws/v1
+kind: ResourceProvider
+metadata:
+  name: robot-provider
+  namespace: testsys-bottlerocket-aws
+spec:
+  image: "example-resource-agent:integ"
+  configuration:
+    available_colors: ["Gray", "Purple"]
+    max_order_size: 10

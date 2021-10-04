@@ -41,6 +41,12 @@ pub(crate) enum Error {
     #[snafu(display("Error patching {}: {}", what, source))]
     Patch { what: String, source: kube::Error },
 
+    #[snafu(display("Unable to create ResourceProvider CRD from '{}': {}", path.display(), source))]
+    ResourceProviderFileParse {
+        path: PathBuf,
+        source: serde_yaml::Error,
+    },
+
     #[snafu(display("Unable to create client: {}", source))]
     TestClientNew { source: model::clients::Error },
 

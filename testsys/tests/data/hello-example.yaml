@@ -3,8 +3,6 @@ kind: Test
 metadata:
   name: hello-bones
   namespace: testsys-bottlerocket-aws
-  labels: 
-    testsys.bottlerocket.aws/test-name: hello-bones
 spec:
   agent:
     name: hello-agent
