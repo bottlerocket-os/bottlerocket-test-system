@@ -9,9 +9,10 @@ spec:
   agent:
     name: hello-agent
     image: "example-testsys-agent:integ"
+    keep_running: false
     configuration:
       mode: Fast
       person: Bones the Cat
-      hello_count: 10
+      hello_count: 5
       hello_duration_seconds: 3
   resources: {}

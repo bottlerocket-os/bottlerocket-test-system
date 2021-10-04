@@ -34,6 +34,8 @@ pub struct Agent {
     pub image: String,
     /// The name of an image registry pull secret if one is needed to pull the test agent image.
     pub pull_secret: Option<String>,
+    /// Determine if the pod should keep running after it has finished or encountered and error.
+    pub keep_running: bool,
     /// The configuration to pass to the test pod. This is 'open' to allow tests to define their own
     /// schemas.
     pub configuration: Option<Map<String, Value>>,

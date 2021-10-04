@@ -68,6 +68,9 @@ pub trait Client: Sized {
     where
         C: Configuration;
 
+    /// Determine if the pod should keep running after it has finished or encountered and error.
+    async fn keep_running(&self) -> Result<bool, Self::E>;
+
     /// Set the appropriate status field to represent that the test has started.
     async fn send_test_starting(&self) -> Result<(), Self::E>;
 

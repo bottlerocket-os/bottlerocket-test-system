@@ -34,6 +34,11 @@ impl Client for DefaultClient {
         })
     }
 
+    async fn keep_running(&self) -> Result<bool, Self::E> {
+        let test_data = self.client.get_test(&self.name).await.context(K8s)?;
+        Ok(test_data.spec.agent.keep_running)
+    }
+
     async fn get_test_info<C>(&self) -> Result<TestInfo<C>, Self::E>
     where
         C: Configuration,
