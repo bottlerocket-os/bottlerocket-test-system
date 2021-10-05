@@ -79,7 +79,7 @@ impl Client for DefaultClient {
             .get_agent_status(&self.name)
             .await
             .context(K8s)?;
-        agent_status.run_state = RunState::Running;
+        agent_status.run_state = RunState::Done;
         agent_status.results = Some(results);
         let _ = self
             .client

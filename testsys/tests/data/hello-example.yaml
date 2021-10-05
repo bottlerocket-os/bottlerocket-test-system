@@ -7,7 +7,7 @@ spec:
   agent:
     name: hello-agent
     image: "example-testsys-agent:integ"
-    keep-running: true
+    keep_running: true
     configuration:
       mode: Fast
       person: Bones the Cat

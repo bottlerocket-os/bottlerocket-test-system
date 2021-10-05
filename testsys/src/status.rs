@@ -142,15 +142,16 @@ impl TestResult {
     }
 
     fn is_finished(&self) -> bool {
-        // TODO update the finished condition.
-        if let Some(lifecycle) = self.lifecycle {
-            lifecycle == Lifecycle::TestPodExited
-                || lifecycle == Lifecycle::TestPodError
-                || lifecycle == Lifecycle::TestPodDone
-                || lifecycle == Lifecycle::TestPodFailed
-        } else {
-            false
+        if let Some(run_state) = self.run_state {
+            if run_state == RunState::Done || run_state == RunState::Error {
+                return true;
+            }
+        } else if let Some(lifecycle) = self.lifecycle {
+            if lifecycle == Lifecycle::TestPodDone || lifecycle == Lifecycle::TestPodError {
+                return true;
+            }
         }
+        return false;
     }
 
     fn failed(&self) -> bool {
