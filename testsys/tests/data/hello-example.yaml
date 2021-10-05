@@ -11,6 +11,6 @@ spec:
     configuration:
       mode: Fast
       person: Bones the Cat
-      hello_count: 5
-      hello_duration_seconds: 3
+      hello_count: 3
+      hello_duration_milliseconds: 500
   resources: {}

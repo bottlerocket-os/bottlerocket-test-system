@@ -23,7 +23,7 @@ spec:
   configuration:
     person: Bones the Cat
     hello_count: 10
-    hello_duration_seconds: 3
+    hello_duration_milliseconds: 3
 ```
 
 !*/
@@ -44,7 +44,7 @@ struct ExampleTestRunner {
 struct ExampleConfig {
     person: String,
     hello_count: u32,
-    hello_duration_seconds: u32,
+    hello_duration_milliseconds: u32,
 }
 
 impl Configuration for ExampleConfig {}
@@ -65,8 +65,8 @@ impl test_agent::Runner for ExampleTestRunner {
         println!("ExampleTestRunner::run");
         for i in 1..=self.config.hello_count {
             println!("hello #{} to {}", i, self.config.person);
-            sleep(Duration::from_secs(
-                self.config.hello_duration_seconds.into(),
+            sleep(Duration::from_millis(
+                self.config.hello_duration_milliseconds.into(),
             ))
             .await
         }
