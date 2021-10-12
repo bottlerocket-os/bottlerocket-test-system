@@ -4,6 +4,7 @@ use crate::{
     AgentStatus, Configuration, ControllerStatus, ErrorResources, ResourceAgentState,
     ResourceRequest, ResourceStatus, Test,
 };
+use json_patch::{PatchOperation, ReplaceOperation};
 use kube::api::{ListParams, Patch, PatchParams, PostParams};
 use kube::{Api, Resource};
 use log::trace;
@@ -80,6 +81,31 @@ impl TestClient {
             .await
             .context(error::KubeApiCall {
                 method: "create",
+                what: "test",
+            })?)
+    }
+
+    /// Mark the TestSys [`Test`] as ok to delete by setting the `keep_running`
+    /// flag to false
+    pub async fn set_keep_running<S>(&self, name: S, keep_running: bool) -> Result<Test>
+    where
+        S: AsRef<str>,
+    {
+        let patch = json_patch::Patch(vec![PatchOperation::Replace(ReplaceOperation {
+            path: "/spec/agent/keep_running".to_string(),
+            value: serde_json::json!(keep_running),
+        })]);
+
+        Ok(self
+            .api
+            .patch(
+                name.as_ref(),
+                &PatchParams::default(),
+                &Patch::<Test>::Json(patch),
+            )
+            .await
+            .context(error::KubeApiCall {
+                method: "patch",
                 what: "test",
             })?)
     }
