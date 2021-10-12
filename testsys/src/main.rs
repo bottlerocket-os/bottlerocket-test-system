@@ -12,6 +12,7 @@ mod k8s;
 mod run;
 mod run_file;
 mod run_sonobuoy;
+mod set;
 mod status;
 
 use crate::k8s::k8s_client;
@@ -45,6 +46,8 @@ enum Command {
     Status(status::Status),
     /// Add various components to the cluster.
     Add(add::Add),
+    /// Set a field of a TestSys test.
+    Set(set::Set),
 }
 
 #[tokio::main]
@@ -64,6 +67,7 @@ async fn run(args: Args) -> Result<()> {
         Command::Run(run) => run.run(k8s_client).await,
         Command::Status(status) => status.run(k8s_client).await,
         Command::Add(add) => add.run(k8s_client).await,
+        Command::Set(set) => set.run(k8s_client).await,
     }
 }
 

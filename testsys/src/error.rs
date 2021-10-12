@@ -50,6 +50,13 @@ pub(crate) enum Error {
         source: serde_yaml::Error,
     },
 
+    #[snafu(display("Unable to set {} field of '{}': {}", what, name, source))]
+    Set {
+        name: String,
+        what: String,
+        source: model::clients::Error,
+    },
+
     #[snafu(display("Unable to create client: {}", source))]
     TestClientNew { source: model::clients::Error },
 
