@@ -11,6 +11,9 @@ pub(crate) enum Error {
     #[snafu(display("Unable to create client: {}", source))]
     ClientCreate { source: kube::Error },
 
+    #[snafu(display("Could not create map: {}", source))]
+    ConfigMap { source: model::ConfigurationError },
+
     #[snafu(display("Unable to read kubeconfig: {}", source))]
     ConfigRead { source: kube::Error },
 
@@ -29,14 +32,26 @@ pub(crate) enum Error {
         source: std::io::Error,
     },
 
+    #[snafu(display("Unable to get pod for '{}': {}", test_name, source))]
+    GetPod {
+        test_name: String,
+        source: kube::Error,
+    },
+
     #[snafu(display("Unable to get test: {}", source))]
     GetTest { source: model::clients::Error },
 
     #[snafu(display("Could not serialize object: {}", source))]
     JsonSerialize { source: serde_json::Error },
 
+    #[snafu(display("Test is missing {} field", field))]
+    MissingField { field: String },
+
     #[snafu(display("Could not extract registry url from '{}'", uri))]
     MissingRegistry { uri: String },
+
+    #[snafu(display("No stdout from request"))]
+    NoOut,
 
     #[snafu(display("Error patching {}: {}", what, source))]
     Patch { what: String, source: kube::Error },
@@ -46,6 +61,8 @@ pub(crate) enum Error {
         path: PathBuf,
         source: serde_yaml::Error,
     },
+    #[snafu(display("Error getting data from reader: {}", source))]
+    Read { source: std::io::Error },
 
     #[snafu(display("Unable to set {} field of '{}': {}", what, name, source))]
     Set {
@@ -62,4 +79,10 @@ pub(crate) enum Error {
         path: PathBuf,
         source: serde_yaml::Error,
     },
+
+    #[snafu(display("Could not retrieve test '{}'", test_name))]
+    TestMissing { test_name: String },
+
+    #[snafu(display("Unable to write data: {}", source))]
+    Write { source: std::io::Error },
 }

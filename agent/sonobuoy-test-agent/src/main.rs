@@ -35,13 +35,13 @@ spec:
 use async_trait::async_trait;
 use log::info;
 use model::{Outcome, TestResults};
-use serde::{Deserialize, Serialize};
 use simplelog::{Config as LogConfig, LevelFilter, SimpleLogger};
 use snafu::{ensure, OptionExt, ResultExt, Snafu};
+use sonobuoy_test_agent::{SonobuoyConfig, SONOBUOY_TEST_RESULTS_LOCATION};
 use std::path::Path;
 use std::process::Command;
 use std::{fs, process};
-use test_agent::{BootstrapData, ClientError, Configuration, DefaultClient, TestAgent, TestInfo};
+use test_agent::{BootstrapData, ClientError, DefaultClient, TestAgent, TestInfo};
 
 const TEST_CLUSTER_KUBECONFIG: &str = "/local/test-cluster.kubeconfig";
 
@@ -72,18 +72,6 @@ enum SonobuoyError {
 struct SonobuoyTestRunner {
     config: SonobuoyConfig,
 }
-
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-struct SonobuoyConfig {
-    // FIXME: need a better way of passing test cluster information
-    kubeconfig_base64: String,
-    plugin: String,
-    mode: String,
-    kubernetes_version: Option<String>,
-    kube_conformance_image: Option<String>,
-}
-
-impl Configuration for SonobuoyConfig {}
 
 #[async_trait]
 impl test_agent::Runner for SonobuoyTestRunner {
@@ -191,6 +179,15 @@ impl test_agent::Runner for SonobuoyTestRunner {
             .get("skipped")
             .map(|v| v.as_u64().unwrap_or(0))
             .unwrap_or(0);
+
+        let kubconfig_arg = vec!["--kubeconfig", TEST_CLUSTER_KUBECONFIG];
+        Command::new("/usr/bin/sonobuoy")
+            .args(kubconfig_arg)
+            .arg("retrieve")
+            .arg("--filename")
+            .arg(SONOBUOY_TEST_RESULTS_LOCATION)
+            .output()
+            .context(SonobuoyProcess)?;
 
         Ok(TestResults {
             outcome: match result_status {

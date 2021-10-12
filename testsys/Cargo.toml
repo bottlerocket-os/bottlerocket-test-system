@@ -7,7 +7,7 @@ publish = false
 [dependencies]
 base64 = "0.13.0"
 env_logger = "0.9"
-kube = { version = "0.59.0", default-features = true, features = [ "derive"] }
+kube = { version = "0.59.0", default-features = true, features = [ "derive", "ws"] }
 kube-runtime = "0.59.0"
 k8s-openapi = { version = "0.13.0", features = ["v1_20", "api"], default-features = false }
 log = "0.4"
@@ -16,16 +16,20 @@ serde_json = "1.0.61"
 serde_yaml = "0.8"
 snafu = "0.6"
 structopt = "0.3"
-tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
+tokio = { version = "1", features = ["macros", "rt-multi-thread", "fs"] }
+tokio-util = "0.6.0"
+futures = "0.3.8"
 
 # local dependencies
 model = { path = "../model" }
 # regenerate testsys.yaml if the model has changed
 yamlgen = { path = "../yamlgen" }
+sonobuoy-test-agent = { path = "../agent/sonobuoy-test-agent" }
 
 [dev-dependencies]
 assert_cmd = "2.0"
 selftest = { path = "../selftest" }
+tempfile = "3"
 
 [features]
 # The `integ` feature enables integration tests. These tests require docker and kind.

@@ -24,6 +24,21 @@ pub struct TestSpec {
     pub resources: BTreeMap<String, ResourceRequest>,
     /// Information about the test agent.
     pub agent: Agent,
+    #[serde(default)]
+    /// The type of test being run.
+    pub test_type: TestType,
+}
+
+#[derive(Serialize, Deserialize, Debug, Eq, PartialEq, Clone, Copy, JsonSchema)]
+pub enum TestType {
+    Default,
+    Sonobuoy,
+}
+
+impl Default for TestType {
+    fn default() -> Self {
+        Self::Default
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug, Default, Eq, PartialEq, Clone, JsonSchema)]

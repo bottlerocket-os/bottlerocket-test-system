@@ -17,5 +17,5 @@ pub use resource::{ErrorResources, ResourceAgentState, ResourceRequest, Resource
 pub use resource_provider::{ResourceProvider, ResourceProviderSpec, ResourceProviderStatus};
 pub use test::{
     Agent, AgentStatus, ControllerStatus, Lifecycle, Outcome, RunState, Test, TestResults,
-    TestSpec, TestStatus,
+    TestSpec, TestStatus, TestType,
 };

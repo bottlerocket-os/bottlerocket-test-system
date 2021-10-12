@@ -66,6 +66,13 @@ spec:
                     type: object
                   description: Information about resources this test needs.
                   type: object
+                test_type:
+                  default: Default
+                  description: The type of test being run.
+                  enum:
+                    - Default
+                    - Sonobuoy
+                  type: string
               required:
                 - agent
                 - resources

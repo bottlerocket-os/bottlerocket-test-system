@@ -9,8 +9,10 @@ mod add_file;
 mod error;
 mod install;
 mod k8s;
+mod results;
 mod run;
 mod run_file;
+mod run_sonobuoy;
 mod set;
 mod status;
 
@@ -47,6 +49,8 @@ enum Command {
     Add(add::Add),
     /// Set a field of a TestSys test.
     Set(set::Set),
+    /// Get the results of a test.
+    Results(results::Results),
 }
 
 #[tokio::main]
@@ -67,6 +71,7 @@ async fn run(args: Args) -> Result<()> {
         Command::Status(status) => status.run(k8s_client).await,
         Command::Add(add) => add.run(k8s_client).await,
         Command::Set(set) => set.run(k8s_client).await,
+        Command::Results(results) => results.run(k8s_client).await,
     }
 }
 
