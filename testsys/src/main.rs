@@ -11,6 +11,7 @@ mod install;
 mod k8s;
 mod run;
 mod run_file;
+mod run_sonobuoy;
 mod set;
 mod status;
 
