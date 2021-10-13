@@ -8,6 +8,7 @@ images: controller-image
 # Builds, Lints and Tests the Rust workspace
 build:
 	cargo fmt -- --check
+	cargo clippy --locked
 	cargo build --locked
 	cargo test --locked
 
