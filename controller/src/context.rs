@@ -62,12 +62,7 @@ impl TestInterface {
     /// Get the unique ID of the test. This is the GUID assigned by k8s. The struct field is
     /// optional but in practice it cannot be `None` so we unwrap it with a default of `""`.
     pub(crate) fn id(&self) -> &str {
-        self.test
-            .metadata
-            .uid
-            .as_ref()
-            .map(|s| s.as_str())
-            .unwrap_or("")
+        self.test.metadata.uid.as_deref().unwrap_or("")
     }
 
     /// Get information about the test agent.

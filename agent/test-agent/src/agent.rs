@@ -38,9 +38,9 @@ where
     /// Any errors that occur during this function are fatal since we are not able to fully
     /// construct the `Runner`.
     pub async fn new(b: BootstrapData) -> Result<Self, C::E, R::E> {
-        let client = C::new(b).await.map_err(|e| Error::Client(e))?;
-        let test_info = client.get_test_info().await.map_err(|e| Error::Client(e))?;
-        let runner = R::new(test_info).await.map_err(|e| Error::Runner(e))?;
+        let client = C::new(b).await.map_err(Error::Client)?;
+        let test_info = client.get_test_info().await.map_err(Error::Client)?;
+        let runner = R::new(test_info).await.map_err(Error::Runner)?;
         Ok(Self { runner, client })
     }
 
@@ -72,9 +72,9 @@ where
         self.client
             .send_test_starting()
             .await
-            .map_err(|e| error::Error::Client(e))?;
+            .map_err(error::Error::Client)?;
 
-        let test_results = match self.runner.run().await.map_err(|e| error::Error::Runner(e)) {
+        let test_results = match self.runner.run().await.map_err(error::Error::Runner) {
             Ok(ok) => ok,
             Err(e) => {
                 self.send_error_best_effort(&e).await;
@@ -87,7 +87,7 @@ where
             .client
             .send_test_done(test_results)
             .await
-            .map_err(|e| error::Error::Client(e))
+            .map_err(error::Error::Client)
         {
             self.send_error_best_effort(&e).await;
             self.terminate_best_effort().await;
@@ -96,12 +96,7 @@ where
 
         // Test finished successfully. Try to terminate. If termination fails, we try to send the
         // error to k8s, and return the error so that the process will exit with error.
-        if let Err(e) = self
-            .runner
-            .terminate()
-            .await
-            .map_err(|e| error::Error::Runner(e))
-        {
+        if let Err(e) = self.runner.terminate().await.map_err(error::Error::Runner) {
             error!("unable to terminate test runner: {}", e);
             self.send_error_best_effort(&e).await;
             return Err(e);
@@ -124,12 +119,7 @@ where
     /// if it cannot be sent to k8s.
     async fn terminate_best_effort(&mut self) {
         // TODO - stay running https://github.com/bottlerocket-os/bottlerocket-test-system/issues/79
-        if let Err(e) = self
-            .runner
-            .terminate()
-            .await
-            .map_err(|e| error::Error::Runner(e))
-        {
+        if let Err(e) = self.runner.terminate().await.map_err(error::Error::Runner) {
             self.send_error_best_effort(&e).await;
         }
     }

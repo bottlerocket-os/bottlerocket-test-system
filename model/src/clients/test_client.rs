@@ -128,9 +128,9 @@ impl TestClient {
             .get_test(name)
             .await?
             .status
-            .unwrap_or_else(|| Default::default())
+            .unwrap_or_else(Default::default)
             .agent
-            .unwrap_or_else(|| Default::default()))
+            .unwrap_or_else(Default::default))
     }
 
     /// Get the TestSys [`Test`] `status.resource` field for `resource_name`.
@@ -147,7 +147,7 @@ impl TestClient {
             .get_test(test)
             .await?
             .status
-            .unwrap_or_else(|| Default::default())
+            .unwrap_or_else(Default::default)
             .resources
             .and_then(|mut some| some.remove(resource.as_ref())))
     }
@@ -183,8 +183,8 @@ impl TestClient {
     {
         self.ensure_resource_status_init(&name, &resource).await?;
         self.patch_resource_status_fields(
-            &name,
-            &resource,
+            name,
+            resource,
             None,
             Some(info.into_map()?),
             None,
@@ -285,7 +285,7 @@ impl TestClient {
             .meta()
             .finalizers
             .to_owned()
-            .unwrap_or(Vec::new());
+            .unwrap_or_default();
         finalizers.push(finalizer);
         let json = Self::create_patch("metadata", "finalizers", &finalizers);
         let patch: Patch<&Value> = Patch::Merge(&json);
@@ -305,7 +305,7 @@ impl TestClient {
             .meta()
             .finalizers
             .to_owned()
-            .unwrap_or(Vec::new());
+            .unwrap_or_default();
         finalizers.retain(|item| item.as_str() != finalizer.as_str());
         let json = Self::create_patch("metadata", "finalizers", &finalizers);
         let patch: Patch<&Value> = Patch::Merge(&json);
@@ -402,6 +402,7 @@ impl TestClient {
 
     /// Surgically patch a resource status updating only the desired fields. Fields left as `None`
     /// will not be updated.
+    #[allow(clippy::too_many_arguments)]
     async fn patch_resource_status_fields(
         &self,
         test_name: &str,

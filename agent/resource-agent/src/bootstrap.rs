@@ -76,7 +76,7 @@ impl TryFrom<&str> for Action {
     type Error = BootstrapError;
 
     fn try_from(value: &str) -> Result<Self, Self::Error> {
-        match value.as_ref() {
+        match value {
             "create" => Ok(Self::Create),
             "destroy" => Ok(Self::Destroy),
             bad_value => Err(BootstrapError(BadAction { bad_value }.build())),
