@@ -9,3 +9,5 @@ members = [
     "testsys",
     "yamlgen",
 ]
+
+resolver = "2"

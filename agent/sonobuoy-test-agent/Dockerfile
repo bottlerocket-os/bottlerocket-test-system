@@ -1,11 +1,16 @@
 ARG UNAME_ARCH
-FROM bottlerocket-sdk-openssl-${UNAME_ARCH} as build
+FROM public.ecr.aws/bottlerocket/bottlerocket-sdk-${UNAME_ARCH}:v0.23.0 as build
+
 ARG UNAME_ARCH
 USER root
-
+# We need these environment variables set for building the `openssl-sys` crate
+ENV PKG_CONFIG_PATH=/${UNAME_ARCH}-bottlerocket-linux-musl/sys-root/usr/lib/pkgconfig
+ENV PKG_CONFIG_ALLOW_CROSS=1
+ENV CARGO_HOME=/src/.cargo
+ENV OPENSSL_STATIC=true
 ADD ./ /src/
 WORKDIR /src/agent/sonobuoy-test-agent
-RUN cargo install --locked --target ${UNAME_ARCH}-bottlerocket-linux-musl --path . --root ./
+RUN cargo install --offline --locked --target ${UNAME_ARCH}-bottlerocket-linux-musl --path . --root ./
 
 FROM public.ecr.aws/amazonlinux/amazonlinux:2
 ARG ARCH
