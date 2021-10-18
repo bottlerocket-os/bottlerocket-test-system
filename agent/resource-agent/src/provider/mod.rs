@@ -1,6 +1,6 @@
 mod error;
 
-pub use self::error::{ProviderError, ProviderResult, Resources};
+pub use self::error::{AsResources, IntoProviderError, ProviderError, ProviderResult, Resources};
 use crate::clients::InfoClient;
 use model::{Configuration, SecretName, SecretType};
 use std::collections::BTreeMap;
