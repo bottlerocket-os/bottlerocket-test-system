@@ -81,7 +81,7 @@ impl ProviderError {
     }
 
     pub fn context(&self) -> Option<&str> {
-        self.context.as_ref().map(|s| s.as_str())
+        self.context.as_deref()
     }
 
     pub fn inner(&self) -> Option<&(dyn std::error::Error + Send + Sync + 'static)> {

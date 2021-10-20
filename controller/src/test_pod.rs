@@ -241,7 +241,6 @@ async fn create_job(test: &TestInterface) -> Result<Job> {
                     labels: Some(labels),
                     ..ObjectMeta::default()
                 }),
-                ..PodTemplateSpec::default()
             },
             ..JobSpec::default()
         }),

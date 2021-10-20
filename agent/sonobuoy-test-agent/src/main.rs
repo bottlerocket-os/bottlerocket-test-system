@@ -191,7 +191,6 @@ impl test_agent::Runner for SonobuoyTestRunner {
             num_failed,
             num_skipped,
             other_info: Some(progress_status.to_owned().to_string()),
-            ..TestResults::default()
         })
     }
 

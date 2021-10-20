@@ -101,7 +101,7 @@ impl StatusResults {
 
 impl Display for StatusResults {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        for (_name, result) in &self.tests {
+        for result in self.tests.values() {
             write!(f, "{}\n\n", result)?;
         }
 
@@ -111,7 +111,7 @@ impl Display for StatusResults {
 
 impl TestResult {
     fn from_test(test: &Test) -> Self {
-        let name = test.metadata.name.clone().unwrap_or("".to_string());
+        let name = test.metadata.name.clone().unwrap_or_else(|| "".to_string());
         let mut passed = None;
         let mut failed = None;
         let mut skipped = None;
@@ -151,7 +151,7 @@ impl TestResult {
                 return true;
             }
         }
-        return false;
+        false
     }
 
     fn failed(&self) -> bool {
@@ -165,30 +165,30 @@ impl TestResult {
 
 impl Display for TestResult {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "Test Name: {}\n", self.name)?;
-        write!(
+        writeln!(f, "Test Name: {}", self.name)?;
+        writeln!(
             f,
-            "Controller State: {}\n",
+            "Controller State: {}",
             self.lifecycle.map_or("".to_string(), |l| l.to_string())
         )?;
-        write!(
+        writeln!(
             f,
-            "Agent State: {}\n",
+            "Agent State: {}",
             self.run_state.map_or("".to_string(), |r| r.to_string())
         )?;
-        write!(
+        writeln!(
             f,
-            "Passed: {}\n",
+            "Passed: {}",
             self.passed.map_or("".to_string(), |x| x.to_string())
         )?;
-        write!(
+        writeln!(
             f,
-            "Failed: {}\n",
+            "Failed: {}",
             self.failed.map_or("".to_string(), |x| x.to_string())
         )?;
-        write!(
+        writeln!(
             f,
-            "Skipped: {}\n",
+            "Skipped: {}",
             self.skipped.map_or("".to_string(), |x| x.to_string())
         )?;
 
