@@ -1,4 +1,4 @@
-use crate::ConfigurationError;
+use crate::Error as ModelError;
 use snafu::Snafu;
 
 /// The `Result` type returned by `clients`.
@@ -13,7 +13,7 @@ pub struct Error(InnerError);
 #[snafu(visibility = "pub(super)")]
 pub(crate) enum InnerError {
     #[snafu(display("{}", source))]
-    ConfigSerde { source: ConfigurationError },
+    ConfigSerde { source: ModelError },
 
     #[snafu(display("Error serializing object '{}': {}", what, source))]
     Serde {
@@ -54,8 +54,8 @@ pub(crate) enum InnerError {
     DeleteMissingFinalizer { finalizer: String },
 }
 
-impl From<ConfigurationError> for Error {
-    fn from(e: ConfigurationError) -> Self {
+impl From<ModelError> for Error {
+    fn from(e: ModelError) -> Self {
         Error(InnerError::ConfigSerde { source: e })
     }
 }
