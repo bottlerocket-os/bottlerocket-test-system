@@ -14,7 +14,7 @@ This library provides the Kubernetes custom resource definitions and their API c
     clippy::unwrap_used
 )]
 
-pub use agent::{Agent, TaskState};
+pub use agent::{Agent, SecretName, SecretType, TaskState};
 pub use configuration::Configuration;
 pub use crd_ext::CrdExt;
 pub use error::{Error, Result};

@@ -18,6 +18,16 @@ pub(crate) enum OpaqueError {
     ))]
     ConfigWrongValueType {},
 
+    #[snafu(display(
+        "The secret name '{}' is invalid, it must match regex pattern '{}'",
+        secret_name,
+        regex
+    ))]
+    SecretNameValidation {
+        secret_name: String,
+        regex: &'static str,
+    },
+
     #[snafu(display("Parse error: {}", source))]
     SerdePlain { source: serde_plain::Error },
 }

@@ -86,6 +86,7 @@ impl RunSonobuoy {
                         .into_map()
                         .context(error::ConfigMap)?,
                     ),
+                    secrets: None,
                 },
             },
             status: None,
