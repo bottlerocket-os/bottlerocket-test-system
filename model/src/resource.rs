@@ -1,4 +1,4 @@
-use crate::{Agent, CrdExt, ParseError, TaskState};
+use crate::{Agent, CrdExt, TaskState};
 use core::option::Option;
 use k8s_openapi::apimachinery::pkg::apis::meta::v1::ObjectMeta;
 use kube::{CustomResource, Resource as Kresource};
@@ -86,8 +86,8 @@ pub enum ResourceAction {
     Destroy,
 }
 
-serde_plain::derive_fromstr_from_deserialize!(ResourceAction, |e| -> ParseError {
-    ParseError::new(e)
+serde_plain::derive_fromstr_from_deserialize!(ResourceAction, |e| -> crate::Error {
+    crate::error::OpaqueError::SerdePlain { source: e }.into()
 });
 serde_plain::derive_display_from_serialize!(ResourceAction);
 

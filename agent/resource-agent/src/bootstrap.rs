@@ -26,10 +26,7 @@ pub(crate) enum InnerError {
     },
 
     #[snafu(display("Incorrect resource action '{}': {}", value, source))]
-    ResourceActionParse {
-        value: String,
-        source: model::ParseError,
-    },
+    ResourceActionParse { value: String, source: model::Error },
 }
 
 /// Data that is read from the TestPod's container environment and filesystem.

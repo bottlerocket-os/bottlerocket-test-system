@@ -17,7 +17,7 @@ This library provides the Kubernetes custom resource definitions and their API c
 pub use agent::{Agent, TaskState};
 pub use configuration::{Configuration, ConfigurationError};
 pub use crd_ext::CrdExt;
-pub use parse_error::ParseError;
+pub use error::{Error, Result};
 pub use resource::{
     ErrorResources, Resource, ResourceAction, ResourceError, ResourceSpec, ResourceStatus,
 };
@@ -30,7 +30,7 @@ pub mod clients;
 mod configuration;
 pub mod constants;
 mod crd_ext;
-mod parse_error;
+mod error;
 mod resource;
 pub mod system;
 mod test;

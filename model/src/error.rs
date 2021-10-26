@@ -1,17 +1,12 @@
-use std::fmt::{Display, Formatter};
+use snafu::Snafu;
 
-/// An error that can occur when parsing a string into an enum.
-#[derive(derive_more::Error, Debug)]
-pub struct ParseError(serde_plain::Error);
+#[derive(Debug, Snafu)]
+pub struct Error(OpaqueError);
+pub type Result<T> = std::result::Result<T, Error>;
 
-impl Display for ParseError {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        Display::fmt(&self.0, f)
-    }
-}
-
-impl ParseError {
-    pub(crate) fn new(e: serde_plain::Error) -> Self {
-        Self(e)
-    }
+#[derive(Debug, Snafu)]
+#[snafu(visibility = "pub(crate)")]
+pub(crate) enum OpaqueError {
+    #[snafu(display("Parse error: {}", source))]
+    SerdePlain { source: serde_plain::Error },
 }
