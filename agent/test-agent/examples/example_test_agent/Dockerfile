@@ -1,11 +1,16 @@
 ARG ARCH
-FROM bottlerocket-sdk-openssl-${ARCH} as build
+FROM public.ecr.aws/bottlerocket/bottlerocket-sdk-${ARCH}:v0.23.0 as build
+
 ARG ARCH
 USER root
-
+# We need these environment variables set for building the `openssl-sys` crate
+ENV PKG_CONFIG_PATH=/${ARCH}-bottlerocket-linux-musl/sys-root/usr/lib/pkgconfig
+ENV PKG_CONFIG_ALLOW_CROSS=1
+ENV CARGO_HOME=/src/.cargo
+ENV OPENSSL_STATIC=true
 ADD ./ /src/
 WORKDIR /src/agent/test-agent
-RUN cargo install --locked --target ${ARCH}-bottlerocket-linux-musl --path . --example example_test_agent --root ./
+RUN cargo install --offline --locked --target ${ARCH}-bottlerocket-linux-musl --path . --example example_test_agent --root ./
 
 FROM scratch
 # Copy CA certificates store
