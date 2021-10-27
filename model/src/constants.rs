@@ -38,6 +38,9 @@ pub const ENV_RESOURCE_ACTION: &str = "TESTSYS_RESOURCE_ACTION";
 pub const ENV_RESOURCE_NAME: &str = "TESTSYS_RESOURCE_NAME";
 pub const ENV_TEST_NAME: &str = "TESTSYS_TEST_NAME";
 
+// Paths
+pub const SECRETS_PATH: &str = "/secrets";
+
 // Standard tags https://kubernetes.io/docs/concepts/overview/working-with-objects/common-labels/
 pub const APP_NAME: &str = "app.kubernetes.io/name";
 pub const APP_INSTANCE: &str = "app.kubernetes.io/instance";

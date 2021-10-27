@@ -1,14 +1,15 @@
 use crate::job::error::{JobError, JobResult};
 use k8s_openapi::api::batch::v1::{Job, JobSpec};
 use k8s_openapi::api::core::v1::{
-    Container, EnvVar, LocalObjectReference, PodSpec, PodTemplateSpec,
+    Container, EnvVar, LocalObjectReference, PodSpec, PodTemplateSpec, SecretVolumeSource, Volume,
+    VolumeMount,
 };
 use k8s_openapi::apimachinery::pkg::apis::meta::v1::ObjectMeta;
 use kube::api::PostParams;
 use kube::Api;
 use model::constants::{
     APP_COMPONENT, APP_CREATED_BY, APP_INSTANCE, APP_MANAGED_BY, APP_NAME, APP_PART_OF, CONTROLLER,
-    NAMESPACE, RESOURCE_AGENT, RESOURCE_AGENT_SERVICE_ACCOUNT, TESTSYS, TEST_AGENT,
+    NAMESPACE, RESOURCE_AGENT, RESOURCE_AGENT_SERVICE_ACCOUNT, SECRETS_PATH, TESTSYS, TEST_AGENT,
     TEST_AGENT_SERVICE_ACCOUNT,
 };
 use model::Agent;
@@ -58,6 +59,7 @@ impl JobBuilder<'_> {
                             name: self.job_name.into(),
                             image: Some(self.agent.image.to_owned()),
                             env: if vars.is_empty() { None } else { Some(vars) },
+                            volume_mounts: mounts(self.agent),
                             ..Container::default()
                         }],
                         restart_policy: Some(String::from("Never")),
@@ -70,6 +72,7 @@ impl JobBuilder<'_> {
                             JobType::TestAgent => TEST_AGENT_SERVICE_ACCOUNT.to_owned(),
                             JobType::ResourceAgent => RESOURCE_AGENT_SERVICE_ACCOUNT.to_owned(),
                         }),
+                        volumes: volumes(self.agent),
                         ..PodSpec::default()
                     }),
                     metadata: Some(ObjectMeta {
@@ -118,4 +121,42 @@ fn env_vars(raw_vars: Vec<(&str, String)>) -> Vec<EnvVar> {
             value_from: None,
         })
         .collect()
+}
+
+fn mounts(agent: &Agent) -> Option<Vec<VolumeMount>> {
+    let secrets = agent.secret_names();
+    if secrets.is_empty() {
+        return None;
+    }
+    Some(
+        secrets
+            .iter()
+            .map(|&name| VolumeMount {
+                mount_path: format!("{}/{}", SECRETS_PATH, name),
+                name: name.as_str().into(),
+                read_only: Some(true),
+                ..VolumeMount::default()
+            })
+            .collect(),
+    )
+}
+
+fn volumes(agent: &Agent) -> Option<Vec<Volume>> {
+    let secrets = agent.secret_names();
+    if secrets.is_empty() {
+        return None;
+    }
+    Some(
+        secrets
+            .iter()
+            .map(|&name| Volume {
+                name: name.as_str().into(),
+                secret: Some(SecretVolumeSource {
+                    secret_name: Some(name.as_str().into()),
+                    ..SecretVolumeSource::default()
+                }),
+                ..Volume::default()
+            })
+            .collect(),
+    )
 }
