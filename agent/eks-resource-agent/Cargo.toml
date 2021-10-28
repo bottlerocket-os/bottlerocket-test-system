@@ -1,0 +1,11 @@
+[package]
+ name = "eks-resource-agent"
+ version = "0.1.0"
+ edition = "2018"
+
+ [dependencies]
+ async-trait = "0.1"
+ model = { path = "../../model" }
+ resource-agent = { path = "../resource-agent" }
+ serde = { version = "1", features = [ "derive" ] }
+ tokio = { version = "1", default-features = false, features = [ "time", "macros", "rt-multi-thread" ] }

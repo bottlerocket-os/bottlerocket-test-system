@@ -1,6 +1,6 @@
 TOP := $(dir $(firstword $(MAKEFILE_LIST)))
 
-.PHONY: build sdk-openssl example-test-agent-image example-resource-agent-image controller-image images sonobuoy-test-agent-image integ-test ec2-resource-agent-image
+.PHONY: build sdk-openssl example-test-agent-image example-resource-agent-image controller-image images sonobuoy-test-agent-image integ-test ec2-resource-agent-image eks-resource-agent-image
 
 UNAME_ARCH=$(shell uname -m)
 ARCH ?= $(lastword $(subst :, ,$(filter $(UNAME_ARCH):%,x86_64:amd64 aarch64:arm64)))
@@ -36,6 +36,12 @@ example-resource-agent-image: fetch
 		--tag "example-resource-agent" \
 		--network none \
 		-f agent/resource-agent/examples/example_resource_agent/Dockerfile .
+
+eks-resource-agent-image: fetch
+	docker build $(DOCKER_BUILD_FLAGS) \
+		--build-arg ARCH="$(UNAME_ARCH)" \
+		--tag "eks-resource-agent" \
+		-f agent/eks-resource-agent/Dockerfile .
 
 controller-image: fetch
 	docker build $(DOCKER_BUILD_FLAGS) \

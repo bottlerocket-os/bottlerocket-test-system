@@ -2,6 +2,7 @@
 members = [
     "agent/agent-common",
     "agent/ec2-resource-agent",
+    "agent/eks-resource-agent",
     "agent/resource-agent",
     "agent/test-agent",
     "agent/sonobuoy-test-agent",
