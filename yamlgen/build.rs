@@ -11,9 +11,9 @@ use kube::CustomResourceExt;
 use model::system::{
     agent_cluster_role, agent_cluster_role_binding, agent_service_account, controller_cluster_role,
     controller_cluster_role_binding, controller_deployment, controller_service_account,
-    testsys_namespace,
+    testsys_namespace, AgentType,
 };
-use model::{ResourceProvider, Test};
+use model::{Resource, Test};
 use std::env;
 use std::fs::File;
 use std::io::Write;
@@ -51,7 +51,7 @@ fn main() {
     // testsys-crd related K8S manifest
     testsys_crd.write_all(HEADER.as_bytes()).unwrap();
     serde_yaml::to_writer(&testsys_crd, &Test::crd()).unwrap();
-    serde_yaml::to_writer(&testsys_crd, &ResourceProvider::crd()).unwrap();
+    serde_yaml::to_writer(&testsys_crd, &Resource::crd()).unwrap();
 
     // Read the controller image and image-pull-secrets identifier from environment variables
     let controller_image = env::var("TESTSYS_CONTROLLER_IMAGE")
@@ -73,7 +73,14 @@ fn main() {
 
     // testsys-agent related K8S manifest
     serde_yaml::to_writer(&testsys_agent, &testsys_namespace()).unwrap();
-    serde_yaml::to_writer(&testsys_agent, &agent_service_account()).unwrap();
-    serde_yaml::to_writer(&testsys_agent, &agent_cluster_role()).unwrap();
-    serde_yaml::to_writer(&testsys_agent, &agent_cluster_role_binding()).unwrap();
+    serde_yaml::to_writer(&testsys_agent, &agent_service_account(AgentType::Test)).unwrap();
+    serde_yaml::to_writer(&testsys_agent, &agent_cluster_role(AgentType::Test)).unwrap();
+    serde_yaml::to_writer(&testsys_agent, &agent_cluster_role_binding(AgentType::Test)).unwrap();
+    serde_yaml::to_writer(&testsys_agent, &agent_service_account(AgentType::Resource)).unwrap();
+    serde_yaml::to_writer(&testsys_agent, &agent_cluster_role(AgentType::Resource)).unwrap();
+    serde_yaml::to_writer(
+        &testsys_agent,
+        &agent_cluster_role_binding(AgentType::Resource),
+    )
+    .unwrap();
 }

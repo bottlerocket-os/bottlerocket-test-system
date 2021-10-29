@@ -8,21 +8,28 @@ instance is added to the cluster.
 
 !*/
 
-mod action;
-mod context;
-mod error;
-mod reconcile;
-mod test_pod;
+#![deny(
+    clippy::expect_used,
+    clippy::get_unwrap,
+    clippy::panic,
+    clippy::panic_in_result_fn,
+    clippy::panicking_unwrap,
+    clippy::unwrap_in_result,
+    clippy::unwrap_used
+)]
 
-use crate::reconcile::handle_reconciliation_error;
-use context::new_context;
+use crate::resource_controller::run_resource_controller;
+use crate::test_controller::run_test_controller;
 use env_logger::Builder;
-use futures::stream::StreamExt;
-use kube::api::ListParams;
+use futures::join;
 use kube::Client;
-use kube_runtime::{controller, Controller};
-use log::{debug, error, info, LevelFilter};
-use reconcile::reconcile;
+use log::{error, info, LevelFilter};
+
+mod constants;
+mod error;
+mod job;
+mod resource_controller;
+mod test_controller;
 
 #[tokio::main]
 async fn main() {
@@ -38,26 +45,11 @@ async fn main() {
         }
     };
 
-    // Run the controller.
-    run(client).await
-}
+    // Run the controllers.
+    let future_1 = run_test_controller(client.clone());
+    let future_2 = run_resource_controller(client);
 
-async fn run(client: Client) {
-    let context = new_context(client);
-    Controller::new(context.get_ref().api(), ListParams::default())
-        .run(reconcile, handle_reconciliation_error, context)
-        .for_each(|reconciliation_result| async move {
-            if let Err(reconciliation_err) = reconciliation_result {
-                match &reconciliation_err {
-                    controller::Error::ObjectNotFound { .. } => {
-                        // TODO - not sure why we get this after test deletion
-                        debug!("Object is gone: {}", reconciliation_err)
-                    }
-                    _ => error!("Error during reconciliation: {}", reconciliation_err),
-                }
-            }
-        })
-        .await;
+    let _ = join!(future_1, future_2);
 }
 
 /// The log level used when the `RUST_LOG` environment variable does not exist.
@@ -75,6 +67,7 @@ fn init_logger() {
             // RUST_LOG does not exist; use default log level for this crate only.
             Builder::new()
                 .filter(Some(env!("CARGO_CRATE_NAME")), DEFAULT_LEVEL_FILTER)
+                .filter(Some("model"), DEFAULT_LEVEL_FILTER)
                 .init();
         }
     }

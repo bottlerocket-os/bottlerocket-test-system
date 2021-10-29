@@ -6,12 +6,11 @@ color.
 
 !*/
 
+use log::{debug, info};
 use model::Configuration;
 use nonzero_ext::nonzero;
 use resource_agent::clients::InfoClient;
-use resource_agent::provider::{
-    Create, Destroy, ProviderError, ProviderInfo, ProviderResult, Resources,
-};
+use resource_agent::provider::{Create, Destroy, ProviderError, ProviderResult, Resources};
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 use std::num::NonZeroU16;
@@ -30,31 +29,6 @@ impl Default for Color {
         Self::Gray
     }
 }
-
-/// The configuration information for a robot provider. This configuration determines what color of
-/// robots the provider can create, and how many it can create in a single batch.
-#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
-pub struct RobotProviderConfig {
-    /// The colors of which this provider can create robots.
-    available_colors: HashSet<Color>,
-
-    /// The maximum batch size of robots this provider can create.
-    max_order_size: NonZeroU16,
-}
-
-impl Default for RobotProviderConfig {
-    fn default() -> Self {
-        Self {
-            available_colors: Default::default(),
-            max_order_size: nonzero!(1u16),
-        }
-    }
-}
-
-/// We need to specify that our configuration struct implements the `Configuration` trait. Doing
-/// so also requires that we implement a few things like `Default`, `serde::Serialize` and
-/// `serde::Deserialize`.
-impl Configuration for RobotProviderConfig {}
 
 /// While we are creating robots, we might need to remember some things in case we encounter an
 /// error. We can define a struct for that purpose.
@@ -118,17 +92,11 @@ impl Default for CreatedRobotLot {
 impl Configuration for CreatedRobotLot {}
 
 /// This is the object that will create robots.
-pub struct RobotCreator {
-    /// The configuration of this robot provider.
-    pub config: RobotProviderConfig,
-}
+pub struct RobotCreator {}
 
 /// We need to implement the [`Create`] trait in order to provide robots for tests.
 #[async_trait::async_trait]
 impl Create for RobotCreator {
-    /// The struct we will use to configure out provider.
-    type Config = RobotProviderConfig;
-
     /// The struct we will use to remember things like the IDs of robots we have created so far.
     type Info = ProductionMemo;
 
@@ -138,35 +106,12 @@ impl Create for RobotCreator {
     /// The response we will give back describing the batch of robots we have created.
     type Resource = CreatedRobotLot;
 
-    async fn new<I>(info: ProviderInfo<Self::Config>, client: &I) -> ProviderResult<Self>
-    where
-        I: InfoClient,
-    {
-        // Here we record our status in Kubernetes. In a real-world case you might want to check
-        // here to see if the provider had been running before now.
-        client
-            .send_info(ProductionMemo {
-                current_status: "initializing creator".to_string(),
-                existing_robot_ids: Default::default(),
-            })
-            .await
-            .map_err(|e| {
-                ProviderError::new_with_source_and_context(
-                    Resources::Clear,
-                    "Error initializing creator",
-                    e,
-                )
-            })?;
-
-        Ok(Self {
-            config: info.configuration,
-        })
-    }
-
     async fn create<I>(&self, request: Self::Request, client: &I) -> ProviderResult<Self::Resource>
     where
         I: InfoClient,
     {
+        info!("starting creation");
+
         // We get our custom state information from Kubernetes.
         let mut memo: ProductionMemo = client.get_info().await.map_err(|e| {
             ProviderError::new_with_source_and_context(
@@ -178,40 +123,10 @@ impl Create for RobotCreator {
             )
         })?;
 
-        // We pretend here like it's important that are robot provider is in the correct state. This
-        // is an example of using the custom `Info` for some purpose.
-        if memo.current_status != "initializing creator" {
-            return Err(ProviderError::new_with_context(
-                resources_situation(&memo),
-                format!("Unexpected state: {}", memo.current_status),
-            ));
-        }
-
-        // If the request is for more robots than our maximum batch size, then we have a problem.
-        if request.number_of_robots > self.config.max_order_size {
-            return Err(ProviderError::new_with_context(
-                resources_situation(&memo),
-                format!(
-                    "Production request too large. {} robots requested, but max size is {}",
-                    request.number_of_robots, self.config.max_order_size
-                ),
-            ));
-        }
-
-        // If the request is for robots of a color we cannot provide, then we have a problem.
-        if !self.config.available_colors.contains(&request.color) {
-            return Err(ProviderError::new_with_context(
-                resources_situation(&memo),
-                format!(
-                    "Production request for unavailable color. '{:?}' requested, but I don't have it.",
-                    request.color
-                ),
-            ));
-        }
-
         // Create the robots.
         for id in 0..request.number_of_robots.get() {
             let memo_text = format!("creating robot {}", id);
+            debug!("{}", memo_text);
             memo.current_status = memo_text.clone();
             memo.existing_robot_ids.insert(id.into());
 
@@ -230,6 +145,7 @@ impl Create for RobotCreator {
 
         // We are done, set our custom status to say so.
         memo.current_status = "All robots created".into();
+        info!("{}", memo.current_status);
         client.send_info(memo.clone()).await.map_err(|e| {
             ProviderError::new_with_source_and_context(
                 resources_situation(&memo),
@@ -248,17 +164,14 @@ impl Create for RobotCreator {
 }
 
 /// This is the object that will destroy robots.
-pub struct RobotDestroyer {
-    /// We aren't actually using this configuration in the destroyer, but we could if we needed to.
-    pub config: RobotProviderConfig,
-}
+pub struct RobotDestroyer {}
 
 /// We need to implement the `Destroy` trait so that our destroyer can destroy robots that have been
 /// created for TestSys tests.
 #[async_trait::async_trait]
 impl Destroy for RobotDestroyer {
     /// The struct we will use to configure out provider.
-    type Config = RobotProviderConfig;
+    type Request = RobotProductionRequest;
 
     /// The struct we will use to remember things like the IDs of robots we have created so far.
     type Info = ProductionMemo;
@@ -266,32 +179,12 @@ impl Destroy for RobotDestroyer {
     /// The response we will give back describing the batch of robots we have created.
     type Resource = CreatedRobotLot;
 
-    async fn new<I>(info: ProviderInfo<Self::Config>, client: &I) -> ProviderResult<Self>
-    where
-        I: InfoClient,
-    {
-        // Here we record our status in Kubernetes. In a real-world case you might want to use this
-        // status information to inform what the destroyer does.
-        client
-            .send_info(ProductionMemo {
-                current_status: "initializing destroyer".to_string(),
-                existing_robot_ids: Default::default(),
-            })
-            .await
-            .map_err(|e| {
-                ProviderError::new_with_source_and_context(
-                    Resources::Clear,
-                    "Error initializing destroyer",
-                    e,
-                )
-            })?;
-
-        Ok(Self {
-            config: info.configuration,
-        })
-    }
-
-    async fn destroy<I>(&self, resource: Option<Self::Resource>, client: &I) -> ProviderResult<()>
+    async fn destroy<I>(
+        &self,
+        _request: Option<Self::Request>,
+        resource: Option<Self::Resource>,
+        client: &I,
+    ) -> ProviderResult<()>
     where
         I: InfoClient,
     {
@@ -303,15 +196,6 @@ impl Destroy for RobotDestroyer {
                 e,
             )
         })?;
-
-        // We pretend here like it's important that are robot provider is in the correct state. This
-        // is an example of using the custom `Info` for some purpose.
-        if memo.current_status != "initializing destroyer" {
-            return Err(ProviderError::new_with_context(
-                resources_situation(&memo),
-                format!("Unexpected state: {}", memo.current_status),
-            ));
-        }
 
         // Create a set of IDs to iterate over and destroy. Also ensure that the memo's IDs match.
         let ids = if let Some(resource) = resource {

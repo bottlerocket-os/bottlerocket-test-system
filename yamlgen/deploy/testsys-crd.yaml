@@ -28,20 +28,20 @@ spec:
                   properties:
                     configuration:
                       additionalProperties: true
-                      description: "The configuration to pass to the test pod. This is 'open' to allow tests to define their own schemas."
+                      description: "The configuration to pass to the agent. This is 'open' to allow agents to define their own schemas."
                       nullable: true
                       type: object
                     image:
-                      description: The URI of the test agent container image.
+                      description: The URI of the agent container image.
                       type: string
                     keep_running:
                       description: Determine if the pod should keep running after it has finished or encountered and error.
                       type: boolean
                     name:
-                      description: The name of the test agent.
+                      description: The name of the agent.
                       type: string
                     pull_secret:
-                      description: The name of an image registry pull secret if one is needed to pull the test agent image.
+                      description: The name of an image registry pull secret if one is needed to pull the agent image.
                       nullable: true
                       type: string
                   required:
@@ -50,22 +50,10 @@ spec:
                     - name
                   type: object
                 resources:
-                  additionalProperties:
-                    description: "A request for construction of a resource, as needed by a `Test`."
-                    properties:
-                      configuration:
-                        additionalProperties: true
-                        description: "Customized information about the resource that is to be created. The `ResourceProvider` may define a schema to be used here."
-                        nullable: true
-                        type: object
-                      provider_name:
-                        description: "The name of the `ResourceProvider` CRD instance that can provide the needed resource."
-                        type: string
-                    required:
-                      - provider_name
-                    type: object
-                  description: Information about resources this test needs.
-                  type: object
+                  description: The list of resources required by this test. The test controller will wait for these resources to become ready before running the test agent.
+                  items:
+                    type: string
+                  type: array
               required:
                 - agent
                 - resources
@@ -76,9 +64,8 @@ spec:
               properties:
                 agent:
                   description: Information written by the test agent.
-                  nullable: true
                   properties:
-                    error_message:
+                    error:
                       description: "Due to structural OpenAPI constraints, the error message must be provided separately instead of as a value within the `RunState::Error` variant. If the `run_state` is `Error` then there *may* be an error message here. If there is an error message here and the `run_state` is *not* `Error`, the this is a bad state and the `error_message` should be ignored."
                       nullable: true
                       type: string
@@ -101,6 +88,7 @@ spec:
                           nullable: true
                           type: string
                         outcome:
+                          description: "The `Outcome` of a test run, reported by the test agent."
                           enum:
                             - Pass
                             - Fail
@@ -113,82 +101,27 @@ spec:
                         - num_skipped
                         - outcome
                       type: object
-                    run_state:
+                    task_state:
+                      description: The states that an agent declares about its task (e.g. running tests or creating/destroying resources).
                       enum:
                         - Unknown
                         - Running
-                        - Done
+                        - Completed
                         - Error
                       type: string
                   required:
-                    - run_state
+                    - task_state
                   type: object
                 controller:
                   description: Information written by the controller.
-                  nullable: true
                   properties:
-                    lifecycle:
-                      description: "What phase of the TestSys `Test` lifecycle are we in."
-                      enum:
-                        - New
-                        - Acknowledged
-                        - TestPodCreated
-                        - TestPodStarting
-                        - TestPodHealthy
-                        - TestPodDone
-                        - TestPodError
-                        - TestPodFailed
-                        - TestPodExited
-                        - TestPodDeleting
-                        - TestPodDeleted
+                    resource_error:
+                      nullable: true
                       type: string
-                  required:
-                    - lifecycle
                   type: object
-                resources:
-                  additionalProperties:
-                    description: A status struct to be used by a resource agent..
-                    properties:
-                      agent_info:
-                        additionalProperties: true
-                        description: Any customized information that the resource agent wants to remember.
-                        nullable: true
-                        type: object
-                      agent_state:
-                        description: The state that the resource agent is in.
-                        enum:
-                          - Unknown
-                          - Creating
-                          - Created
-                          - CreateFailed
-                          - Destroying
-                          - Destroyed
-                          - DestroyFailed
-                        type: string
-                      created_resource:
-                        additionalProperties: true
-                        description: "When the resource agent is done creating the resource, it populates this field with a description of the resource."
-                        nullable: true
-                        type: object
-                      error:
-                        description: "If the resource agent encounters an error, it is written here."
-                        nullable: true
-                        type: string
-                      error_resources:
-                        description: "If the resource agent encounters an error, it tells us whether or not resources were left behind."
-                        enum:
-                          - Orphaned
-                          - Remaining
-                          - Clear
-                          - Unknown
-                        nullable: true
-                        type: string
-                    required:
-                      - agent_state
-                    type: object
-                  description: Information written by the resource agents.
-                  nullable: true
-                  type: object
+              required:
+                - agent
+                - controller
               type: object
           required:
             - spec
@@ -202,49 +135,140 @@ spec:
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
-  name: resource-providers.testsys.bottlerocket.aws
+  name: resources.testsys.bottlerocket.aws
 spec:
   group: testsys.bottlerocket.aws
   names:
     categories: []
-    kind: ResourceProvider
-    plural: resource-providers
-    shortNames:
-      - rp
-    singular: resource-provider
+    kind: Resource
+    plural: resources
+    shortNames: []
+    singular: resource
   scope: Namespaced
   versions:
     - additionalPrinterColumns: []
       name: v1
       schema:
         openAPIV3Schema:
-          description: "Auto-generated derived type for ResourceProviderSpec via `CustomResource`"
+          description: "Auto-generated derived type for ResourceSpec via `CustomResource`"
           properties:
             spec:
-              description: "An object representing a container that can be run to create and destroy resources. The `CustomResource` derive also produces a struct named `ResourceProvider` which represents a resource provider object in the k8s API."
+              description: "A resource required by a test. For example, a compute instance or cluster. The `CustomResource` derive also produces a struct named `Resource` which represents a resource CRD object in the k8s API."
               properties:
-                configuration:
-                  additionalProperties: true
-                  description: "The configuration to pass to the resource agent pod. This is 'open' to allow resource agents to define their own schemas."
-                  nullable: true
+                agent:
+                  description: Information about the resource agent.
+                  properties:
+                    configuration:
+                      additionalProperties: true
+                      description: "The configuration to pass to the agent. This is 'open' to allow agents to define their own schemas."
+                      nullable: true
+                      type: object
+                    image:
+                      description: The URI of the agent container image.
+                      type: string
+                    keep_running:
+                      description: Determine if the pod should keep running after it has finished or encountered and error.
+                      type: boolean
+                    name:
+                      description: The name of the agent.
+                      type: string
+                    pull_secret:
+                      description: The name of an image registry pull secret if one is needed to pull the agent image.
+                      nullable: true
+                      type: string
+                  required:
+                    - image
+                    - keep_running
+                    - name
                   type: object
-                image:
-                  description: The URI of the resource agent container image.
-                  type: string
-                pull_secret:
-                  description: The name of an image registry pull secret if one is needed to pull the resource agent image.
-                  nullable: true
-                  type: string
               required:
-                - image
+                - agent
               type: object
             status:
-              description: The status field of the ResourceProvider CRD.
+              description: A status struct to be used by a resource agent.
               nullable: true
+              properties:
+                agent_info:
+                  additionalProperties: true
+                  description: Open content to be used by the resource agent to store state.
+                  nullable: true
+                  type: object
+                created_resource:
+                  additionalProperties: true
+                  description: A description of the resource that has been created by the resource agent.
+                  nullable: true
+                  type: object
+                creation:
+                  description: The state or the resource agent when creating resources.
+                  properties:
+                    error:
+                      nullable: true
+                      properties:
+                        error:
+                          description: The error message.
+                          type: string
+                        error_resources:
+                          description: "The status of left-behind resources, if any."
+                          enum:
+                            - Orphaned
+                            - Remaining
+                            - Clear
+                            - Unknown
+                          type: string
+                      required:
+                        - error
+                        - error_resources
+                      type: object
+                    task_state:
+                      description: The states that an agent declares about its task (e.g. running tests or creating/destroying resources).
+                      enum:
+                        - Unknown
+                        - Running
+                        - Completed
+                        - Error
+                      type: string
+                  required:
+                    - task_state
+                  type: object
+                destruction:
+                  description: The state of the resource agent when destroying resources.
+                  properties:
+                    error:
+                      nullable: true
+                      properties:
+                        error:
+                          description: The error message.
+                          type: string
+                        error_resources:
+                          description: "The status of left-behind resources, if any."
+                          enum:
+                            - Orphaned
+                            - Remaining
+                            - Clear
+                            - Unknown
+                          type: string
+                      required:
+                        - error
+                        - error_resources
+                      type: object
+                    task_state:
+                      description: The states that an agent declares about its task (e.g. running tests or creating/destroying resources).
+                      enum:
+                        - Unknown
+                        - Running
+                        - Completed
+                        - Error
+                      type: string
+                  required:
+                    - task_state
+                  type: object
+              required:
+                - creation
+                - destruction
               type: object
           required:
             - spec
-          title: ResourceProvider
+          title: Resource
           type: object
       served: true
       storage: true

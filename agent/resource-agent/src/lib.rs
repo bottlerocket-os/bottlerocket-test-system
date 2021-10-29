@@ -13,5 +13,5 @@ pub mod error;
 pub mod provider;
 
 pub use agent::{Agent, Types};
-pub use bootstrap::{Action, BootstrapData};
-pub use model::Configuration;
+pub use bootstrap::BootstrapData;
+pub use model::{Configuration, ResourceAction};

@@ -7,6 +7,7 @@ use model::{
 };
 use snafu::ResultExt;
 // use sonobuoy_test_agent::SonobuoyConfig;
+use model::clients::CrdClient;
 use sonobuoy_test_agent::SonobuoyConfig;
 use std::{fs::read_to_string, path::PathBuf};
 use structopt::StructOpt;
@@ -92,7 +93,7 @@ impl RunSonobuoy {
 
         let tests = TestClient::new_from_k8s_client(k8s_client);
 
-        tests.create_test(test).await.context(error::CreateTest)?;
+        tests.create(test).await.context(error::CreateTest)?;
 
         Ok(())
     }

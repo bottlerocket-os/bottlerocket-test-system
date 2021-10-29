@@ -1,6 +1,6 @@
 use crate::error::{self, Result};
 use kube::Client;
-use model::clients::TestClient;
+use model::clients::{CrdClient, TestClient};
 use snafu::ResultExt;
 use structopt::StructOpt;
 
@@ -21,7 +21,7 @@ impl Set {
 
         if let Some(keep_running) = &self.keep_running {
             tests
-                .set_keep_running(&self.name, *keep_running)
+                .send_keep_running(&self.name, *keep_running)
                 .await
                 .context(error::Set {
                     name: self.name.clone(),

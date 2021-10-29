@@ -1,6 +1,6 @@
 use crate::error::{self, Result};
 use kube::Client;
-use model::clients::TestClient;
+use model::clients::{CrdClient, TestClient};
 use snafu::ResultExt;
 use std::path::PathBuf;
 use structopt::StructOpt;
@@ -23,7 +23,7 @@ impl RunFile {
 
         let tests = TestClient::new_from_k8s_client(k8s_client);
 
-        tests.create_test(test).await.context(error::CreateTest)?;
+        tests.create(test).await.context(error::CreateTest)?;
 
         Ok(())
     }
