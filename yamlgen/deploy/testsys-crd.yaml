@@ -44,6 +44,15 @@ spec:
                       description: The name of an image registry pull secret if one is needed to pull the agent image.
                       nullable: true
                       type: string
+                    secrets:
+                      additionalProperties:
+                        maxLength: 253
+                        minLength: 1
+                        pattern: "^[a-zA-Z0-9_-]{1,253}$"
+                        type: string
+                      description: "A map of `SecretType` -> `SecretName` where `SecretType` is defined by the agent that will use it, and `SecretName` is provided by the user. `SecretName` is constrained to ascii alphanumerics plus underscores and dashes."
+                      nullable: true
+                      type: object
                   required:
                     - image
                     - keep_running
@@ -176,6 +185,15 @@ spec:
                       description: The name of an image registry pull secret if one is needed to pull the agent image.
                       nullable: true
                       type: string
+                    secrets:
+                      additionalProperties:
+                        maxLength: 253
+                        minLength: 1
+                        pattern: "^[a-zA-Z0-9_-]{1,253}$"
+                        type: string
+                      description: "A map of `SecretType` -> `SecretName` where `SecretType` is defined by the agent that will use it, and `SecretName` is provided by the user. `SecretName` is constrained to ascii alphanumerics plus underscores and dashes."
+                      nullable: true
+                      type: object
                   required:
                     - image
                     - keep_running

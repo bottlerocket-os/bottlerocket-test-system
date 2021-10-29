@@ -36,7 +36,7 @@ pub(crate) enum Error {
     JsonSerialize { source: serde_json::Error },
 
     #[snafu(display("Could not create map: {}", source))]
-    ConfigMap { source: model::ConfigurationError },
+    ConfigMap { source: model::Error },
 
     #[snafu(display("Could not extract registry url from '{}'", uri))]
     MissingRegistry { uri: String },

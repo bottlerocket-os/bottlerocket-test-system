@@ -3,7 +3,7 @@ use crate::clients::{AgentClient, ClientError, DefaultAgentClient, DefaultInfoCl
 use crate::provider::{ProviderError, Resources};
 use crate::{BootstrapData, ResourceAction};
 use model::clients::{CrdClient, ResourceClient};
-use model::{Configuration, ConfigurationError, ErrorResources, ResourceError, TaskState};
+use model::{Configuration, Error as ModelError, ErrorResources, ResourceError, TaskState};
 
 impl From<model::clients::Error> for ClientError {
     fn from(e: model::clients::Error) -> Self {
@@ -11,8 +11,8 @@ impl From<model::clients::Error> for ClientError {
     }
 }
 
-impl From<ConfigurationError> for ClientError {
-    fn from(e: ConfigurationError) -> Self {
+impl From<ModelError> for ClientError {
+    fn from(e: ModelError) -> Self {
         ClientError::Serialization(Some(Box::new(e)))
     }
 }
