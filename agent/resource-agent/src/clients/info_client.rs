@@ -1,7 +1,8 @@
 use super::error::ClientResult;
 use crate::BootstrapData;
+use agent_common::secrets::SecretData;
 use model::clients::ResourceClient;
-use model::Configuration;
+use model::{Configuration, SecretName};
 
 /// `InfoClient` allows [`Create`] and [`Destroy`] objects to store arbitrary information in the
 /// Kubernetes status fields associated with the resource request. For example, you might want to
@@ -29,6 +30,10 @@ pub trait InfoClient: Sized + Send + Sync {
     async fn send_info<Info>(&self, info: Info) -> ClientResult<()>
     where
         Info: Configuration;
+
+    /// Get the key/value pairs of a Kubernetes generic/[opaque] secret.
+    /// [opaque]: https://kubernetes.io/docs/concepts/configuration/secret/#opaque-secrets
+    async fn get_secret(&self, secret_name: &SecretName) -> ClientResult<SecretData>;
 }
 
 /// Provides the default [`InfoClient`] implementation.

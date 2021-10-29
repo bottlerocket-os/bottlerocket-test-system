@@ -1187,6 +1187,7 @@ dependencies = [
 name = "resource-agent"
 version = "0.1.0"
 dependencies = [
+ "agent-common",
  "async-trait",
  "env_logger",
  "log",

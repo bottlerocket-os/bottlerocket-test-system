@@ -12,7 +12,7 @@ pub(crate) mod info_client;
 
 use model::Configuration;
 use resource_agent::clients::InfoClient;
-use resource_agent::provider::{Create, Destroy, ProviderError, ProviderResult, Resources};
+use resource_agent::provider::{Create, Destroy, ProviderError, ProviderResult, Resources, Spec};
 use serde::{Deserialize, Serialize};
 
 /// InstanceCreator pretends to create instances for the sake demonstrating a mock resource provider.
@@ -50,13 +50,17 @@ impl Create for InstanceCreator {
     type Request = InstanceRequest;
     type Resource = CreatedInstances;
 
-    async fn create<I>(&self, request: Self::Request, client: &I) -> ProviderResult<Self::Resource>
+    async fn create<I>(
+        &self,
+        spec: Spec<Self::Request>,
+        client: &I,
+    ) -> ProviderResult<Self::Resource>
     where
         I: InfoClient,
     {
         client
             .send_info(Memo {
-                information: format!("Create {} instances", request.num_instances),
+                information: format!("Create {} instances", spec.configuration.num_instances),
             })
             .await
             .map_err(|e| ProviderError::new_with_source(Resources::Clear, e))?;
@@ -74,7 +78,7 @@ impl Destroy for InstanceDestroyer {
 
     async fn destroy<I>(
         &self,
-        _request: Option<Self::Request>,
+        _spec: Option<Spec<Self::Request>>,
         resource: Option<Self::Resource>,
         client: &I,
     ) -> ProviderResult<()>

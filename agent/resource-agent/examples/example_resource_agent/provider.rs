@@ -10,7 +10,7 @@ use log::{debug, info};
 use model::Configuration;
 use nonzero_ext::nonzero;
 use resource_agent::clients::InfoClient;
-use resource_agent::provider::{Create, Destroy, ProviderError, ProviderResult, Resources};
+use resource_agent::provider::{Create, Destroy, ProviderError, ProviderResult, Resources, Spec};
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 use std::num::NonZeroU16;
@@ -106,7 +106,11 @@ impl Create for RobotCreator {
     /// The response we will give back describing the batch of robots we have created.
     type Resource = CreatedRobotLot;
 
-    async fn create<I>(&self, request: Self::Request, client: &I) -> ProviderResult<Self::Resource>
+    async fn create<I>(
+        &self,
+        spec: Spec<Self::Request>,
+        client: &I,
+    ) -> ProviderResult<Self::Resource>
     where
         I: InfoClient,
     {
@@ -124,7 +128,7 @@ impl Create for RobotCreator {
         })?;
 
         // Create the robots.
-        for id in 0..request.number_of_robots.get() {
+        for id in 0..spec.configuration.number_of_robots.get() {
             let memo_text = format!("creating robot {}", id);
             debug!("{}", memo_text);
             memo.current_status = memo_text.clone();
@@ -156,8 +160,8 @@ impl Create for RobotCreator {
 
         // Return a description of the batch of robots that we created.
         Ok(CreatedRobotLot {
-            color: request.color,
-            number_of_robots: request.number_of_robots,
+            color: spec.configuration.color,
+            number_of_robots: spec.configuration.number_of_robots,
             ids: memo.existing_robot_ids,
         })
     }
@@ -181,7 +185,7 @@ impl Destroy for RobotDestroyer {
 
     async fn destroy<I>(
         &self,
-        _request: Option<Self::Request>,
+        _spec: Option<Spec<Self::Request>>,
         resource: Option<Self::Resource>,
         client: &I,
     ) -> ProviderResult<()>

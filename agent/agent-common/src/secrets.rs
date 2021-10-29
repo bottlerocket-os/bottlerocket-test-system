@@ -1,4 +1,4 @@
-use model::constants::PATH_SECRETS;
+use model::constants::SECRETS_PATH;
 use model::SecretName;
 use snafu::{OptionExt, ResultExt};
 use std::collections::BTreeMap;
@@ -60,17 +60,7 @@ impl SecretsReader {
     /// expects for agent containers.
     pub fn new() -> SecretsReader {
         Self {
-            dir: PathBuf::from(PATH_SECRETS),
-        }
-    }
-
-    /// Create a new `SecretsReader` that looks for secrets in a custom directory.
-    pub fn new_custom_directory<P>(directory: P) -> Self
-    where
-        P: Into<PathBuf>,
-    {
-        Self {
-            dir: directory.into(),
+            dir: PathBuf::from(SECRETS_PATH),
         }
     }
 
@@ -158,6 +148,19 @@ mod error {
         fn from(e: OpaqueError) -> Self {
             let name = e.secret_name().to_owned();
             super::Error::new_with_source(name, e)
+        }
+    }
+}
+
+#[cfg(test)]
+impl SecretsReader {
+    /// Create a new `SecretsReader` that looks for secrets in a custom directory.
+    pub fn new_custom_directory<P>(directory: P) -> Self
+    where
+        P: Into<PathBuf>,
+    {
+        Self {
+            dir: directory.into(),
         }
     }
 }

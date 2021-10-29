@@ -2,7 +2,17 @@ mod error;
 
 pub use self::error::{ProviderError, ProviderResult, Resources};
 use crate::clients::InfoClient;
-use model::Configuration;
+use model::{Configuration, SecretName, SecretType};
+use std::collections::BTreeMap;
+
+#[derive(Debug, Default, Clone)]
+pub struct Spec<C>
+where
+    C: Configuration,
+{
+    pub configuration: C,
+    pub secrets: BTreeMap<SecretType, SecretName>,
+}
 
 /// You implement the [`Create`] trait in order to create resources. This type is then injected into
 /// the [`Agent`] object which drives the resource agent program in a Kubernetes-launched container.
@@ -34,7 +44,11 @@ pub trait Create: Sized + Send + Sync {
 
     /// Create resources as defined by the `request`. You may use `client` to record information
     /// with the Kubernetes CRD.
-    async fn create<I>(&self, request: Self::Request, client: &I) -> ProviderResult<Self::Resource>
+    async fn create<I>(
+        &self,
+        spec: Spec<Self::Request>,
+        client: &I,
+    ) -> ProviderResult<Self::Resource>
     where
         I: InfoClient;
 }
@@ -69,7 +83,7 @@ pub trait Destroy: Sized {
     /// retrieve the necessary info with the `client` to clean up any resources that may exist.
     async fn destroy<I>(
         &self,
-        request: Option<Self::Request>,
+        spec: Option<Spec<Self::Request>>,
         resource: Option<Self::Resource>,
         client: &I,
     ) -> ProviderResult<()>

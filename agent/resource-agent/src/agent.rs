@@ -133,7 +133,7 @@ where
         trace!("sending create start signal");
         self.agent_client.send_create_starting().await?;
         debug!("Getting configuration (i.e. request)");
-        let request = self.agent_client.get_request().await?;
+        let request = self.agent_client.get_spec().await?;
         trace!("request\n{:?}", request);
         match self.creator.create(request, &self.info_client).await {
             Ok(resource) => Ok(self.agent_client.send_create_succeeded(resource).await?),
@@ -158,7 +158,7 @@ where
             }
         };
 
-        let request = match self.agent_client.get_request::<Request>().await {
+        let request = match self.agent_client.get_spec::<Request>().await {
             Ok(r) => Some(r),
             Err(e) => {
                 error!("Unable to obtain resource request from Kubernetes: {}", e);
