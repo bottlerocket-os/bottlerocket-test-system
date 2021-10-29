@@ -10,7 +10,8 @@ ENV CARGO_HOME=/src/.cargo
 ENV OPENSSL_STATIC=true
 ADD ./ /src/
 WORKDIR /src/agent/sonobuoy-test-agent
-RUN cargo install --offline --locked --target ${UNAME_ARCH}-bottlerocket-linux-musl --path . --root ./
+RUN --mount=type=cache,mode=0777,target=/src/target \
+    cargo install --offline --locked --target ${UNAME_ARCH}-bottlerocket-linux-musl --path . --root ./
 
 FROM public.ecr.aws/amazonlinux/amazonlinux:2
 ARG ARCH

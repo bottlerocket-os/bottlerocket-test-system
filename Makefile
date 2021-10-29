@@ -5,6 +5,7 @@ TOP := $(dir $(firstword $(MAKEFILE_LIST)))
 UNAME_ARCH=$(shell uname -m)
 ARCH ?= $(lastword $(subst :, ,$(filter $(UNAME_ARCH):%,x86_64:amd64 aarch64:arm64)))
 
+export DOCKER_BUILDKIT=1
 export CARGO_HOME = $(TOP)/.cargo
 
 # Fetches crates from upstream
