@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
 use snafu::ensure;
 use std::borrow::Borrow;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::convert::TryFrom;
 use std::fmt::{Debug, Display, Formatter};
 use std::ops::Deref;
@@ -47,6 +47,15 @@ pub struct Agent {
     /// use it, and `SecretName` is provided by the user. `SecretName` is constrained to ascii
     /// alphanumerics plus underscores and dashes.
     pub secrets: Option<BTreeMap<SecretType, SecretName>>,
+}
+
+impl Agent {
+    pub fn secret_names(&self) -> BTreeSet<&SecretName> {
+        self.secrets
+            .as_ref()
+            .map(|secrets_map| secrets_map.values().collect::<BTreeSet<&SecretName>>())
+            .unwrap_or_default()
+    }
 }
 
 /// The type of a secret, as defined and required by an agent. Possible examples: `foo-credentials`,
