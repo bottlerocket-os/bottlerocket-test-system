@@ -4,11 +4,19 @@ mod job_builder;
 pub(crate) use crate::job::error::{JobError, JobResult};
 pub(crate) use job_builder::{JobBuilder, JobType};
 use k8s_openapi::api::batch::v1::Job;
+use k8s_openapi::chrono::{Duration, Utc};
 use kube::api::{DeleteParams, PropagationPolicy};
 use kube::Api;
 use log::debug;
 use model::constants::NAMESPACE;
 use snafu::ensure;
+
+lazy_static::lazy_static! {
+    /// The maximum amount of time for a test to begin running (in seconds).
+    pub static ref TEST_START_TIME_LIMIT: Duration = {
+        Duration::seconds(30)
+    };
+}
 
 /// We run the test pod using a k8s `Job`. Jobs can run many containers and provide counts of how
 /// many containers are running or have completed (succeeded or failed). We are only running one
@@ -22,7 +30,7 @@ pub(crate) enum JobState {
     /// transient and you can check the job again later.
     Unknown,
     /// The job is running.
-    Running,
+    Running(Option<Duration>),
     /// The job is no longer running, and the container exited with a failure code.
     Failed,
     /// The job is no longer running, and the container exited with `0`. We avoid calling this
@@ -81,7 +89,11 @@ fn parse_job_state(job: &Job) -> JobResult<JobState> {
     );
 
     if running == 1 {
-        Ok(JobState::Running)
+        let job_running_duration = status
+            .start_time
+            .as_ref()
+            .map(|start_time| Utc::now() - start_time.0);
+        Ok(JobState::Running(job_running_duration))
     } else if succeeded == 1 {
         Ok(JobState::Exited)
     } else {

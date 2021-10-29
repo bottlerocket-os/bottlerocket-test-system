@@ -1,5 +1,5 @@
 use crate::error::Result;
-use crate::job::JobState;
+use crate::job::{JobState, TEST_START_TIME_LIMIT};
 use crate::resource_controller::context::ResourceInterface;
 use log::trace;
 use model::constants::{FINALIZER_CREATION_JOB, FINALIZER_MAIN, FINALIZER_RESOURCE};
@@ -38,6 +38,7 @@ pub(super) enum DestructionAction {
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub(super) enum ErrorState {
+    JobStart,
     JobExited,
     JobFailed,
     JobRemoved,
@@ -82,7 +83,17 @@ async fn creation_not_done_action(
     match job_state {
         JobState::None if !is_task_state_running => Ok(CreationAction::StartJob),
         JobState::None => Ok(CreationAction::Error(ErrorState::JobRemoved)),
-        JobState::Unknown | JobState::Running => Ok(CreationAction::Wait),
+        JobState::Unknown => Ok(CreationAction::Wait),
+        JobState::Running(None) => Ok(CreationAction::Wait),
+        JobState::Running(Some(duration)) => {
+            if r.resource().creation_task_state() == TaskState::Unknown
+                && duration >= *TEST_START_TIME_LIMIT
+            {
+                Ok(CreationAction::Error(ErrorState::JobStart))
+            } else {
+                Ok(CreationAction::Wait)
+            }
+        }
         JobState::Failed => Ok(CreationAction::Error(ErrorState::JobFailed)),
         JobState::Exited => Ok(CreationAction::Error(ErrorState::JobExited)),
     }
@@ -145,7 +156,17 @@ async fn destruction_not_done_action(
     match job_state {
         JobState::None if !is_task_state_running => Ok(DestructionAction::StartDestructionJob),
         JobState::None => Ok(DestructionAction::Error(ErrorState::JobRemoved)),
-        JobState::Unknown | JobState::Running => Ok(DestructionAction::Wait),
+        JobState::Unknown => Ok(DestructionAction::Wait),
+        JobState::Running(None) => Ok(DestructionAction::Wait),
+        JobState::Running(Some(duration)) => {
+            if r.resource().destruction_task_state() == TaskState::Unknown
+                && duration >= *TEST_START_TIME_LIMIT
+            {
+                Ok(DestructionAction::Error(ErrorState::JobStart))
+            } else {
+                Ok(DestructionAction::Wait)
+            }
+        }
         JobState::Failed => Ok(DestructionAction::Error(ErrorState::JobFailed)),
         JobState::Exited => Ok(DestructionAction::Error(ErrorState::JobExited)),
     }
