@@ -80,6 +80,7 @@ impl Client for MockClient {
         Ok(TestInfo {
             name: "mock-test".into(),
             configuration: C::default(),
+            secrets: Default::default(),
         })
     }
 

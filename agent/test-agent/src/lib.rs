@@ -3,12 +3,15 @@ mod bootstrap;
 pub mod error;
 mod k8s_client;
 
-pub use agent::TestAgent;
+pub use crate::agent::TestAgent;
+use agent_common::secrets::{Result as SecretsResult, SecretData, SecretsReader};
 use async_trait::async_trait;
 pub use bootstrap::{BootstrapData, BootstrapError};
 pub use k8s_client::ClientError;
 use model::clients::TestClient;
 pub use model::{Configuration, TestResults};
+use model::{SecretName, SecretType};
+use std::collections::BTreeMap;
 use std::fmt::{Debug, Display};
 
 /// Information that a test [`Runner`] needs before it can begin a test.
@@ -16,6 +19,7 @@ use std::fmt::{Debug, Display};
 pub struct TestInfo<C: Configuration> {
     pub name: String,
     pub configuration: C,
+    pub secrets: BTreeMap<SecretType, SecretName>,
 }
 
 /// The `Runner` trait provides a wrapper for any testing modality. You must implement this trait
@@ -48,6 +52,14 @@ pub trait Runner: Sized {
 
     /// Cleans up prior to program exit.
     async fn terminate(&mut self) -> Result<(), Self::E>;
+
+    /// Get the key/value pairs of a Kubernetes generic/[opaque] secret.
+    /// [opaque]: https://kubernetes.io/docs/concepts/configuration/secret/#opaque-secrets
+    // TODO - it is hacky to put this here. create something like the resource agent's InfoClient
+    fn get_secret(&self, secret_name: &SecretName) -> SecretsResult<SecretData> {
+        let secrets_reader = SecretsReader::new();
+        secrets_reader.get_secret(secret_name)
+    }
 }
 
 /// The `Client` is an interface to the k8s TestSys Test CRD API. The purpose of the interface is to
