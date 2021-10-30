@@ -10,7 +10,8 @@ ENV CARGO_HOME=/src/.cargo
 ENV OPENSSL_STATIC=true
 ADD ./ /src/
 WORKDIR /src/agent/test-agent
-RUN cargo install --offline --locked --target ${ARCH}-bottlerocket-linux-musl --path . --example example_test_agent --root ./
+RUN --mount=type=cache,mode=0777,target=/src/target \
+    cargo install --offline --locked --target ${ARCH}-bottlerocket-linux-musl --path . --example example_test_agent --root ./
 
 FROM scratch
 # Copy CA certificates store
