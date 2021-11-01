@@ -55,6 +55,7 @@ impl Client for DefaultClient {
         Ok(TestInfo {
             name: self.name.clone(),
             configuration,
+            secrets: test_data.spec.agent.secrets.unwrap_or_default(),
         })
     }
 

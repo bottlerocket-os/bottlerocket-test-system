@@ -3,6 +3,15 @@
 version = 3
 
 [[package]]
+name = "agent-common"
+version = "0.1.0"
+dependencies = [
+ "model",
+ "snafu",
+ "tempfile",
+]
+
+[[package]]
 name = "aho-corasick"
 version = "0.7.18"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1178,6 +1187,7 @@ dependencies = [
 name = "resource-agent"
 version = "0.1.0"
 dependencies = [
+ "agent-common",
  "async-trait",
  "env_logger",
  "log",
@@ -1500,6 +1510,7 @@ checksum = "78fbf2dd23e79c28ccfa2472d3e6b3b189866ffef1aeb91f17c2d968b6586378"
 name = "test-agent"
 version = "0.1.0"
 dependencies = [
+ "agent-common",
  "async-trait",
  "log",
  "model",

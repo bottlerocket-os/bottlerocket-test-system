@@ -1,6 +1,6 @@
 use model::Configuration;
 use resource_agent::clients::{AgentClient, ClientResult};
-use resource_agent::provider::ProviderError;
+use resource_agent::provider::{ProviderError, Spec};
 use resource_agent::{BootstrapData, ResourceAction};
 
 /// Create an [`AgentClient`] that does nothing so that we can test without Kubernetes.
@@ -16,11 +16,11 @@ impl AgentClient for MockAgentClient {
         Ok(())
     }
 
-    async fn get_request<Request>(&self) -> ClientResult<Request>
+    async fn get_spec<Request>(&self) -> ClientResult<Spec<Request>>
     where
         Request: Configuration,
     {
-        Ok(Request::default())
+        Ok(Spec::default())
     }
 
     async fn get_created_resource<Resource>(&self) -> ClientResult<Option<Resource>>

@@ -1,5 +1,5 @@
 use super::error::ClientResult;
-use crate::provider::ProviderError;
+use crate::provider::{ProviderError, Spec};
 use crate::{BootstrapData, ResourceAction};
 use model::clients::ResourceClient;
 use model::Configuration;
@@ -17,8 +17,8 @@ pub trait AgentClient: Sized {
     /// If there is a problem during the `Agent::new` function, this will be used to send the error.
     async fn send_init_error(&self, action: ResourceAction, error: &str) -> ClientResult<()>;
 
-    /// Get the resource request that this resource provider is responsible for.
-    async fn get_request<Request>(&self) -> ClientResult<Request>
+    /// Get the resource specifications for this resource provider.
+    async fn get_spec<Request>(&self) -> ClientResult<Spec<Request>>
     where
         Request: Configuration;
 

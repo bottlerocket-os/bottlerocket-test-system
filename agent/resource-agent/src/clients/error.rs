@@ -17,8 +17,11 @@ pub enum ClientError {
     /// A communication with Kubernetes failed.
     RequestFailed(Option<Box<dyn std::error::Error + Send + Sync + 'static>>),
 
-    /// An error occured serializing or deserializing.
+    /// An error occurred serializing or deserializing.
     Serialization(Option<Box<dyn std::error::Error + Send + Sync + 'static>>),
+
+    /// An error occurred while reading a secrets file.
+    SecretsError(Option<Box<dyn std::error::Error + Send + Sync + 'static>>),
 }
 
 impl ErrorEnum for ClientError {
@@ -28,6 +31,7 @@ impl ErrorEnum for ClientError {
             ClientError::MissingData(_) => "Missing data",
             ClientError::RequestFailed(_) => "Request failed",
             ClientError::Serialization(_) => "Serialization error",
+            ClientError::SecretsError(_) => "Secrets error",
         }
     }
 
@@ -39,6 +43,7 @@ impl ErrorEnum for ClientError {
                 .map(|some| some as &(dyn std::error::Error + Send + Sync + 'static)),
             ClientError::RequestFailed(e) => e.as_ref().map(|some| some.as_ref()),
             ClientError::Serialization(e) => e.as_ref().map(|some| some.as_ref()),
+            ClientError::SecretsError(e) => e.as_ref().map(|some| some.as_ref()),
         }
     }
 }

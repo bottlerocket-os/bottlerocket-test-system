@@ -1,9 +1,12 @@
 use super::error::ClientResult;
 use crate::clients::{AgentClient, ClientError, DefaultAgentClient, DefaultInfoClient, InfoClient};
-use crate::provider::{ProviderError, Resources};
+use crate::provider::{ProviderError, Resources, Spec};
 use crate::{BootstrapData, ResourceAction};
+use agent_common::secrets::{SecretData, SecretsReader};
 use model::clients::{CrdClient, ResourceClient};
-use model::{Configuration, Error as ModelError, ErrorResources, ResourceError, TaskState};
+use model::{
+    Configuration, Error as ModelError, ErrorResources, ResourceError, SecretName, TaskState,
+};
 
 impl From<model::clients::Error> for ClientError {
     fn from(e: model::clients::Error) -> Self {
@@ -54,6 +57,13 @@ impl InfoClient for DefaultInfoClient {
             .await?;
         Ok(())
     }
+
+    async fn get_secret(&self, secret_name: &SecretName) -> ClientResult<SecretData> {
+        let secret_reader = SecretsReader::new();
+        secret_reader
+            .get_secret(secret_name)
+            .map_err(|e| ClientError::SecretsError(Some(Box::new(e))))
+    }
 }
 
 #[async_trait::async_trait]
@@ -78,14 +88,17 @@ impl AgentClient for DefaultAgentClient {
         Ok(())
     }
 
-    async fn get_request<Request>(&self) -> ClientResult<Request>
+    async fn get_spec<Request>(&self) -> ClientResult<Spec<Request>>
     where
         Request: Configuration,
     {
-        Ok(self
-            .resource_client
-            .get_resource_request(&self.data.resource_name)
-            .await?)
+        let resource = self.resource_client.get(&self.data.resource_name).await?;
+
+        let request = Request::from_map(resource.spec.agent.configuration.unwrap_or_default())?;
+        Ok(Spec {
+            configuration: request,
+            secrets: resource.spec.agent.secrets.unwrap_or_default(),
+        })
     }
 
     async fn get_created_resource<Resource>(&self) -> ClientResult<Option<Resource>>

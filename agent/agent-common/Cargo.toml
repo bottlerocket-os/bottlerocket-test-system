@@ -1,0 +1,12 @@
+[package]
+name = "agent-common"
+version = "0.1.0"
+edition = "2018"
+publish = false
+
+[dependencies]
+model = { path = "../../model" }
+snafu = "0.6"
+
+[dev-dependencies]
+tempfile = "3"

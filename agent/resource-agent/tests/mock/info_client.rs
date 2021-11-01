@@ -1,4 +1,5 @@
-use model::Configuration;
+use agent_common::secrets::SecretData;
+use model::{Configuration, SecretName};
 use resource_agent::clients::{ClientResult, InfoClient};
 use resource_agent::BootstrapData;
 
@@ -23,5 +24,9 @@ impl InfoClient for MockInfoClient {
         Info: Configuration,
     {
         Ok(())
+    }
+
+    async fn get_secret(&self, _secret_name: &SecretName) -> ClientResult<SecretData> {
+        Ok(SecretData::default())
     }
 }
