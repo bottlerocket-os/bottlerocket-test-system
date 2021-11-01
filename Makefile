@@ -37,6 +37,13 @@ example-resource-agent-image: fetch
 		--network none \
 		-f agent/resource-agent/examples/example_resource_agent/Dockerfile .
 
+duplicator-resource-agent-image: fetch
+	docker build $(DOCKER_BUILD_FLAGS) \
+		--build-arg ARCH="$(UNAME_ARCH)" \
+		--tag "duplicator-resource-agent" \
+		--network none \
+		-f agent/resource-agent/examples/duplicator_resource_agent/Dockerfile .
+
 eks-resource-agent-image: fetch
 	docker build $(DOCKER_BUILD_FLAGS) \
 		--build-arg ARCH="$(UNAME_ARCH)" \

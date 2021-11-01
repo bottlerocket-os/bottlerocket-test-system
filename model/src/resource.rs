@@ -28,6 +28,13 @@ pub struct ResourceSpec {
 }
 
 impl Resource {
+    /// Gets the information for the resource created.
+    pub fn created_resource(&self) -> Option<&Map<String, Value>> {
+        self.status
+            .as_ref()
+            .and_then(|s| s.created_resource.as_ref())
+    }
+
     /// Gets the error that occurred during resource creation (if any).
     pub fn creation_error(&self) -> Option<&ResourceError> {
         self.status.as_ref().and_then(|s| s.creation.error.as_ref())

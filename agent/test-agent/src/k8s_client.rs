@@ -1,6 +1,6 @@
 use crate::{BootstrapData, Client, DefaultClient, TestInfo, TestResults};
 use async_trait::async_trait;
-use model::clients::{CrdClient, TestClient};
+use model::clients::{CrdClient, ResourceClient, TestClient};
 use model::{Configuration, TaskState};
 use serde_json::Value;
 use snafu::{ResultExt, Snafu};
@@ -21,6 +21,12 @@ pub(crate) enum InnerError {
 
     #[snafu(display("Unable to deserialize test configuration: {}", source))]
     Deserialization { source: serde_json::Error },
+
+    #[snafu(display("Unable to create resource client: {}", source))]
+    ResourceClientCreate { source: model::clients::Error },
+
+    #[snafu(display("Unable to resolve config templates: {}", source))]
+    ResolveConfig { source: model::clients::Error },
 }
 
 #[async_trait]
@@ -45,12 +51,19 @@ impl Client for DefaultClient {
     {
         let test_data = self.client.get(&self.name).await.context(K8s)?;
 
-        let configuration: C = match test_data.spec.agent.configuration {
-            Some(serde_map) => {
-                serde_json::from_value(Value::Object(serde_map)).context(Deserialization)?
-            }
+        let raw_config = match test_data.spec.agent.configuration {
+            Some(serde_map) => serde_map,
             None => Default::default(),
         };
+
+        let resource_client = ResourceClient::new().await.context(ResourceClientCreate)?;
+        let resolved_config = resource_client
+            .resolve_templated_config(raw_config)
+            .await
+            .context(ResolveConfig)?;
+
+        let configuration =
+            serde_json::from_value(Value::Object(resolved_config)).context(Deserialization)?;
 
         Ok(TestInfo {
             name: self.name.clone(),

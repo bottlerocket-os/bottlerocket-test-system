@@ -97,7 +97,7 @@ impl AgentType {
         let managed_status = format!("{}/status", managed_resource);
 
         // TODO - make two policy rules, remove patch/update for `managed_resource` (i.e. status only)
-        vec![PolicyRule {
+        let mut policy_rules = vec![PolicyRule {
             api_groups: Some(vec![TESTSYS.to_string()]),
             resources: Some(vec![managed_resource, managed_status]),
             verbs: vec!["get", "list", "patch", "update", "watch"]
@@ -105,6 +105,20 @@ impl AgentType {
                 .map(|s| s.to_string())
                 .collect(),
             ..Default::default()
-        }]
+        }];
+
+        // We need to give the test agent the ability to get a resource's result.
+        if matches!(self, &AgentType::Test) {
+            policy_rules.push(PolicyRule {
+                api_groups: Some(vec![TESTSYS.to_string()]),
+                resources: Some(vec![AgentType::Resource
+                    .managed_resource_plural_name()
+                    .to_string()]),
+                verbs: vec!["get".to_string()],
+                ..Default::default()
+            })
+        }
+
+        policy_rules
     }
 }
