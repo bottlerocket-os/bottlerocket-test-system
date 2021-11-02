@@ -13,4 +13,4 @@ spec:
       person: Bones the Cat
       hello_count: 3
       hello_duration_milliseconds: 500
-  resources: {}
+  resources: []
