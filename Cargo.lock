@@ -9,6 +9,7 @@ dependencies = [
  "model",
  "snafu",
  "tempfile",
+ "yamlgen",
 ]
 
 [[package]]
@@ -1428,6 +1429,7 @@ dependencies = [
  "snafu",
  "test-agent",
  "tokio",
+ "yamlgen",
 ]
 
 [[package]]
@@ -1518,6 +1520,7 @@ dependencies = [
  "serde_json",
  "snafu",
  "tokio",
+ "yamlgen",
 ]
 
 [[package]]
