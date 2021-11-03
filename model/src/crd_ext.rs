@@ -46,6 +46,15 @@ pub trait CrdExt {
         finalizers.any(|item| item == finalizer)
     }
 
+    /// Does the object have the given `finalizer`, and in what position.
+    fn finalizer_position(&self, finalizer: &str) -> Option<usize> {
+        let mut finalizers = match &self.object_meta().finalizers {
+            None => return None,
+            Some(value) => value.iter(),
+        };
+        finalizers.position(|item| item == finalizer)
+    }
+
     /// Has someone requested that the object be deleted.
     fn is_delete_requested(&self) -> bool {
         self.object_meta().deletion_timestamp.is_some()
