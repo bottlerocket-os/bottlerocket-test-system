@@ -6,6 +6,8 @@ This is the command line interface for setting up a TestSys Cluster and running 
 
 mod add;
 mod add_file;
+mod add_secret;
+mod add_secret_map;
 mod error;
 mod install;
 mod k8s;

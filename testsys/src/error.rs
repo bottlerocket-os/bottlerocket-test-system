@@ -8,6 +8,12 @@ pub(crate) type Result<T> = std::result::Result<T, Error>;
 #[derive(Debug, Snafu)]
 #[snafu(visibility = "pub(crate)")]
 pub(crate) enum Error {
+    #[snafu(display(
+        "Unable to parse argument '{}' as key value pair, expected key=value syntax",
+        arg
+    ))]
+    ArgumentMissing { arg: String },
+
     #[snafu(display("Unable to create client: {}", source))]
     ClientCreate { source: kube::Error },
 
