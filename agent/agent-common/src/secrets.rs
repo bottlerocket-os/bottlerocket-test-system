@@ -104,6 +104,12 @@ impl SecretsReader {
     }
 }
 
+impl Default for SecretsReader {
+    fn default() -> Self {
+        SecretsReader::new()
+    }
+}
+
 mod error {
     use model::SecretName;
     use snafu::Snafu;

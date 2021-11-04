@@ -1,0 +1,16 @@
+[package]
+name = "ec2-resource-agent"
+version = "0.1.0"
+edition = "2018"
+
+[dependencies]
+aws-config = "0.0.22-alpha"
+aws-sdk-ec2 = "0.0.22-alpha"
+aws-sdk-eks = "0.0.22-alpha"
+aws-sdk-iam = "0.0.22-alpha"
+async-trait = "0.1"
+base64 = "0.13.0"
+model = { path = "../../model" }
+resource-agent = { path = "../resource-agent" }
+serde = { version = "1", features = [ "derive" ] }
+tokio = { version = "1", default-features = false, features = [ "macros", "rt-multi-thread" ] }

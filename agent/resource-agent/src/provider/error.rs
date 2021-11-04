@@ -24,6 +24,46 @@ pub enum Resources {
     Unknown,
 }
 
+/// This is a trait that you can implement for your `Info` type to describe whether or not resources
+/// remain that need to be cleaned up.
+///
+/// # Example
+///
+/// ```
+/// use resource_agent::provider::{AsResources, ProviderError, IntoProviderError, Resources};
+/// struct MyInfoType {
+///     ids: Vec<usize>
+/// }
+/// impl AsResources for MyInfoType {
+///     fn as_resources(&self) -> Resources {
+///         if self.ids.is_empty() {
+///             Resources::Clear
+///         } else {
+///             Resources::Remaining
+///         }
+///     }
+/// }
+/// ```
+///
+pub trait AsResources {
+    /// Inspects `&self` and determines if there are resources remaining.
+    fn as_resources(&self) -> Resources;
+}
+
+// Implement the trivial case of `AsResources` for the `Resources` enum itself.
+impl AsResources for Resources {
+    fn as_resources(&self) -> Resources {
+        *self
+    }
+}
+
+// Implement the trivial case of `AsResources` for a ref to the `Resources` enum itself.
+impl AsResources for &Resources {
+    fn as_resources(&self) -> Resources {
+        **self
+    }
+}
+
 /// The error type returned by [`Create`] and [`Destroy`] implementations.
 #[derive(Debug)]
 pub struct ProviderError {
@@ -42,35 +82,38 @@ pub struct ProviderError {
 pub type ProviderResult<T> = std::result::Result<T, ProviderError>;
 
 impl ProviderError {
-    pub fn new_with_source_and_context<S, E>(resources: Resources, context: S, source: E) -> Self
+    pub fn new_with_source_and_context<R, S, E>(resources: R, context: S, source: E) -> Self
     where
+        R: AsResources,
         S: Into<String>,
         E: Into<Box<dyn std::error::Error + Send + Sync + 'static>>,
     {
         Self {
-            resources,
+            resources: resources.as_resources(),
             context: Some(context.into()),
             inner: Some(source.into()),
         }
     }
 
-    pub fn new_with_source<E>(resources: Resources, source: E) -> Self
+    pub fn new_with_source<R, E>(resources: R, source: E) -> Self
     where
+        R: AsResources,
         E: Into<Box<dyn std::error::Error + Send + Sync + 'static>>,
     {
         Self {
-            resources,
+            resources: resources.as_resources(),
             context: None,
             inner: Some(source.into()),
         }
     }
 
-    pub fn new_with_context<S>(resources: Resources, context: S) -> Self
+    pub fn new_with_context<R, S>(resources: R, context: S) -> Self
     where
+        R: AsResources,
         S: Into<String>,
     {
         Self {
-            resources,
+            resources: resources.as_resources(),
             context: Some(context.into()),
             inner: None,
         }
@@ -121,9 +164,45 @@ impl Display for Resources {
     }
 }
 
+// Make `ProviderError` function as a standard error.
 impl std::error::Error for ProviderError {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         self.inner()
             .map(|e| e as &(dyn std::error::Error + 'static))
+    }
+}
+
+/// A trait that makes it possible to convert error types to `ProviderError` using a familiar
+/// `context` function.
+pub trait IntoProviderError<T> {
+    /// Convert `self` into a `ProviderError`.
+    fn context<R, S>(self, resources: R, message: S) -> ProviderResult<T>
+    where
+        S: Into<String>,
+        R: AsResources;
+}
+
+// Implement `IntoProviderError` for all standard `Error + Send + Sync + 'static` types.
+impl<T, E> IntoProviderError<T> for std::result::Result<T, E>
+where
+    E: std::error::Error + Send + Sync + 'static,
+{
+    fn context<R, S>(self, resources: R, message: S) -> ProviderResult<T>
+    where
+        S: Into<String>,
+        R: AsResources,
+    {
+        self.map_err(|e| ProviderError::new_with_source_and_context(resources, message, e))
+    }
+}
+
+// Implement `IntoProviderError` for options where `None` is converted into an error.
+impl<T> IntoProviderError<T> for std::option::Option<T> {
+    fn context<R, S>(self, r: R, m: S) -> Result<T, ProviderError>
+    where
+        S: Into<String>,
+        R: AsResources,
+    {
+        self.ok_or_else(|| ProviderError::new_with_context(r, m))
     }
 }

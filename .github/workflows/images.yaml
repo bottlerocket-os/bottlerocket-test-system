@@ -13,6 +13,7 @@ jobs:
       matrix:
         make_target:
          - "controller-image"
+         - "ec2-resource-agent-image"
          - "example-resource-agent-image"
          - "example-test-agent-image"
          - "sonobuoy-test-agent-image"
