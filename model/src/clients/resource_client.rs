@@ -58,6 +58,7 @@ impl ResourceClient {
             None => return Ok(R::default()),
             Some(some) => some,
         };
+        // Add test results here.
         Ok(R::from_map(map).context(error::ConfigSerde)?)
     }
 
