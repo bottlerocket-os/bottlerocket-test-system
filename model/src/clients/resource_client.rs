@@ -3,9 +3,22 @@ use crate::clients::crd_client::JsonPatch;
 use crate::clients::CrdClient;
 use crate::resource::{ResourceAction, ResourceError};
 use crate::{Configuration, Resource, ResourceStatus, TaskState};
+use futures::stream::{self, StreamExt};
 use kube::Api;
 use log::trace;
-use snafu::ResultExt;
+use regex::Regex;
+use serde_json::{Map, Value};
+use snafu::{OptionExt, ResultExt};
+
+const TEMPLATE_PATTERN_REGEX: &str = r"^\$\{(.+)\.(.+)\}$";
+
+lazy_static::lazy_static! {
+
+    static ref REGEX: Regex = {
+        #[allow(clippy::unwrap_used)]
+        Regex::new(TEMPLATE_PATTERN_REGEX).unwrap()
+    };
+}
 
 /// An API Client for TestSys Resource CRD objects.
 ///
@@ -59,7 +72,25 @@ impl ResourceClient {
             Some(some) => some,
         };
         // Add test results here.
+        let map = self.resolve_templated_config(map).await?;
+
         Ok(R::from_map(map).context(error::ConfigSerde)?)
+    }
+
+    /// This function resolves an agents config by populating it's templated fields.
+    /// An agent may use the syntax `${resource_name.field_name}` to have the field
+    /// named `field_name` of the resource named `resource_name` populated in the
+    /// configuration map.
+    pub async fn resolve_templated_config(
+        &self,
+        raw_config: Map<String, Value>,
+    ) -> Result<Map<String, Value>> {
+        stream::iter(raw_config)
+            .then(|(k, v)| async move { self.resolve_input(v).await.map(|v| (k, v)) })
+            .collect::<Vec<Result<(_, _)>>>()
+            .await
+            .into_iter()
+            .collect::<Result<Map<String, Value>>>()
     }
 
     pub async fn send_creation_success<R>(
@@ -153,6 +184,74 @@ impl ResourceClient {
     async fn get_status(&self, name: &str) -> Result<ResourceStatus> {
         Ok(self.get(name).await?.status.unwrap_or_default())
     }
+
+    async fn resolve_input(&self, input: Value) -> Result<Value> {
+        match input {
+            Value::String(input_string) => self.resolve_input_string(input_string).await,
+            non_string_input => Ok(non_string_input),
+        }
+    }
+
+    async fn resolve_input_string(&self, input: String) -> Result<Value> {
+        if let Some((resource_name, field_name)) = resource_name_and_field_name(&input)? {
+            let resource = self.get(resource_name).await?;
+            let results = resource
+                .created_resource()
+                .context(error::ConfigResolution {
+                    what: "Created resource missing from resource.".to_string(),
+                })?;
+            let updated_value = results.get(&field_name).context(error::ConfigResolution {
+                what: format!("No field '{}' in created resource", field_name),
+            })?;
+            Ok(updated_value.to_owned())
+        } else {
+            Ok(Value::String(input))
+        }
+    }
+}
+
+fn resource_name_and_field_name(input: &str) -> Result<Option<(String, String)>> {
+    let captures = match REGEX.captures(&input) {
+        None => return Ok(None),
+        Some(some) => some,
+    };
+    let resource_name = captures
+        .get(1)
+        .context(error::ConfigResolution {
+            what: "Resource name could not be extracted from capture.".to_string(),
+        })?
+        .as_str();
+    let field_name = captures
+        .get(2)
+        .context(error::ConfigResolution {
+            what: "Resource value could not be extracted from capture.".to_string(),
+        })?
+        .as_str();
+    Ok(Some((resource_name.to_string(), field_name.to_string())))
+}
+
+#[test]
+fn test_pattern1() {
+    let (resource_name, field_name) = resource_name_and_field_name(r"${dup1.info}")
+        .unwrap()
+        .unwrap();
+    assert_eq!(resource_name, "dup1");
+    assert_eq!(field_name, "info");
+    assert!(resource_name_and_field_name(r"hello").unwrap().is_none());
+    assert!(resource_name_and_field_name(r"${hello}").unwrap().is_none());
+    assert!(resource_name_and_field_name(r"foo${x.y}")
+        .unwrap()
+        .is_none());
+    assert!(resource_name_and_field_name(r"${x.y}foo")
+        .unwrap()
+        .is_none());
+    assert!(resource_name_and_field_name(r"foo${x.y}bar")
+        .unwrap()
+        .is_none());
+    assert!(resource_name_and_field_name(r"${.x}").unwrap().is_none());
+    assert!(resource_name_and_field_name(r"${x.}").unwrap().is_none());
+    assert!(resource_name_and_field_name(r"${.}").unwrap().is_none());
+    assert!(resource_name_and_field_name(r"${.}").unwrap().is_none());
 }
 
 impl CrdClient for ResourceClient {
