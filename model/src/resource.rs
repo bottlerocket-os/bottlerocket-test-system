@@ -23,6 +23,8 @@ use std::fmt::{Display, Formatter};
     version = "v1"
 )]
 pub struct ResourceSpec {
+    /// Other resources that must to be created before this one can be created.
+    pub depends_on: Option<Vec<String>>,
     /// Information about the resource agent.
     pub agent: Agent,
 }

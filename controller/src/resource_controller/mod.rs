@@ -81,8 +81,15 @@ async fn do_creation_action(r: ResourceInterface, action: CreationAction) -> Res
                 .with_context(|| format!("Unable to creation job finalizer to '{}'", r.name()))?;
         }
         CreationAction::StartJob => r.start_job(ResourceAction::Create).await?,
-        CreationAction::Wait => {
-            trace!("waiting for resource creation")
+        CreationAction::WaitForCreation => {
+            debug!("waiting for creation of resource '{}'", r.name())
+        }
+        CreationAction::WaitForDependency(dependency) => {
+            debug!(
+                "'{}' is waiting for dependency '{}' to be created",
+                r.name(),
+                dependency
+            );
         }
         CreationAction::AddResourceFinalizer => {
             let _ = r
