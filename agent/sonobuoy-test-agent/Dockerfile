@@ -14,10 +14,10 @@ RUN --mount=type=cache,mode=0777,target=/src/target \
     cargo install --offline --locked --target ${UNAME_ARCH}-bottlerocket-linux-musl --path . --root ./
 
 FROM public.ecr.aws/amazonlinux/amazonlinux:2
-ARG ARCH
+ARG GOARCH
 ARG SONOBUOY_VERSION=0.53.2
-ARG SONOBUOY_URL=https://github.com/vmware-tanzu/sonobuoy/releases/download/v${SONOBUOY_VERSION}/sonobuoy_${SONOBUOY_VERSION}_linux_${ARCH}.tar.gz
-ARG AWS_IAM_AUTHENTICATOR_URL=https://amazon-eks.s3.us-west-2.amazonaws.com/1.21.2/2021-07-05/bin/linux/${ARCH}/aws-iam-authenticator
+ARG SONOBUOY_URL=https://github.com/vmware-tanzu/sonobuoy/releases/download/v${SONOBUOY_VERSION}/sonobuoy_${SONOBUOY_VERSION}_linux_${GOARCH}.tar.gz
+ARG AWS_IAM_AUTHENTICATOR_URL=https://amazon-eks.s3.us-west-2.amazonaws.com/1.21.2/2021-07-05/bin/linux/${GOARCH}/aws-iam-authenticator
 RUN yum install -y tar gzip && yum clean all
 
 # Download aws-iam-authenticator
