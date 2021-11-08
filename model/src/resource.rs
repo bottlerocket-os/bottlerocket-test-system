@@ -1,4 +1,4 @@
-use crate::{Agent, CrdExt, TaskState};
+use crate::{agent::config_schema, Agent, CrdExt, TaskState};
 use core::option::Option;
 use k8s_openapi::apimachinery::pkg::apis::meta::v1::ObjectMeta;
 use kube::{CustomResource, Resource as Kresource};
@@ -150,9 +150,11 @@ pub struct ResourceStatus {
     pub destruction: ResourceAgentState,
 
     /// Open content to be used by the resource agent to store state.
+    #[schemars(schema_with = "config_schema")]
     pub agent_info: Option<Map<String, Value>>,
 
     /// A description of the resource that has been created by the resource agent.
+    #[schemars(schema_with = "config_schema")]
     pub created_resource: Option<Map<String, Value>>,
 }
 

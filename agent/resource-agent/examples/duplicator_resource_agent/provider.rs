@@ -8,12 +8,16 @@ and tests that depend on resources for their inputs.
 
 use model::Configuration;
 use resource_agent::clients::InfoClient;
-use resource_agent::provider::{Create, Destroy, ProviderResult, Spec};
+use resource_agent::provider::{
+    Create, Destroy, IntoProviderError, ProviderResult, Resources, Spec,
+};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 #[derive(Clone, Debug, Default, Eq, PartialEq, Serialize, Deserialize)]
-pub struct Memo {}
+pub struct Memo {
+    info: Option<DuplicationRequest>,
+}
 
 impl Configuration for Memo {}
 
@@ -44,11 +48,20 @@ impl Create for DuplicationCreator {
     async fn create<I>(
         &self,
         request: Spec<Self::Request>,
-        _client: &I,
+        client: &I,
     ) -> ProviderResult<Self::Resource>
     where
         I: InfoClient,
     {
+        let mut memo: Memo = client
+            .get_info()
+            .await
+            .context(Resources::Clear, "Unable to get info from client")?;
+        memo.info = Some(request.configuration.clone());
+        client.send_info(memo.clone()).await.context(
+            Resources::Remaining,
+            "Error sending cluster created message",
+        )?;
         Ok(DuplicatedData {
             info: request.configuration.info.clone(),
         })

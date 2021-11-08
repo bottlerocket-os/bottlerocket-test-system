@@ -31,6 +31,7 @@ spec:
 use async_trait::async_trait;
 use model::{Outcome, TestResults};
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use test_agent::{BootstrapData, Configuration, TestInfo};
 use tokio::time::{sleep, Duration};
 
@@ -45,6 +46,12 @@ struct ExampleConfig {
     person: String,
     hello_count: u32,
     hello_duration_milliseconds: u32,
+    nested: Option<Nested>,
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+struct Nested {
+    data: Value,
 }
 
 impl Configuration for ExampleConfig {}
@@ -69,6 +76,9 @@ impl test_agent::Runner for ExampleTestRunner {
                 self.config.hello_duration_milliseconds.into(),
             ))
             .await
+        }
+        if let Some(nested) = &self.config.nested {
+            println!("Nested Data:\n {:?}", nested.data);
         }
         Ok(TestResults {
             outcome: Outcome::Pass,
