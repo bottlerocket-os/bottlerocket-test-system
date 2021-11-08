@@ -4,7 +4,7 @@ use resource_agent::provider::{
     Create, Destroy, IntoProviderError, ProviderError, ProviderResult, Resources, Spec,
 };
 use serde::{Deserialize, Serialize};
-use std::env;
+use std::env::{self, temp_dir};
 use std::process::Command;
 
 /// The default region for the cluster.
@@ -48,6 +48,9 @@ pub struct CreatedCluster {
 
     /// The region the cluster is in.
     pub region: String,
+
+    // Base64 encoded kubeconfig
+    pub encoded_kubeconfig: String,
 }
 
 impl Configuration for CreatedCluster {}
@@ -94,6 +97,8 @@ impl Create for EksCreator {
             .await
             .context(Resources::Clear, "Error sending cluster creation message")?;
 
+        let kubeconfig_dir = temp_dir().join("kubeconfig.yaml");
+
         let status = Command::new("eksctl")
             .args([
                 "create",
@@ -103,6 +108,11 @@ impl Create for EksCreator {
                 "--zones",
                 &request.configuration.zones.unwrap_or_default().join(","),
                 "--set-kubeconfig-context=false",
+                "--kubeconfig",
+                kubeconfig_dir.to_str().context(
+                    Resources::Clear,
+                    format!("Unable to convert '{:?}' to string path", kubeconfig_dir),
+                )?,
                 "-n",
                 &cluster_name,
                 "--nodes",
@@ -119,9 +129,14 @@ impl Create for EksCreator {
             ));
         }
 
+        let kubeconfig = std::fs::read_to_string(kubeconfig_dir)
+            .context(Resources::Remaining, "Unable to read kubeconfig.")?;
+        let encoded_kubeconfig = base64::encode(kubeconfig);
+
         let created_lot = CreatedCluster {
             cluster_name: cluster_name.clone(),
             region: region.clone(),
+            encoded_kubeconfig,
         };
 
         memo.current_status = "Cluster Created".into();
