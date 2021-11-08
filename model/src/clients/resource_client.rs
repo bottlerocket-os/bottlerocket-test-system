@@ -3,6 +3,7 @@ use crate::clients::crd_client::JsonPatch;
 use crate::clients::CrdClient;
 use crate::resource::{ResourceAction, ResourceError};
 use crate::{Configuration, Resource, ResourceStatus, TaskState};
+use async_recursion::async_recursion;
 use futures::stream::{self, StreamExt};
 use kube::Api;
 use log::trace;
@@ -185,9 +186,14 @@ impl ResourceClient {
         Ok(self.get(name).await?.status.unwrap_or_default())
     }
 
+    #[async_recursion]
     async fn resolve_input(&self, input: Value) -> Result<Value> {
         match input {
             Value::String(input_string) => self.resolve_input_string(input_string).await,
+            Value::Object(map) => self
+                .resolve_templated_config(map)
+                .await
+                .map(|map| Value::Object(map)),
             non_string_input => Ok(non_string_input),
         }
     }
