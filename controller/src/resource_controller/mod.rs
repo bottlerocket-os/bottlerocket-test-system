@@ -152,6 +152,7 @@ async fn handle_error_state(r: &ResourceInterface, a: ResourceAction, e: ErrorSt
         },
         r.name(),
         match e {
+            ErrorState::JobStart => "Timeout before resource started",
             ErrorState::JobExited => "Container exited before it was done",
             ErrorState::JobFailed => "Container exited with an error",
             ErrorState::JobRemoved => "Container was killed before it was done",

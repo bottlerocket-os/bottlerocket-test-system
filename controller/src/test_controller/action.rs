@@ -1,5 +1,5 @@
 use crate::error::Result;
-use crate::job::JobState;
+use crate::job::{JobState, TEST_START_TIME_LIMIT};
 use crate::test_controller::context::TestInterface;
 use anyhow::Context;
 use kube::Api;
@@ -31,6 +31,7 @@ pub(super) enum ErrorState {
     Zombie,
     TestError(String),
     JobFailure,
+    JobStart,
     JobExitBeforeDone,
     HandleJobRemovedBeforeDone,
 }
@@ -45,6 +46,7 @@ impl Display for ErrorState {
             ),
             ErrorState::TestError(e) => Display::fmt(e, f),
             ErrorState::JobFailure => Display::fmt("The job failed", f),
+            ErrorState::JobStart => Display::fmt("The job failed to start in time", f),
             ErrorState::JobExitBeforeDone => {
                 Display::fmt("The test agent exited before marking the test complete", f)
             }
@@ -168,9 +170,23 @@ async fn task_not_done_action(t: &TestInterface, is_task_state_running: bool) ->
             trace!("Waiting for test agent '{}' container to start", t.name());
             Ok(Action::WaitForTest)
         }
-        JobState::Running => {
+        JobState::Running(None) => {
             trace!("Test '{}' is running", t.name());
             Ok(Action::WaitForTest)
+        }
+        JobState::Running(Some(duration)) => {
+            if t.test().agent_status().task_state == TaskState::Unknown
+                && duration >= *TEST_START_TIME_LIMIT
+            {
+                trace!(
+                    "Test '{}' failed to reach running state within time limit",
+                    t.name()
+                );
+                Ok(Action::Error(ErrorState::JobStart))
+            } else {
+                trace!("Test '{}' is running", t.name());
+                Ok(Action::WaitForTest)
+            }
         }
         JobState::Failed => Ok(Action::Error(ErrorState::JobFailure)),
         JobState::Exited => Ok(Action::Error(ErrorState::JobExitBeforeDone)),
