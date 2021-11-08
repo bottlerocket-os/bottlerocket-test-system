@@ -42,6 +42,7 @@ pub struct Agent {
     pub keep_running: bool,
     /// The configuration to pass to the agent. This is 'open' to allow agents to define their own
     /// schemas.
+    #[schemars(schema_with = "config_schema")]
     pub configuration: Option<Map<String, Value>>,
     /// A map of `SecretType` -> `SecretName` where `SecretType` is defined by the agent that will
     /// use it, and `SecretName` is provided by the user. `SecretName` is constrained to ascii
@@ -56,6 +57,21 @@ impl Agent {
             .map(|secrets_map| secrets_map.values().collect::<BTreeSet<&SecretName>>())
             .unwrap_or_default()
     }
+}
+
+pub fn config_schema(_: &mut schemars::gen::SchemaGenerator) -> schemars::schema::Schema {
+    let mut extensions = BTreeMap::<String, Value>::new();
+    extensions.insert("nullable".to_string(), Value::Bool(true));
+    extensions.insert(
+        "x-kubernetes-preserve-unknown-fields".to_string(),
+        Value::Bool(true),
+    );
+    let schema = SchemaObject {
+        instance_type: Some(InstanceType::Object.into()),
+        extensions,
+        ..SchemaObject::default()
+    };
+    schema.into()
 }
 
 /// The type of a secret, as defined and required by an agent. Possible examples: `foo-credentials`,

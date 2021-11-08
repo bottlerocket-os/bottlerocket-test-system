@@ -27,10 +27,10 @@ spec:
                   description: Information about the test agent.
                   properties:
                     configuration:
-                      additionalProperties: true
                       description: "The configuration to pass to the agent. This is 'open' to allow agents to define their own schemas."
                       nullable: true
                       type: object
+                      x-kubernetes-preserve-unknown-fields: true
                     image:
                       description: The URI of the agent container image.
                       type: string
@@ -54,6 +54,7 @@ spec:
                       nullable: true
                       type: object
                   required:
+                    - configuration
                     - image
                     - keep_running
                     - name
@@ -168,10 +169,10 @@ spec:
                   description: Information about the resource agent.
                   properties:
                     configuration:
-                      additionalProperties: true
                       description: "The configuration to pass to the agent. This is 'open' to allow agents to define their own schemas."
                       nullable: true
                       type: object
+                      x-kubernetes-preserve-unknown-fields: true
                     image:
                       description: The URI of the agent container image.
                       type: string
@@ -195,6 +196,7 @@ spec:
                       nullable: true
                       type: object
                   required:
+                    - configuration
                     - image
                     - keep_running
                     - name
@@ -207,15 +209,15 @@ spec:
               nullable: true
               properties:
                 agent_info:
-                  additionalProperties: true
                   description: Open content to be used by the resource agent to store state.
                   nullable: true
                   type: object
+                  x-kubernetes-preserve-unknown-fields: true
                 created_resource:
-                  additionalProperties: true
                   description: A description of the resource that has been created by the resource agent.
                   nullable: true
                   type: object
+                  x-kubernetes-preserve-unknown-fields: true
                 creation:
                   description: The state or the resource agent when creating resources.
                   properties:
@@ -281,6 +283,8 @@ spec:
                     - task_state
                   type: object
               required:
+                - agent_info
+                - created_resource
                 - creation
                 - destruction
               type: object
