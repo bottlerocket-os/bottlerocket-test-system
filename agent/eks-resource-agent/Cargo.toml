@@ -5,6 +5,7 @@
 
  [dependencies]
  async-trait = "0.1"
+ base64 = "0.13.0"
  model = { path = "../../model" }
  resource-agent = { path = "../resource-agent" }
  serde = { version = "1", features = [ "derive" ] }

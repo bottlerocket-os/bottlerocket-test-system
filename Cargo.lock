@@ -659,6 +659,7 @@ name = "eks-resource-agent"
 version = "0.1.0"
 dependencies = [
  "async-trait",
+ "base64",
  "model",
  "resource-agent",
  "serde",
