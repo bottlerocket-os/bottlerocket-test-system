@@ -1918,6 +1918,7 @@ dependencies = [
 name = "sonobuoy-test-agent"
 version = "0.1.0"
 dependencies = [
+ "agent-common",
  "async-trait",
  "base64",
  "log",

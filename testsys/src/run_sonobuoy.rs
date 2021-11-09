@@ -3,13 +3,13 @@ use kube::{api::ObjectMeta, Client};
 use model::{
     clients::TestClient,
     constants::{API_VERSION, NAMESPACE},
-    Agent, Configuration, Test, TestSpec,
+    Agent, Configuration, SecretName, Test, TestSpec,
 };
 use snafu::ResultExt;
 // use sonobuoy_test_agent::SonobuoyConfig;
 use model::clients::CrdClient;
-use sonobuoy_test_agent::SonobuoyConfig;
-use std::{fs::read_to_string, path::PathBuf};
+use sonobuoy_test_agent::{SonobuoyConfig, SONOBUOY_AWS_SECRET_NAME};
+use std::{collections::BTreeMap, fs::read_to_string, path::PathBuf};
 use structopt::StructOpt;
 
 /// Run a test stored in a YAML file at `path`.
@@ -50,6 +50,10 @@ pub(crate) struct RunSonobuoy {
     /// The kubernetes conformance image used for the sonobuoy test.
     #[structopt(long)]
     kubernetes_conformance_image: Option<String>,
+
+    /// The name of the secret containing aws credentials.
+    #[structopt(long)]
+    aws_credentials: Option<SecretName>,
 }
 
 impl RunSonobuoy {
@@ -86,7 +90,12 @@ impl RunSonobuoy {
                         .into_map()
                         .context(error::ConfigMap)?,
                     ),
-                    secrets: None,
+                    secrets: self.aws_credentials.as_ref().map(|secret_name| {
+                        let mut secrets_map = BTreeMap::new();
+                        secrets_map
+                            .insert(SONOBUOY_AWS_SECRET_NAME.to_string(), secret_name.clone());
+                        secrets_map
+                    }),
                 },
             },
             status: None,
