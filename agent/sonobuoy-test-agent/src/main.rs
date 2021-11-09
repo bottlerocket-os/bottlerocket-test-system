@@ -34,14 +34,15 @@ spec:
 
 use async_trait::async_trait;
 use log::info;
-use model::{Outcome, TestResults};
+use model::{Outcome, SecretName, TestResults};
 use simplelog::{Config as LogConfig, LevelFilter, SimpleLogger};
 use snafu::{ensure, OptionExt, ResultExt, Snafu};
-use sonobuoy_test_agent::SonobuoyConfig;
+use sonobuoy_test_agent::{SonobuoyConfig, SONOBUOY_AWS_SECRET_NAME};
 use std::path::Path;
 use std::process::Command;
-use std::{fs, process};
-use test_agent::{BootstrapData, ClientError, DefaultClient, TestAgent, TestInfo};
+use std::string::FromUtf8Error;
+use std::{env, fs, process};
+use test_agent::{BootstrapData, ClientError, DefaultClient, Runner, TestAgent, TestInfo};
 
 const TEST_CLUSTER_KUBECONFIG: &str = "/local/test-cluster.kubeconfig";
 
@@ -50,8 +51,19 @@ enum SonobuoyError {
     #[snafu(display("Failed to base64-decode kubeconfig for test cluster: {}", source))]
     Base64Decode { source: base64::DecodeError },
 
+    #[snafu(display("Could not convert '{}' secret to string: {}", what, source))]
+    Conversion { what: String, source: FromUtf8Error },
+
+    #[snafu(display("Failed to setup environment variables: {}", what))]
+    EnvSetup { what: String },
+
     #[snafu(display("Failed to write kubeconfig for test cluster: {}", source))]
     KubeconfigWrite { source: std::io::Error },
+
+    #[snafu(display("Secret was missing: {}", source))]
+    SecretMissing {
+        source: agent_common::secrets::Error,
+    },
 
     #[snafu(display("Failed to create sonobuoy process: {}", source))]
     SonobuoyProcess { source: std::io::Error },
@@ -71,6 +83,7 @@ enum SonobuoyError {
 
 struct SonobuoyTestRunner {
     config: SonobuoyConfig,
+    aws_secret_name: Option<SecretName>,
 }
 
 #[async_trait]
@@ -82,10 +95,18 @@ impl test_agent::Runner for SonobuoyTestRunner {
         info!("Initializing Sonobuoy test agent...");
         Ok(Self {
             config: test_info.configuration,
+            aws_secret_name: test_info
+                .secrets
+                .get(SONOBUOY_AWS_SECRET_NAME)
+                .map(|secret_name| secret_name.clone()),
         })
     }
 
     async fn run(&mut self) -> Result<TestResults, Self::E> {
+        // Set up the aws credentials if they were provided.
+        if let Some(aws_secret_name) = &self.aws_secret_name {
+            self.setup_env(aws_secret_name).await?;
+        }
         info!("Decoding kubeconfig for test cluster");
         let decoded_bytes =
             base64::decode(self.config.kubeconfig_base64.as_bytes()).context(Base64Decode)?;
@@ -205,6 +226,46 @@ impl test_agent::Runner for SonobuoyTestRunner {
             .status()
             .context(SonobuoyProcess)?;
         ensure!(status.success(), SonobuoyDelete);
+
+        Ok(())
+    }
+}
+
+impl SonobuoyTestRunner {
+    async fn setup_env(
+        &self,
+        aws_secret_name: &SecretName,
+    ) -> Result<(), <SonobuoyTestRunner as test_agent::Runner>::E> {
+        let aws_secret = self.get_secret(aws_secret_name).context(SecretMissing)?;
+
+        let access_key_id = String::from_utf8(
+            aws_secret
+                .get("access-key-id")
+                .context(EnvSetup {
+                    what: format!("access-key-id missing from secret '{}'", aws_secret_name),
+                })?
+                .to_owned(),
+        )
+        .context(Conversion {
+            what: "access-key-id",
+        })?;
+        let secret_access_key = String::from_utf8(
+            aws_secret
+                .get("secret-access-key")
+                .context(EnvSetup {
+                    what: format!(
+                        "secret-access-key missing from secret '{}'",
+                        aws_secret_name
+                    ),
+                })?
+                .to_owned(),
+        )
+        .context(Conversion {
+            what: "access-key-id",
+        })?;
+
+        env::set_var("AWS_ACCESS_KEY_ID", access_key_id);
+        env::set_var("AWS_SECRET_ACCESS_KEY", secret_access_key);
 
         Ok(())
     }
