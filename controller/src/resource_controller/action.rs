@@ -1,7 +1,9 @@
 use crate::error::Result;
 use crate::job::{JobState, TEST_START_TIME_LIMIT};
 use crate::resource_controller::context::ResourceInterface;
+use kube::ResourceExt;
 use log::trace;
+use model::clients::CrdClient;
 use model::constants::{FINALIZER_CREATION_JOB, FINALIZER_MAIN, FINALIZER_RESOURCE};
 use model::{CrdExt, ResourceAction, TaskState};
 
@@ -18,7 +20,8 @@ pub(super) enum CreationAction {
     AddMainFinalizer,
     AddJobFinalizer,
     StartJob,
-    Wait,
+    WaitForDependency(String),
+    WaitForCreation,
     AddResourceFinalizer,
     Done,
     Error(ErrorState),
@@ -63,6 +66,10 @@ async fn creation_action(r: &ResourceInterface) -> Result<CreationAction> {
         return Ok(CreationAction::AddMainFinalizer);
     }
 
+    if let Some(wait_action) = dependency_wait_action(r).await? {
+        return Ok(wait_action);
+    }
+
     let task_state = r.resource().creation_task_state();
     match task_state {
         TaskState::Unknown => creation_not_done_action(r, false).await,
@@ -70,6 +77,30 @@ async fn creation_action(r: &ResourceInterface) -> Result<CreationAction> {
         TaskState::Completed => creation_completed_action(r).await,
         TaskState::Error => Ok(CreationAction::Error(ErrorState::TaskFailed)),
     }
+}
+
+async fn dependency_wait_action(r: &ResourceInterface) -> Result<Option<CreationAction>> {
+    let depends_on = if let Some(depends_on) = &r.resource().spec.depends_on {
+        if depends_on.is_empty() {
+            return Ok(None);
+        }
+        depends_on
+    } else {
+        return Ok(None);
+    };
+
+    // Make sure each resource in depends_on is ready.
+    // TODO - error if cyclical dependencies https://github.com/bottlerocket-os/bottlerocket-test-system/issues/156
+    for needed in depends_on {
+        // TODO - error if 404/not-found https://github.com/bottlerocket-os/bottlerocket-test-system/issues/157
+        let needed_resource = r.resource_client().get(needed).await?;
+        if needed_resource.created_resource().is_none() {
+            return Ok(Some(CreationAction::WaitForDependency(
+                needed_resource.name().to_owned(),
+            )));
+        }
+    }
+    Ok(None)
 }
 
 async fn creation_not_done_action(
@@ -83,15 +114,15 @@ async fn creation_not_done_action(
     match job_state {
         JobState::None if !is_task_state_running => Ok(CreationAction::StartJob),
         JobState::None => Ok(CreationAction::Error(ErrorState::JobRemoved)),
-        JobState::Unknown => Ok(CreationAction::Wait),
-        JobState::Running(None) => Ok(CreationAction::Wait),
+        JobState::Unknown => Ok(CreationAction::WaitForCreation),
+        JobState::Running(None) => Ok(CreationAction::WaitForCreation),
         JobState::Running(Some(duration)) => {
             if r.resource().creation_task_state() == TaskState::Unknown
                 && duration >= *TEST_START_TIME_LIMIT
             {
                 Ok(CreationAction::Error(ErrorState::JobStart))
             } else {
-                Ok(CreationAction::Wait)
+                Ok(CreationAction::WaitForCreation)
             }
         }
         JobState::Failed => Ok(CreationAction::Error(ErrorState::JobFailed)),
