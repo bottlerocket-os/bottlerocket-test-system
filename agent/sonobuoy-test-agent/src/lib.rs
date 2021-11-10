@@ -1,7 +1,7 @@
 use model::Configuration;
 use serde::{Deserialize, Serialize};
 
-pub const SONOBUOY_AWS_SECRET_NAME: &str = "aws_credentials";
+pub const SONOBUOY_AWS_SECRET_NAME: &str = "aws-credentials";
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct SonobuoyConfig {

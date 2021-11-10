@@ -93,8 +93,11 @@ impl AgentClient for DefaultAgentClient {
         Request: Configuration,
     {
         let resource = self.resource_client.get(&self.data.resource_name).await?;
-
-        let request = Request::from_map(resource.spec.agent.configuration.unwrap_or_default())?;
+        let request = Request::from_map(
+            self.resource_client
+                .resolve_templated_config(resource.spec.agent.configuration.unwrap_or_default())
+                .await?,
+        )?;
         Ok(Spec {
             configuration: request,
             secrets: resource.spec.agent.secrets.unwrap_or_default(),

@@ -5,8 +5,14 @@
 
  [dependencies]
  async-trait = "0.1"
+ aws-config = "0.0.22-alpha"
+ aws-sdk-ec2 = "0.0.22-alpha"
+ aws-sdk-eks = "0.0.22-alpha"
+ aws-sdk-iam = "0.0.22-alpha"
  base64 = "0.13.0"
+ ec2-resource-agent = { path = "../ec2-resource-agent" }
  model = { path = "../../model" }
  resource-agent = { path = "../resource-agent" }
  serde = { version = "1", features = [ "derive" ] }
+ serde_json = "1"
  tokio = { version = "1", default-features = false, features = [ "time", "macros", "rt-multi-thread" ] }

@@ -650,8 +650,6 @@ dependencies = [
  "async-trait",
  "aws-config",
  "aws-sdk-ec2",
- "aws-sdk-eks",
- "aws-sdk-iam",
  "base64",
  "model",
  "resource-agent",
@@ -670,10 +668,16 @@ name = "eks-resource-agent"
 version = "0.1.0"
 dependencies = [
  "async-trait",
+ "aws-config",
+ "aws-sdk-ec2",
+ "aws-sdk-eks",
+ "aws-sdk-iam",
  "base64",
+ "ec2-resource-agent",
  "model",
  "resource-agent",
  "serde",
+ "serde_json",
  "tokio",
 ]
 
