@@ -218,7 +218,6 @@ fn create_cluster(
             region,
             "--zones",
             &zones.clone().unwrap_or_default().join(","),
-            "--set-kubeconfig-context=false",
             "--kubeconfig",
             kubeconfig_dir.to_str().context(
                 Resources::Clear,
