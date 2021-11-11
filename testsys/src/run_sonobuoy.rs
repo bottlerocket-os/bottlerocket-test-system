@@ -54,6 +54,10 @@ pub(crate) struct RunSonobuoy {
     /// The name of the secret containing aws credentials.
     #[structopt(long)]
     aws_credentials: Option<SecretName>,
+
+    /// The resources required by the sonobuoy test.
+    #[structopt(long)]
+    resource: Vec<String>,
 }
 
 impl RunSonobuoy {
@@ -73,7 +77,7 @@ impl RunSonobuoy {
                 ..Default::default()
             },
             spec: TestSpec {
-                resources: Default::default(),
+                resources: self.resource.clone(),
                 agent: Agent {
                     name: "sonobuoy-test-agent".to_string(),
                     image: self.image.clone(),
