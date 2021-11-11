@@ -19,14 +19,15 @@ pub(crate) struct RunSonobuoy {
     #[structopt(
         long,
         parse(from_os_str),
-        required_if("kubeconfig-template", "None"),
+        required_if("target-cluster-kubeconfig", "None"),
         conflicts_with("target-cluster-kubeconfig")
     )]
-    target_cluster_kubeconfig: Option<PathBuf>,
+    target_cluster_kubeconfig_path: Option<PathBuf>,
 
-    /// The templating that should be used to configure the kubeconfig.
-    #[structopt(long, required_if("target-cluster-kubeconfig", "None"))]
-    kubeconfig_template: Option<String>,
+    /// The base64 encoded kubeconfig file for the target cluster, or a template such as
+    /// `${mycluster.kubeconfig}`.
+    #[structopt(long, required_if("target-cluster-kubeconfig-path", "None"))]
+    target_cluster_kubeconfig: Option<String>,
 
     /// Name of the sonobuoy test.
     #[structopt(long, short)]
@@ -62,7 +63,7 @@ pub(crate) struct RunSonobuoy {
 
     /// The name of the secret containing aws credentials.
     #[structopt(long)]
-    aws_credentials: Option<SecretName>,
+    aws_secret: Option<SecretName>,
 
     /// The resources required by the sonobuoy test.
     #[structopt(long)]
@@ -71,14 +72,14 @@ pub(crate) struct RunSonobuoy {
 
 impl RunSonobuoy {
     pub(crate) async fn run(&self, k8s_client: Client) -> Result<()> {
-        let kubeconfig_string = match (&self.target_cluster_kubeconfig, &self.kubeconfig_template) {
+        let kubeconfig_string = match (&self.target_cluster_kubeconfig_path, &self.target_cluster_kubeconfig) {
             (Some(kubeconfig_path),None) => base64::encode(
                 read_to_string(kubeconfig_path).context(error::File {
                     path: kubeconfig_path,
                 })?,
             ),
             (None, Some(template_value)) => template_value.to_string(),
-            (_,_) => return Err(error::Error::InvalidArguments{why: "Exactly 1 of 'target-cluster-kubeconfig' and 'kubeconfig-template' must be provided".to_string()})
+            (_,_) => return Err(error::Error::InvalidArguments{why: "Exactly 1 of 'target-cluster-kubeconfig' and 'target-cluster-kubeconfig-path' must be provided".to_string()})
         };
 
         let test = Test {
@@ -107,7 +108,7 @@ impl RunSonobuoy {
                         .into_map()
                         .context(error::ConfigMap)?,
                     ),
-                    secrets: self.aws_credentials.as_ref().map(|secret_name| {
+                    secrets: self.aws_secret.as_ref().map(|secret_name| {
                         let mut secrets_map = BTreeMap::new();
                         secrets_map
                             .insert(SONOBUOY_AWS_SECRET_NAME.to_string(), secret_name.clone());
