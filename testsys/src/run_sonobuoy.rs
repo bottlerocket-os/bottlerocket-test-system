@@ -16,8 +16,17 @@ use structopt::StructOpt;
 #[derive(Debug, StructOpt)]
 pub(crate) struct RunSonobuoy {
     /// Path to test cluster's kubeconfig file.
-    #[structopt(long, parse(from_os_str))]
-    target_cluster_kubeconfig: PathBuf,
+    #[structopt(
+        long,
+        parse(from_os_str),
+        required_if("kubeconfig-template", "None"),
+        conflicts_with("target-cluster-kubeconfig")
+    )]
+    target_cluster_kubeconfig: Option<PathBuf>,
+
+    /// The templating that should be used to configure the kubeconfig.
+    #[structopt(long, required_if("target-cluster-kubeconfig", "None"))]
+    kubeconfig_template: Option<String>,
 
     /// Name of the sonobuoy test.
     #[structopt(long, short)]
@@ -62,11 +71,15 @@ pub(crate) struct RunSonobuoy {
 
 impl RunSonobuoy {
     pub(crate) async fn run(&self, k8s_client: Client) -> Result<()> {
-        let kubeconfig_base64 = base64::encode(
-            read_to_string(&self.target_cluster_kubeconfig).context(error::File {
-                path: &self.target_cluster_kubeconfig,
-            })?,
-        );
+        let kubeconfig_string = match (&self.target_cluster_kubeconfig, &self.kubeconfig_template) {
+            (Some(kubeconfig_path),None) => base64::encode(
+                read_to_string(kubeconfig_path).context(error::File {
+                    path: kubeconfig_path,
+                })?,
+            ),
+            (None, Some(template_value)) => template_value.to_string(),
+            (_,_) => return Err(error::Error::InvalidArguments{why: "Exactly 1 of 'target-cluster-kubeconfig' and 'kubeconfig-template' must be provided".to_string()})
+        };
 
         let test = Test {
             api_version: API_VERSION.into(),
@@ -85,7 +98,7 @@ impl RunSonobuoy {
                     keep_running: self.keep_running,
                     configuration: Some(
                         SonobuoyConfig {
-                            kubeconfig_base64,
+                            kubeconfig_base64: kubeconfig_string,
                             plugin: self.plugin.clone(),
                             mode: self.mode.clone(),
                             kubernetes_version: self.kubernetes_version.clone(),
