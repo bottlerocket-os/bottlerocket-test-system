@@ -1,9 +1,10 @@
 use aws_config::meta::region::RegionProviderChain;
 use aws_sdk_ec2::model::{
-    ArchitectureValues, Filter, IamInstanceProfileSpecification, InstanceType, ResourceType,
-    SecurityGroup, Subnet, Tag, TagSpecification,
+    ArchitectureValues, IamInstanceProfileSpecification, InstanceType, ResourceType, Tag,
+    TagSpecification,
 };
 use aws_sdk_ec2::Region;
+use ec2_resource_agent::ClusterInfo;
 use model::{Configuration, SecretName};
 use resource_agent::clients::InfoClient;
 use resource_agent::provider::{
@@ -15,8 +16,6 @@ use std::env;
 use std::fmt::Debug;
 use std::iter::FromIterator;
 
-/// The default region for the cluster.
-const DEFAULT_REGION: &str = "us-west-2";
 /// The default number of instances to spin up.
 const DEFAULT_INSTANCE_COUNT: i32 = 2;
 
@@ -42,12 +41,6 @@ pub struct Ec2ProductionRequest {
     /// The AMI ID of the AMI to use for the worker nodes.
     node_ami: String,
 
-    /// The name of the eks cluster to create the instances in.
-    cluster_name: String,
-
-    /// The AWS region to create the instance. If no value is provided `us-west-2` will be used.
-    region: Option<String>,
-
     /// The number of instances to create. If no value is provided 2 instances will be created.
     instance_count: Option<i32>,
 
@@ -55,8 +48,8 @@ pub struct Ec2ProductionRequest {
     /// recommended for arm64. If no value is provided the recommended type will be used.
     instance_type: Option<String>,
 
-    /// The arn of the instance profile.
-    instance_profile_name: Option<String>,
+    /// All of the cluster based information needed to run instances.
+    cluster: ClusterInfo,
 }
 
 impl Configuration for Ec2ProductionRequest {}
@@ -91,69 +84,24 @@ impl Create for Ec2Creator {
             .get_info()
             .await
             .context(Resources::Unknown, "Unable to get info from info client")?;
-        let region = request
-            .configuration
-            .region
-            .unwrap_or_else(|| DEFAULT_REGION.to_string());
-        // Setup aws_sdk_config and clients.
-        let region_provider = RegionProviderChain::first_try(Some(Region::new(region.clone())));
+
         // Write aws credentials if we need them so we can run eksctl
         if let Some(aws_secret_name) = request.secrets.get("aws-credentials") {
             setup_env(client, aws_secret_name, &memo).await?;
             memo.aws_secret_name = Some(aws_secret_name.clone());
         }
 
+        let cluster = &request.configuration.cluster;
+
+        // Setup aws_sdk_config and clients.
+        let region_provider =
+            RegionProviderChain::first_try(Some(Region::new(cluster.region.clone())));
         let shared_config = aws_config::from_env().region(region_provider).load().await;
-        let eks_client = aws_sdk_eks::Client::new(&shared_config);
         let ec2_client = aws_sdk_ec2::Client::new(&shared_config);
-        let iam_client = aws_sdk_iam::Client::new(&shared_config);
-
-        let cluster_name = &request.configuration.cluster_name;
-
-        let eks_subnet_ids = eks_subnet_ids(&eks_client, cluster_name, &memo).await?;
-        let endpoint = &endpoint(&eks_client, cluster_name, &memo).await?;
-        let certificate = &certificate(&eks_client, cluster_name, &memo).await?;
-
-        let private_subnet_ids = subnet_ids(
-            &ec2_client,
-            cluster_name,
-            eks_subnet_ids.clone(),
-            SubnetType::Private,
-            &memo,
-        )
-        .await?;
-
-        let nodegroup_sg = security_group(
-            &ec2_client,
-            cluster_name,
-            SecurityGroupType::NodeGroup,
-            &memo,
-        )
-        .await?;
-
-        let controlplane_sg = security_group(
-            &ec2_client,
-            cluster_name,
-            SecurityGroupType::ControlPlane,
-            &memo,
-        )
-        .await?;
 
         let mut security_groups = vec![];
-        for security_group in nodegroup_sg {
-            security_groups.push(
-                security_group
-                    .group_id
-                    .context(&memo, "Security group missing group_id field")?,
-            )
-        }
-        for security_group in controlplane_sg {
-            security_groups.push(
-                security_group
-                    .group_id
-                    .context(&memo, "Security group missing group_id field")?,
-            )
-        }
+        security_groups.append(&mut cluster.nodegroup_sg.clone());
+        security_groups.append(&mut cluster.clustershared_sg.clone());
 
         // Determine the instance type to use. If provided use that one. Otherwise, for `x86_64` use `m5.large`
         // and for `aarch64` use `m6g.large`
@@ -162,14 +110,6 @@ impl Create for Ec2Creator {
         } else {
             instance_type(&ec2_client, &request.configuration.node_ami, &memo).await?
         };
-
-        // Determine the instance profile name to use.
-        let instance_profile_name =
-            if let Some(instance_profile_name) = request.configuration.instance_profile_name {
-                instance_profile_name
-            } else {
-                instance_profile_name(&iam_client, &memo).await?
-            };
 
         // Run the ec2 instances
         let instance_count = request
@@ -180,15 +120,19 @@ impl Create for Ec2Creator {
             .run_instances()
             .min_count(instance_count)
             .max_count(instance_count)
-            .subnet_id(first_subnet_id(&private_subnet_ids, &memo)?)
+            .subnet_id(first_subnet_id(&cluster.private_subnet_ids, &memo)?)
             .set_security_group_ids(Some(security_groups))
             .image_id(request.configuration.node_ami)
             .instance_type(InstanceType::from(instance_type.as_str()))
-            .tag_specifications(tag_specifications(cluster_name))
-            .user_data(userdata(endpoint, cluster_name, certificate))
+            .tag_specifications(tag_specifications(&cluster.name))
+            .user_data(userdata(
+                &cluster.endpoint,
+                &cluster.name,
+                &cluster.certificate,
+            ))
             .iam_instance_profile(
                 IamInstanceProfileSpecification::builder()
-                    .name(instance_profile_name)
+                    .arn(&cluster.iam_instance_profile_arn)
                     .build(),
             );
 
@@ -210,13 +154,13 @@ impl Create for Ec2Creator {
 
         // We are done, set our custom status to say so.
         memo.current_status = "Instance(s) Created".into();
-        memo.region = region;
+        memo.region = cluster.region.clone();
         client
             .send_info(memo.clone())
             .await
             .context(memo, "Error sending final creation message")?;
 
-        // Return a description of the batch of robots that we created.
+        // Return a description of the batch of instances that we created.
         Ok(CreatedEc2Instances { ids: instance_ids })
     }
 }
@@ -264,165 +208,6 @@ where
     Ok(())
 }
 
-async fn eks_subnet_ids(
-    eks_client: &aws_sdk_eks::Client,
-    cluster_name: &str,
-    memo: &ProductionMemo,
-) -> ProviderResult<Vec<String>> {
-    let describe_results = eks_client
-        .describe_cluster()
-        .name(cluster_name)
-        .send()
-        .await
-        .context(memo, "Unable to get eks describe cluster")?;
-
-    // Extract the subnet ids from the cluster.
-    describe_results
-        .cluster
-        .as_ref()
-        .context(memo, "Response missing cluster field")?
-        .resources_vpc_config
-        .as_ref()
-        .context(memo, "Cluster missing resources_vpc_config field")?
-        .subnet_ids
-        .as_ref()
-        .context(memo, "resources_vpc_config missing subnet ids")
-        .map(|ids| ids.clone())
-}
-
-async fn endpoint(
-    eks_client: &aws_sdk_eks::Client,
-    cluster_name: &str,
-    memo: &ProductionMemo,
-) -> ProviderResult<String> {
-    let describe_results = eks_client
-        .describe_cluster()
-        .name(cluster_name)
-        .send()
-        .await
-        .context(memo, "Unable to get eks describe cluster")?;
-    // Extract the apiserver endpoint from the cluster.
-    describe_results
-        .cluster
-        .as_ref()
-        .context(memo, "Results missing cluster field")?
-        .endpoint
-        .as_ref()
-        .context(memo, "Cluster missing endpoint field")
-        .map(|ids| ids.clone())
-}
-
-async fn certificate(
-    eks_client: &aws_sdk_eks::Client,
-    cluster_name: &str,
-    memo: &ProductionMemo,
-) -> ProviderResult<String> {
-    let describe_results = eks_client
-        .describe_cluster()
-        .name(cluster_name)
-        .send()
-        .await
-        .context(memo, "Unable to get eks describe cluster")?;
-
-    // Extract the certificate authority from the cluster.
-    describe_results
-        .cluster
-        .as_ref()
-        .context(memo, "Results missing cluster field")?
-        .certificate_authority
-        .as_ref()
-        .context(memo, "Cluster missing certificate_authority field")?
-        .data
-        .as_ref()
-        .context(memo, "Certificate authority missing data")
-        .map(|ids| ids.clone())
-}
-
-#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
-enum SubnetType {
-    Public,
-    Private,
-}
-
-impl SubnetType {
-    fn tag(&self, cluster_name: &str) -> String {
-        let subnet_type = match self {
-            SubnetType::Public => "Public",
-            SubnetType::Private => "Private",
-        };
-        format!("eksctl-{}-cluster/Subnet{}*", cluster_name, subnet_type)
-    }
-}
-
-async fn subnet_ids(
-    ec2_client: &aws_sdk_ec2::Client,
-    cluster_name: &str,
-    eks_subnet_ids: Vec<String>,
-    subnet_type: SubnetType,
-    memo: &ProductionMemo,
-) -> ProviderResult<Vec<Subnet>> {
-    let describe_results = ec2_client
-        .describe_subnets()
-        .set_subnet_ids(Some(eks_subnet_ids))
-        .filters(
-            Filter::builder()
-                .name("tag:Name")
-                .values(subnet_type.tag(cluster_name))
-                .build(),
-        )
-        .send()
-        .await
-        .context(memo, "Unable to get private subnet ids")?;
-    describe_results
-        .subnets
-        .context(memo, "Results missing subnets field")
-}
-
-#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
-enum SecurityGroupType {
-    NodeGroup,
-    ClusterShared,
-    ControlPlane,
-}
-
-impl SecurityGroupType {
-    fn tag(&self, cluster_name: &str) -> String {
-        let sg = match self {
-            SecurityGroupType::NodeGroup => "nodegroup",
-            SecurityGroupType::ClusterShared => "clustershared",
-            SecurityGroupType::ControlPlane => "controlplane",
-        };
-        format!("*{}-{}*", cluster_name, sg)
-    }
-}
-
-async fn security_group(
-    ec2_client: &aws_sdk_ec2::Client,
-    cluster_name: &str,
-    security_group_type: SecurityGroupType,
-    memo: &ProductionMemo,
-) -> ProviderResult<Vec<SecurityGroup>> {
-    // Extract the security groups.
-    let describe_results = ec2_client
-        .describe_security_groups()
-        .filters(
-            Filter::builder()
-                .name("tag:Name")
-                .values(security_group_type.tag(cluster_name))
-                .build(),
-        )
-        .send()
-        .await
-        .context(
-            memo,
-            format!("Unable to get {:?} security group", security_group_type),
-        )?;
-
-    describe_results
-        .security_groups
-        .context(memo, "Results missing security_groups field")
-}
-
 async fn instance_type(
     ec2_client: &aws_sdk_ec2::Client,
     node_ami: &str,
@@ -450,37 +235,6 @@ async fn instance_type(
     .to_string())
 }
 
-async fn instance_profile_name(
-    iam_client: &aws_sdk_iam::Client,
-    memo: &ProductionMemo,
-) -> ProviderResult<String> {
-    let list_result = iam_client
-        .list_instance_profiles()
-        .send()
-        .await
-        .context(memo, "Unable to list instance profiles")?;
-    list_result
-        .instance_profiles
-        .as_ref()
-        .context(memo, "No instance profiles found")?
-        .iter()
-        .find(|x| {
-            x.instance_profile_name
-                .as_ref()
-                .unwrap_or(&"".to_string())
-                .contains("NodeInstanceProfile")
-        })
-        .as_ref()
-        .context(memo, "Node instance profile not found")?
-        .instance_profile_name
-        .as_ref()
-        .context(
-            memo,
-            "Node instance profile missing instance_profile_name field",
-        )
-        .map(|profile| profile.clone())
-}
-
 fn tag_specifications(cluster_name: &str) -> TagSpecification {
     TagSpecification::builder()
         .resource_type(ResourceType::Instance)
@@ -499,18 +253,11 @@ fn tag_specifications(cluster_name: &str) -> TagSpecification {
         .build()
 }
 
-fn first_subnet_id(
-    subnet_ids: &[aws_sdk_ec2::model::Subnet],
-    memo: &ProductionMemo,
-) -> ProviderResult<String> {
+fn first_subnet_id(subnet_ids: &[String], memo: &ProductionMemo) -> ProviderResult<String> {
     subnet_ids
         .get(0)
-        .as_ref()
-        .context(memo, "There are no private subnet ids")?
-        .subnet_id
-        .as_ref()
-        .cloned()
-        .context(memo, "Subnet missing subnet_id field")
+        .map(|id| id.to_string())
+        .context(memo, "There are no private subnet ids")
 }
 
 fn userdata(endpoint: &str, cluster_name: &str, certificate: &str) -> String {
