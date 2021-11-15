@@ -5,6 +5,7 @@ edition = "2018"
 publish = false
 
 [dependencies]
+async-recursion = "0.2"
 async-trait = "0.1"
 derive_more = { version = "0", default-features = false, features = [ "error" ] }
 futures = "0.3"
