@@ -12,3 +12,4 @@ model = { path = "../../model" }
 resource-agent = { path = "../resource-agent" }
 serde = { version = "1", features = [ "derive" ] }
 tokio = { version = "1", default-features = false, features = [ "macros", "rt-multi-thread" ] }
+uuid = { version = "0.8", default-features=false, features = ["serde", "v4"] }

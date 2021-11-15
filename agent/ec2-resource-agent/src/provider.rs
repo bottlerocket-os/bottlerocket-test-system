@@ -1,6 +1,6 @@
 use aws_config::meta::region::RegionProviderChain;
 use aws_sdk_ec2::model::{
-    ArchitectureValues, IamInstanceProfileSpecification, InstanceType, ResourceType, Tag,
+    ArchitectureValues, Filter, IamInstanceProfileSpecification, InstanceType, ResourceType, Tag,
     TagSpecification,
 };
 use aws_sdk_ec2::Region;
@@ -15,9 +15,13 @@ use std::collections::HashSet;
 use std::env;
 use std::fmt::Debug;
 use std::iter::FromIterator;
+use std::time::Duration;
+use uuid::Uuid;
 
 /// The default number of instances to spin up.
 const DEFAULT_INSTANCE_COUNT: i32 = 2;
+/// The tag name for the uuid used to create instances.
+const INSTANCE_UUID_TAG_NAME: &str = "testsys-ec2-uuid";
 
 #[derive(Clone, Debug, Default, Eq, PartialEq, Serialize, Deserialize)]
 pub struct ProductionMemo {
@@ -32,6 +36,9 @@ pub struct ProductionMemo {
 
     /// The name of the secret containing aws credentials.
     pub aws_secret_name: Option<SecretName>,
+
+    /// A UUID that was used to tag the instances in case we lose our created instance IDs.
+    pub uuid_tag: Option<String>,
 }
 
 impl Configuration for ProductionMemo {}
@@ -85,6 +92,14 @@ impl Create for Ec2Creator {
             .await
             .context(Resources::Unknown, "Unable to get info from info client")?;
 
+        // Set the uuid before we do anything so we know it is stored.
+        let instance_uuid = Uuid::new_v4().to_string();
+        memo.uuid_tag = Some(instance_uuid.to_string());
+        client
+            .send_info(memo.clone())
+            .await
+            .context(&memo, "Error storing uuid in info client")?;
+
         // Write aws credentials if we need them so we can run eksctl
         if let Some(aws_secret_name) = request.secrets.get("aws-credentials") {
             setup_env(client, aws_secret_name, &memo).await?;
@@ -124,7 +139,7 @@ impl Create for Ec2Creator {
             .set_security_group_ids(Some(security_groups))
             .image_id(request.configuration.node_ami)
             .instance_type(InstanceType::from(instance_type.as_str()))
-            .tag_specifications(tag_specifications(&cluster.name))
+            .tag_specifications(tag_specifications(&cluster.name, &instance_uuid))
             .user_data(userdata(
                 &cluster.endpoint,
                 &cluster.name,
@@ -141,26 +156,43 @@ impl Create for Ec2Creator {
             .await
             .context(resources_situation(&memo), "Failed to create instances")?
             .instances
-            .context(Resources::Orphaned, "Results missing instances field")?;
+            .context(Resources::Remaining, "Results missing instances field")?;
         let mut instance_ids = HashSet::default();
         for instance in instances {
             instance_ids.insert(instance.instance_id.clone().ok_or_else(|| {
                 ProviderError::new_with_context(
-                    Resources::Orphaned,
+                    Resources::Remaining,
                     "Instance missing instance_id field",
                 )
             })?);
         }
 
+        // Ensure the instances reach a running state.
+        tokio::time::timeout(
+            Duration::from_secs(60),
+            wait_for_conforming_instances(
+                &ec2_client,
+                &instance_ids,
+                DesiredInstanceState::Running,
+                &memo,
+            ),
+        )
+        .await
+        .context(
+            &memo,
+            "Timed-out waiting for instances to reach the `running` state.",
+        )??;
+
         // We are done, set our custom status to say so.
         memo.current_status = "Instance(s) Created".into();
         memo.region = cluster.region.clone();
+        memo.instance_ids = instance_ids.clone();
         client
             .send_info(memo.clone())
             .await
             .context(memo, "Error sending final creation message")?;
 
-        // Return a description of the batch of instances that we created.
+        // Return the ids for the created instances.
         Ok(CreatedEc2Instances { ids: instance_ids })
     }
 }
@@ -235,7 +267,7 @@ async fn instance_type(
     .to_string())
 }
 
-fn tag_specifications(cluster_name: &str) -> TagSpecification {
+fn tag_specifications(cluster_name: &str, instance_uuid: &str) -> TagSpecification {
     TagSpecification::builder()
         .resource_type(ResourceType::Instance)
         .tags(
@@ -248,6 +280,12 @@ fn tag_specifications(cluster_name: &str) -> TagSpecification {
             Tag::builder()
                 .key(format!("kubernetes.io/cluster/{}", cluster_name))
                 .value("owned")
+                .build(),
+        )
+        .tags(
+            Tag::builder()
+                .key(INSTANCE_UUID_TAG_NAME)
+                .value(instance_uuid)
                 .build(),
         )
         .build()
@@ -271,6 +309,112 @@ cluster-name = "{}"
 cluster-certificate = "{}""#,
         endpoint, cluster_name, certificate
     ))
+}
+
+#[derive(Debug)]
+enum DesiredInstanceState {
+    Running,
+    Terminated,
+}
+
+impl DesiredInstanceState {
+    fn filter(&self) -> Filter {
+        let filter = Filter::builder()
+            .name("instance-state-name")
+            .values("pending")
+            .values("shutting-down")
+            .values("stopping")
+            .values("stopped")
+            .values(match self {
+                DesiredInstanceState::Running => "terminated",
+                DesiredInstanceState::Terminated => "running",
+            });
+
+        filter.build()
+    }
+}
+
+async fn non_conforming_instances(
+    ec2_client: &aws_sdk_ec2::Client,
+    instance_ids: &HashSet<String>,
+    desired_instance_state: &DesiredInstanceState,
+    memo: &ProductionMemo,
+) -> ProviderResult<Vec<String>> {
+    let mut describe_result = ec2_client
+        .describe_instance_status()
+        .filters(desired_instance_state.filter())
+        .set_instance_ids(Some(Vec::from_iter(instance_ids.clone())))
+        .include_all_instances(true)
+        .send()
+        .await
+        .context(
+            memo,
+            format!(
+                "Unable to list instances in the '{:?}' state.",
+                desired_instance_state
+            ),
+        )?;
+    let non_conforming_instances = describe_result
+        .instance_statuses
+        .as_mut()
+        .context(memo, "No instance statuses were provided.")?;
+
+    Ok(non_conforming_instances
+        .iter_mut()
+        .filter_map(|instance_status| instance_status.instance_id.clone())
+        .collect())
+}
+
+async fn wait_for_conforming_instances(
+    ec2_client: &aws_sdk_ec2::Client,
+    instance_ids: &HashSet<String>,
+    desired_instance_state: DesiredInstanceState,
+    memo: &ProductionMemo,
+) -> ProviderResult<()> {
+    loop {
+        if !non_conforming_instances(ec2_client, instance_ids, &desired_instance_state, memo)
+            .await?
+            .is_empty()
+        {
+            tokio::time::sleep(Duration::from_millis(1000)).await;
+            continue;
+        }
+        return Ok(());
+    }
+}
+
+// Find all running instances with the uuid for this resource.
+async fn get_instances_by_uuid(
+    ec2_client: &aws_sdk_ec2::Client,
+    uuid: &str,
+    memo: &ProductionMemo,
+) -> ProviderResult<HashSet<String>> {
+    let mut describe_result = ec2_client
+        .describe_instances()
+        .filters(
+            Filter::builder()
+                .name("tag")
+                .values(format!("{}={}", INSTANCE_UUID_TAG_NAME, uuid))
+                .build(),
+        )
+        .send()
+        .await
+        .context(memo, "Unable to get instances.")?;
+    let instances = describe_result
+        .reservations
+        .as_mut()
+        .context(memo, "No instances were provided.")?;
+
+    Ok(instances
+        .iter_mut()
+        // Extract the vec of `Instance`s from each `Reservation`
+        .filter_map(|reservation| reservation.instances.as_ref())
+        // Combine all `Instance`s into one iterator no matter which `Reservation` they
+        // came from.
+        .flatten()
+        // Extract the instance id from each `Instance`.
+        .filter_map(|instance| instance.instance_id.clone())
+        .collect())
 }
 
 /// This is the object that will destroy ec2 instances.
@@ -300,7 +444,7 @@ impl Destroy for Ec2Destroyer {
         })?;
 
         // Create a set of IDs to iterate over and destroy. Also ensure that the memo's IDs match.
-        let ids = if let Some(resource) = resource {
+        let mut ids = if let Some(resource) = resource {
             resource.ids
         } else {
             memo.clone().instance_ids
@@ -315,6 +459,19 @@ impl Destroy for Ec2Destroyer {
             RegionProviderChain::first_try(Some(Region::new(memo.region.clone())));
         let shared_config = aws_config::from_env().region(region_provider).load().await;
         let ec2_client = aws_sdk_ec2::Client::new(&shared_config);
+
+        // If we don't have any instances to delete make sure there weren't any instances
+        // with the uuid.
+        if ids.is_empty() {
+            if let Some(uuid) = &memo.uuid_tag {
+                ids = get_instances_by_uuid(&ec2_client, uuid, &memo).await?;
+            }
+        }
+
+        if ids.is_empty() {
+            return Ok(());
+        }
+
         let _terminate_results = ec2_client
             .terminate_instances()
             .set_instance_ids(Some(Vec::from_iter(ids.clone())))
@@ -328,8 +485,8 @@ impl Destroy for Ec2Destroyer {
                 )
             })?;
 
-        for id in ids {
-            memo.instance_ids.remove(&id);
+        for id in &ids {
+            memo.instance_ids.remove(id);
         }
 
         memo.current_status = "Instances deleted".into();
@@ -341,6 +498,21 @@ impl Destroy for Ec2Destroyer {
             )
         })?;
 
+        // Ensure the instances reach a terminated state.
+        tokio::time::timeout(
+            Duration::from_secs(300),
+            wait_for_conforming_instances(
+                &ec2_client,
+                &ids,
+                DesiredInstanceState::Terminated,
+                &memo,
+            ),
+        )
+        .await
+        .context(
+            &memo,
+            "Timed-out waiting for instances to reach the `terminated` state.",
+        )??;
         Ok(())
     }
 }
