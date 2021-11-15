@@ -38,6 +38,9 @@ pub(crate) enum Error {
     #[snafu(display("Unable to get test: {}", source))]
     GetTest { source: model::clients::Error },
 
+    #[snafu(display("The arguments given were invalid: {}", why))]
+    InvalidArguments { why: String },
+
     #[snafu(display("Could not serialize object: {}", source))]
     JsonSerialize { source: serde_json::Error },
 

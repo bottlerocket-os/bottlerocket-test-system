@@ -95,10 +95,7 @@ impl test_agent::Runner for SonobuoyTestRunner {
         info!("Initializing Sonobuoy test agent...");
         Ok(Self {
             config: test_info.configuration,
-            aws_secret_name: test_info
-                .secrets
-                .get(SONOBUOY_AWS_SECRET_NAME)
-                .map(|secret_name| secret_name.clone()),
+            aws_secret_name: test_info.secrets.get(SONOBUOY_AWS_SECRET_NAME).cloned(),
         })
     }
 

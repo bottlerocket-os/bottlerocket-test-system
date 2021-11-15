@@ -16,7 +16,7 @@ enum Command {
     /// Run a test from a YAML file.
     File(run_file::RunFile),
     /// Run a Sonobuoy test;.
-    Sonobuoy(run_sonobuoy::RunSonobuoy),
+    Sonobuoy(Box<run_sonobuoy::RunSonobuoy>),
 }
 
 impl Run {
