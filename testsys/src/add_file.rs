@@ -2,6 +2,7 @@ use crate::error::{self, Result};
 use crate::k8s::create_or_update;
 use kube::{Api, Client};
 use model::{constants::NAMESPACE, Resource};
+use serde::Deserialize;
 use snafu::ResultExt;
 use std::path::PathBuf;
 use structopt::StructOpt;
@@ -16,17 +17,21 @@ pub(crate) struct AddFile {
 
 impl AddFile {
     pub(crate) async fn run(&self, k8s_client: Client) -> Result<()> {
-        // Create the test object from its path.
-        let resource_file =
-            std::fs::File::open(&self.path).context(error::File { path: &self.path })?;
-        let resource: Resource = serde_yaml::from_reader(resource_file)
-            .context(error::ResourceProviderFileParse { path: &self.path })?;
+        // Create the resource objects from its path.
+        let resources_string =
+            std::fs::read_to_string(&self.path).context(error::File { path: &self.path })?;
 
         let resources = Api::<Resource>::namespaced(k8s_client, NAMESPACE);
-        let name = resource.metadata.name.clone();
-        create_or_update(&resources, resource, "Resource Provider").await?;
-        if let Some(name) = name {
-            println!("Successfully added resource '{}'.", name);
+        for resource_doc in serde_yaml::Deserializer::from_str(&resources_string) {
+            let value = serde_yaml::Value::deserialize(resource_doc)
+                .context(error::ResourceProviderFileParse { path: &self.path })?;
+            let resource: Resource = serde_yaml::from_value(value)
+                .context(error::ResourceProviderFileParse { path: &self.path })?;
+            let name = resource.metadata.name.clone();
+            create_or_update(&resources, resource, "Resource Provider").await?;
+            if let Some(name) = name {
+                println!("Successfully added resource '{}'.", name);
+            }
         }
         Ok(())
     }
