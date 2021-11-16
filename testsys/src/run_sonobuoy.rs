@@ -7,8 +7,8 @@ use model::{
 };
 use snafu::ResultExt;
 // use sonobuoy_test_agent::SonobuoyConfig;
+use bottlerocket_agents::{SonobuoyConfig, SONOBUOY_AWS_SECRET_NAME};
 use model::clients::CrdClient;
-use sonobuoy_test_agent::{SonobuoyConfig, SONOBUOY_AWS_SECRET_NAME};
 use std::{collections::BTreeMap, fs::read_to_string, path::PathBuf};
 use structopt::StructOpt;
 
@@ -73,13 +73,13 @@ pub(crate) struct RunSonobuoy {
 impl RunSonobuoy {
     pub(crate) async fn run(&self, k8s_client: Client) -> Result<()> {
         let kubeconfig_string = match (&self.target_cluster_kubeconfig_path, &self.target_cluster_kubeconfig) {
-            (Some(kubeconfig_path),None) => base64::encode(
+            (Some(kubeconfig_path), None) => base64::encode(
                 read_to_string(kubeconfig_path).context(error::File {
                     path: kubeconfig_path,
                 })?,
             ),
             (None, Some(template_value)) => template_value.to_string(),
-            (_,_) => return Err(error::Error::InvalidArguments{why: "Exactly 1 of 'target-cluster-kubeconfig' and 'target-cluster-kubeconfig-path' must be provided".to_string()})
+            (_, _) => return Err(error::Error::InvalidArguments { why: "Exactly 1 of 'target-cluster-kubeconfig' and 'target-cluster-kubeconfig-path' must be provided".to_string() })
         };
 
         let test = Test {

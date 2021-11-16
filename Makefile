@@ -53,7 +53,7 @@ eks-resource-agent-image: show-variables fetch
 	docker build $(DOCKER_BUILD_FLAGS) \
 		--build-arg ARCH="$(TESTSYS_BUILD_HOST_UNAME_ARCH)" \
 		--tag "eks-resource-agent" \
-		-f agent/eks-resource-agent/Dockerfile .
+		-f bottlerocket-agents/src/bin/eks-resource-agent/Dockerfile .
 
 controller-image: show-variables fetch
 	docker build $(DOCKER_BUILD_FLAGS) \
@@ -66,13 +66,13 @@ sonobuoy-test-agent-image: show-variables fetch
 		--build-arg UNAME_ARCH="$(TESTSYS_BUILD_HOST_UNAME_ARCH)" \
 		--build-arg GOARCH="$(TESTSYS_BUILD_HOST_GOARCH)" \
 		--tag "sonobuoy-test-agent" \
-		-f agent/sonobuoy-test-agent/Dockerfile .
+		-f bottlerocket-agents/src/bin/sonobuoy-test-agent/Dockerfile .
 
 ec2-resource-agent-image: show-variables fetch
 	docker build $(DOCKER_BUILD_FLAGS) \
 		--build-arg ARCH="$(TESTSYS_BUILD_HOST_UNAME_ARCH)" \
 		--tag "ec2-resource-agent" \
-		-f agent/ec2-resource-agent/Dockerfile .
+		-f bottlerocket-agents/src/bin/ec2-resource-agent/Dockerfile .
 
 integ-test: controller-image example-test-agent-image example-resource-agent-image sonobuoy-test-agent-image
 	docker tag example-testsys-agent example-testsys-agent:integ

@@ -9,15 +9,19 @@ ENV PKG_CONFIG_ALLOW_CROSS=1
 ENV CARGO_HOME=/src/.cargo
 ENV OPENSSL_STATIC=true
 ADD ./ /src/
-WORKDIR /src/agent/ec2-resource-agent
+WORKDIR /src/bottlerocket-agents/
 RUN --mount=type=cache,mode=0777,target=/src/target \
-    cargo install --offline --locked --target ${ARCH}-bottlerocket-linux-musl --path . --root ./
+    cargo install --offline --locked \
+      --target ${ARCH}-bottlerocket-linux-musl \
+      --path . \
+      --root . \
+      --bin ec2-resource-agent
 
 FROM scratch
 # Copy CA certificates store
 COPY --from=build /etc/ssl /etc/ssl
 COPY --from=build /etc/pki /etc/pki
 # Copy binary
-COPY --from=build /src/agent/ec2-resource-agent/bin/ec2-resource-agent ./
+COPY --from=build /src/bottlerocket-agents/bin/ec2-resource-agent ./
 
 ENTRYPOINT ["./ec2-resource-agent"]

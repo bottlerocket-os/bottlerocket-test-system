@@ -1,7 +1,7 @@
 use aws_config::meta::region::RegionProviderChain;
 use aws_sdk_ec2::model::{Filter, SecurityGroup, Subnet};
 use aws_sdk_ec2::Region;
-use ec2_resource_agent::ClusterInfo;
+use bottlerocket_agents::ClusterInfo;
 use model::{Configuration, SecretName};
 use resource_agent::clients::InfoClient;
 use resource_agent::provider::{

@@ -9,9 +9,13 @@ ENV PKG_CONFIG_ALLOW_CROSS=1
 ENV CARGO_HOME=/src/.cargo
 ENV OPENSSL_STATIC=true
 ADD ./ /src/
-WORKDIR /src/agent/sonobuoy-test-agent
+WORKDIR /src/bottlerocket-agents/
 RUN --mount=type=cache,mode=0777,target=/src/target \
-    cargo install --offline --locked --target ${UNAME_ARCH}-bottlerocket-linux-musl --path . --root ./
+    cargo install --offline --locked \
+      --target ${UNAME_ARCH}-bottlerocket-linux-musl \
+      --path . \
+      --root . \
+      --bin sonobuoy-test-agent
 
 FROM public.ecr.aws/amazonlinux/amazonlinux:2
 ARG GOARCH
@@ -44,6 +48,6 @@ RUN temp_dir="$(mktemp -d --suffix sonobuoy-setup)" && \
     mv "${temp_dir}/sonobuoy" /usr/bin/sonobuoy && \
     rm -rf ${temp_dir}
 # Copy binary
-COPY --from=build /src/agent/sonobuoy-test-agent/bin/sonobuoy-test-agent ./
+COPY --from=build /src/bottlerocket-agents/bin/sonobuoy-test-agent ./
 
 ENTRYPOINT ["./sonobuoy-test-agent"]
