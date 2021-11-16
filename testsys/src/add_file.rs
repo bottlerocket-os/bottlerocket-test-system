@@ -19,13 +19,15 @@ impl AddFile {
         // Create the test object from its path.
         let resource_file =
             std::fs::File::open(&self.path).context(error::File { path: &self.path })?;
-        let resource = serde_yaml::from_reader(resource_file)
+        let resource: Resource = serde_yaml::from_reader(resource_file)
             .context(error::ResourceProviderFileParse { path: &self.path })?;
 
         let resources = Api::<Resource>::namespaced(k8s_client, NAMESPACE);
-
+        let name = resource.metadata.name.clone();
         create_or_update(&resources, resource, "Resource Provider").await?;
-
+        if let Some(name) = name {
+            println!("Successfully added resource '{}'.", name);
+        }
         Ok(())
     }
 }
