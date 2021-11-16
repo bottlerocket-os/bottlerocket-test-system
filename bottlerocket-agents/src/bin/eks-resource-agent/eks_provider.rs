@@ -15,7 +15,7 @@ use std::process::Command;
 /// The default region for the cluster.
 const DEFAULT_REGION: &str = "us-west-2";
 /// The default cluster version.
-const DEFAULT_VERSION: &str = "1.17";
+const DEFAULT_VERSION: &str = "1.21";
 
 /// The configuration information for a eks instance provider.
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, Default)]
@@ -226,7 +226,7 @@ fn create_cluster(
             "--zones",
             &zones.clone().unwrap_or_default().join(","),
             "--version",
-            &version
+            version
                 .as_ref()
                 .map(|version| version.as_str())
                 .unwrap_or(DEFAULT_VERSION),
@@ -252,6 +252,37 @@ fn create_cluster(
     }
 
     Ok(())
+}
+
+fn cluster_iam_identity_mapping(cluster_name: &str, region: &str) -> ProviderResult<String> {
+    let iam_identity_output = Command::new("eksctl")
+        .args([
+            "get",
+            "iamidentitymapping",
+            "--cluster",
+            cluster_name,
+            "--region",
+            region,
+            "--output",
+            "json",
+        ])
+        .output()
+        .context(Resources::Remaining, "Unable to get iam identity mapping.")?;
+
+    let iam_identity: serde_json::Value =
+        serde_json::from_str(&String::from_utf8_lossy(&iam_identity_output.stdout)).context(
+            Resources::Remaining,
+            "Unable to deserialize iam identity mapping",
+        )?;
+
+    iam_identity
+        .get(0)
+        .context(Resources::Remaining, "No profiles found.")?
+        .get("rolearn")
+        .context(Resources::Remaining, "Profile does not contain rolearn.")?
+        .as_str()
+        .context(Resources::Remaining, "Rolearn is not a string.")
+        .map(|arn| arn.to_string())
 }
 
 fn write_kubeconfig(cluster_name: &str, region: &str, kubeconfig_dir: &Path) -> ProviderResult<()> {
@@ -335,8 +366,9 @@ async fn cluster_info(cluster_name: &str, region: &str) -> ProviderResult<Cluste
             .into_iter()
             .filter_map(|security_group| security_group.group_id)
             .collect();
-
-    let iam_instance_profile_arn = instance_profile(&iam_client, cluster_name).await?;
+    let node_instance_role = cluster_iam_identity_mapping(cluster_name, region)?;
+    let iam_instance_profile_arn =
+        instance_profile(&iam_client, cluster_name, &node_instance_role).await?;
 
     Ok(ClusterInfo {
         name: cluster_name.to_string(),
@@ -516,6 +548,7 @@ async fn security_group(
 async fn instance_profile(
     iam_client: &aws_sdk_iam::Client,
     cluster_name: &str,
+    node_instance_role: &str,
 ) -> ProviderResult<String> {
     let list_result = iam_client
         .list_instance_profiles()
@@ -540,7 +573,17 @@ async fn instance_profile(
                 .unwrap_or(&"".to_string())
                 .contains(&eksctl_prefix)
         })
-        .next()
+        .find(|instance_profile| {
+            instance_profile
+                .roles
+                .as_ref()
+                .map(|roles| {
+                    roles
+                        .iter()
+                        .any(|role| role.arn == Some(node_instance_role.to_string()))
+                })
+                .unwrap_or_default()
+        })
         .context(Resources::Remaining, "Node instance profile not found")?
         .arn
         .as_ref()
