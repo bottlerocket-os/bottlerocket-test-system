@@ -1,11 +1,9 @@
 [workspace]
 members = [
     "agent/agent-common",
-    "agent/ec2-resource-agent",
-    "agent/eks-resource-agent",
+    "bottlerocket-agents",
     "agent/resource-agent",
     "agent/test-agent",
-    "agent/sonobuoy-test-agent",
     "controller",
     "model",
     "selftest",

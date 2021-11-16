@@ -1,0 +1,26 @@
+[package]
+name = "bottlerocket-agents"
+version = "0.1.0"
+edition = "2018"
+
+[dependencies]
+agent-common = { path = "../agent/agent-common" }
+async-trait = "0.1"
+aws-config = "0.0.22-alpha"
+aws-sdk-ec2 = "0.0.22-alpha"
+aws-sdk-eks = "0.0.22-alpha"
+aws-sdk-iam = "0.0.22-alpha"
+base64 = "0.13.0"
+log = "0.4"
+model = { path = "../model" }
+resource-agent = { path = "../agent/resource-agent" }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+simplelog = "0.10.0"
+snafu = "0.6"
+test-agent = { path = "../agent/test-agent" }
+tokio = { version = "1", default-features = false, features = ["macros", "rt-multi-thread"] }
+uuid = { version = "0.8", default-features = false, features = ["serde", "v4"] }
+
+[build-dependencies]
+yamlgen = { path = "../yamlgen" }

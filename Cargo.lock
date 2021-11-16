@@ -411,6 +411,30 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "bef38d45163c2f1dde094a7dfd33ccf595c92905c8f8f4fdc18d06fb1037718a"
 
 [[package]]
+name = "bottlerocket-agents"
+version = "0.1.0"
+dependencies = [
+ "agent-common",
+ "async-trait",
+ "aws-config",
+ "aws-sdk-ec2",
+ "aws-sdk-eks",
+ "aws-sdk-iam",
+ "base64",
+ "log",
+ "model",
+ "resource-agent",
+ "serde",
+ "serde_json",
+ "simplelog",
+ "snafu",
+ "test-agent",
+ "tokio",
+ "uuid",
+ "yamlgen",
+]
+
+[[package]]
 name = "bstr"
 version = "0.2.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -644,43 +668,10 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ee2626afccd7561a06cf1367e2950c4718ea04565e20fb5029b6c7d8ad09abcf"
 
 [[package]]
-name = "ec2-resource-agent"
-version = "0.1.0"
-dependencies = [
- "async-trait",
- "aws-config",
- "aws-sdk-ec2",
- "base64",
- "model",
- "resource-agent",
- "serde",
- "tokio",
- "uuid",
-]
-
-[[package]]
 name = "either"
 version = "1.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e78d4f1cc4ae33bbfc157ed5d5a5ef3bc29227303d595861deb238fcec4e9457"
-
-[[package]]
-name = "eks-resource-agent"
-version = "0.1.0"
-dependencies = [
- "async-trait",
- "aws-config",
- "aws-sdk-ec2",
- "aws-sdk-eks",
- "aws-sdk-iam",
- "base64",
- "ec2-resource-agent",
- "model",
- "resource-agent",
- "serde",
- "serde_json",
- "tokio",
-]
 
 [[package]]
 name = "env_logger"
@@ -1932,24 +1923,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "sonobuoy-test-agent"
-version = "0.1.0"
-dependencies = [
- "agent-common",
- "async-trait",
- "base64",
- "log",
- "model",
- "serde",
- "serde_json",
- "simplelog",
- "snafu",
- "test-agent",
- "tokio",
- "yamlgen",
-]
-
-[[package]]
 name = "spin"
 version = "0.5.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2052,6 +2025,7 @@ version = "0.1.0"
 dependencies = [
  "assert_cmd",
  "base64",
+ "bottlerocket-agents",
  "env_logger",
  "k8s-openapi",
  "kube",
@@ -2063,7 +2037,6 @@ dependencies = [
  "serde_json",
  "serde_yaml",
  "snafu",
- "sonobuoy-test-agent",
  "structopt",
  "tokio",
  "yamlgen",

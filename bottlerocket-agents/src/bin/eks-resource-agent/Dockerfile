@@ -9,9 +9,13 @@ ENV PKG_CONFIG_ALLOW_CROSS=1
 ENV CARGO_HOME=/src/.cargo
 ENV OPENSSL_STATIC=true
 ADD ./ /src/
-WORKDIR /src/agent/eks-resource-agent
+WORKDIR /src/bottlerocket-agents/
 RUN --mount=type=cache,mode=0777,target=/src/target \
-    cargo install --offline --locked --target ${ARCH}-bottlerocket-linux-musl --path . --root ./
+    cargo install --offline --locked \
+      --target ${ARCH}-bottlerocket-linux-musl \
+      --path . \
+      --root . \
+      --bin eks-resource-agent
 
 FROM public.ecr.aws/amazonlinux/amazonlinux:2
 
@@ -22,6 +26,6 @@ RUN temp_dir="$(mktemp -d --suffix eksctl-setup)" && \
     mv /tmp/eksctl /usr/bin/eksctl
 
 # Copy binary
-COPY --from=build /src/agent/eks-resource-agent/bin/eks-resource-agent ./
+COPY --from=build /src/bottlerocket-agents/bin/eks-resource-agent ./
 
 ENTRYPOINT ["./eks-resource-agent"]

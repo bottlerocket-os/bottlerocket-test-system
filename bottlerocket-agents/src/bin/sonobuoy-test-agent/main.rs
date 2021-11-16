@@ -33,11 +33,11 @@ spec:
 !*/
 
 use async_trait::async_trait;
+use bottlerocket_agents::{SonobuoyConfig, SONOBUOY_AWS_SECRET_NAME};
 use log::info;
 use model::{Outcome, SecretName, TestResults};
 use simplelog::{Config as LogConfig, LevelFilter, SimpleLogger};
 use snafu::{ensure, OptionExt, ResultExt, Snafu};
-use sonobuoy_test_agent::{SonobuoyConfig, SONOBUOY_AWS_SECRET_NAME};
 use std::path::Path;
 use std::process::Command;
 use std::string::FromUtf8Error;
@@ -280,6 +280,7 @@ async fn main() {
         std::process::exit(1);
     }
 }
+
 async fn run() -> Result<(), test_agent::error::Error<ClientError, SonobuoyError>> {
     let mut agent = TestAgent::<DefaultClient, SonobuoyTestRunner>::new(
         BootstrapData::from_env().unwrap_or_else(|_| BootstrapData {
