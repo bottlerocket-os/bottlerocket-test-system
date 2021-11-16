@@ -4,11 +4,12 @@ use assert_cmd::Command;
 use selftest::Cluster;
 use tokio::time::Duration;
 
+const CONTROLLER_TIMEOUT: Duration = Duration::from_secs(60);
+const TEST_POD_TIMEOUT: Duration = Duration::from_secs(60);
+
 #[tokio::test]
 async fn test_install() {
     let cluster_name = "install-test";
-    let max_wait_iter = 25;
-    let wait_time = 1000;
     let cluster = Cluster::new(cluster_name).unwrap();
     cluster
         .load_image_to_cluster("testsys-controller:integ")
@@ -22,24 +23,15 @@ async fn test_install() {
         "testsys-controller:integ",
     ]);
     cmd.assert().success();
-    let mut iter_count = 0;
-    while !cluster.is_controller_running().await.unwrap() && iter_count < max_wait_iter {
-        iter_count += 1;
-        tokio::time::sleep(Duration::from_millis(wait_time)).await;
-    }
-    if iter_count == max_wait_iter {
-        panic!(
-            "Controller did not reach `running` after {} ms",
-            wait_time * max_wait_iter
-        )
-    }
+    cluster
+        .wait_for_controller(CONTROLLER_TIMEOUT)
+        .await
+        .unwrap();
 }
 
 #[tokio::test]
 async fn test_run_file() {
     let cluster_name = "run-file-test";
-    let max_wait_iter = 25;
-    let wait_time = 1000;
     let cluster = Cluster::new(cluster_name).unwrap();
     cluster
         .load_image_to_cluster("testsys-controller:integ")
@@ -66,28 +58,20 @@ async fn test_run_file() {
     ]);
     cmd.assert().success();
 
-    let mut iter_count = 0;
-    while !cluster.is_controller_running().await.unwrap() && iter_count < max_wait_iter {
-        iter_count += 1;
-        tokio::time::sleep(Duration::from_millis(wait_time)).await;
-    }
-    while !cluster.is_test_running("hello-bones").await.unwrap() && iter_count < max_wait_iter {
-        iter_count += 1;
-        tokio::time::sleep(Duration::from_millis(wait_time)).await;
-    }
-    if iter_count == max_wait_iter {
-        panic!(
-            "Controller or test did not reach `running` after {} ms",
-            wait_time * max_wait_iter
-        )
-    }
+    cluster
+        .wait_for_controller(CONTROLLER_TIMEOUT)
+        .await
+        .unwrap();
+
+    cluster
+        .wait_for_test_pod("hello-bones", TEST_POD_TIMEOUT)
+        .await
+        .unwrap();
 }
 
 #[tokio::test]
 async fn test_add_file() {
     let cluster_name = "add-file-test";
-    let max_wait_iter = 50;
-    let wait_time = 1000;
     let cluster = Cluster::new(cluster_name).unwrap();
     cluster
         .load_image_to_cluster("testsys-controller:integ")
@@ -114,11 +98,10 @@ async fn test_add_file() {
     ]);
     cmd.assert().success();
 
-    let mut iter_count = 0;
-    while !cluster.is_controller_running().await.unwrap() && iter_count < max_wait_iter {
-        iter_count += 1;
-        tokio::time::sleep(Duration::from_millis(wait_time)).await;
-    }
+    cluster
+        .wait_for_controller(CONTROLLER_TIMEOUT)
+        .await
+        .unwrap();
     // TODO - have an actual resource request and check that it is fulfilled.
     // while !cluster.is_provider_running("robot-provider").await.unwrap()
     //     && iter_count < max_wait_iter
@@ -126,19 +109,11 @@ async fn test_add_file() {
     //     iter_count += 1;
     //     tokio::time::sleep(Duration::from_millis(wait_time)).await;
     // }
-    if iter_count == max_wait_iter {
-        panic!(
-            "`Controller` or `ResourceProvider` did not reach `running` after {} ms",
-            wait_time * max_wait_iter
-        )
-    }
 }
 
 #[tokio::test]
 async fn test_status() {
     let cluster_name = "status-test";
-    let max_wait_iter = 25;
-    let wait_time = 1000;
     let cluster = Cluster::new(cluster_name).unwrap();
     cluster
         .load_image_to_cluster("testsys-controller:integ")
@@ -165,21 +140,16 @@ async fn test_status() {
     ]);
     cmd.assert().success();
 
-    let mut iter_count = 0;
-    while !cluster.is_controller_running().await.unwrap() && iter_count < max_wait_iter {
-        iter_count += 1;
-        tokio::time::sleep(Duration::from_millis(wait_time)).await;
-    }
-    while !cluster.is_test_running("hello-bones").await.unwrap() && iter_count < max_wait_iter {
-        iter_count += 1;
-        tokio::time::sleep(Duration::from_millis(wait_time)).await;
-    }
-    if iter_count == max_wait_iter {
-        panic!(
-            "Controller or test did not reach `running` after {} ms",
-            wait_time * max_wait_iter
-        )
-    }
+    cluster
+        .wait_for_controller(CONTROLLER_TIMEOUT)
+        .await
+        .unwrap();
+
+    cluster
+        .wait_for_test_pod("hello-bones", TEST_POD_TIMEOUT)
+        .await
+        .unwrap();
+
     let mut cmd = Command::cargo_bin("testsys").unwrap();
     cmd.args(&[
         "--kubeconfig",
@@ -193,8 +163,6 @@ async fn test_status() {
 #[tokio::test]
 async fn test_set() {
     let cluster_name = "set-test";
-    let max_wait_iter = 25;
-    let wait_time = 1000;
     let cluster = Cluster::new(cluster_name).unwrap();
     cluster
         .load_image_to_cluster("testsys-controller:integ")
@@ -221,21 +189,16 @@ async fn test_set() {
     ]);
     cmd.assert().success();
 
-    let mut iter_count = 0;
-    while !cluster.is_controller_running().await.unwrap() && iter_count < max_wait_iter {
-        iter_count += 1;
-        tokio::time::sleep(Duration::from_millis(wait_time)).await;
-    }
-    while !cluster.is_test_running("hello-bones").await.unwrap() && iter_count < max_wait_iter {
-        iter_count += 1;
-        tokio::time::sleep(Duration::from_millis(wait_time)).await;
-    }
-    if iter_count == max_wait_iter {
-        panic!(
-            "Controller or test did not reach `running` after {} ms",
-            wait_time * max_wait_iter
-        )
-    }
+    cluster
+        .wait_for_controller(CONTROLLER_TIMEOUT)
+        .await
+        .unwrap();
+
+    cluster
+        .wait_for_test_pod("hello-bones", TEST_POD_TIMEOUT)
+        .await
+        .unwrap();
+
     let mut cmd = Command::cargo_bin("testsys").unwrap();
     cmd.args(&[
         "--kubeconfig",
