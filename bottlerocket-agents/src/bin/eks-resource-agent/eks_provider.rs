@@ -14,6 +14,8 @@ use std::process::Command;
 
 /// The default region for the cluster.
 const DEFAULT_REGION: &str = "us-west-2";
+/// The default cluster version.
+const DEFAULT_VERSION: &str = "1.17";
 
 /// The configuration information for a eks instance provider.
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, Default)]
@@ -27,6 +29,9 @@ pub struct ClusterConfig {
 
     /// The availablility zones. (e.g. us-west-2a,us-west-2b)
     zones: Option<Vec<String>>,
+
+    /// The eks version of the the cluster.
+    version: Option<String>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
@@ -128,6 +133,7 @@ impl Create for EksCreator {
                     &cluster_name,
                     &region,
                     &request.configuration.zones,
+                    &request.configuration.version,
                     &kubeconfig_dir,
                 )?;
                 cluster_name
@@ -208,6 +214,7 @@ fn create_cluster(
     cluster_name: &str,
     region: &str,
     zones: &Option<Vec<String>>,
+    version: &Option<String>,
     kubeconfig_dir: &Path,
 ) -> ProviderResult<()> {
     let status = Command::new("eksctl")
@@ -218,6 +225,11 @@ fn create_cluster(
             region,
             "--zones",
             &zones.clone().unwrap_or_default().join(","),
+            "--version",
+            &version
+                .as_ref()
+                .map(|version| version.as_str())
+                .unwrap_or(DEFAULT_VERSION),
             "--kubeconfig",
             kubeconfig_dir.to_str().context(
                 Resources::Clear,
