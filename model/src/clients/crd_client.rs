@@ -2,14 +2,14 @@ use crate::clients::error::{self, Result};
 use crate::constants::NAMESPACE;
 use crate::CrdExt;
 use core::fmt::Debug;
-use json_patch::{AddOperation, PatchOperation, ReplaceOperation, TestOperation};
+use json_patch::{AddOperation, PatchOperation, RemoveOperation, ReplaceOperation, TestOperation};
 use kube::api::{ListParams, Patch, PatchParams, PostParams};
-use kube::Api;
+use kube::{Api, Resource};
 use log::trace;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
-use snafu::{ensure, ResultExt};
-use std::collections::HashSet;
+use serde_json::Value;
+use snafu::{ensure, OptionExt, ResultExt};
 
 /// A trait with implementations of code that is shared between more than one CRD object.
 #[async_trait::async_trait]
@@ -102,21 +102,35 @@ pub trait CrdClient: Sized {
     async fn add_finalizer(&self, finalizer: &str, crd: &Self::Crd) -> Result<Self::Crd> {
         trace!("adding finalizer {} for {}", finalizer, crd.object_name());
 
-        let mut finalizers = crd.finalizer_set();
-        ensure!(
-            finalizers.insert(finalizer.to_owned()),
-            error::DuplicateFinalizer { finalizer }
-        );
-
-        self.patch(
-            crd.object_name(),
-            vec![JsonPatch::new_replace_operation(
-                "/metadata/finalizers",
-                finalizers,
-            )],
-            "add finalizer",
-        )
-        .await
+        // Initialize finalizer array if it doesn't exist.
+        if !crd.has_finalizers() {
+            self.patch(
+                crd.object_name(),
+                vec![
+                    JsonPatch::new_test_operation("/metadata/finalizers", Value::Null),
+                    JsonPatch::new_add_operation("/metadata/finalizers", vec![finalizer]),
+                ],
+                "add finalizer",
+            )
+            .await
+        } else {
+            ensure!(
+                !crd.has_finalizer(finalizer),
+                error::DuplicateFinalizer { finalizer }
+            );
+            self.patch(
+                crd.object_name(),
+                vec![
+                    JsonPatch::new_test_operation(
+                        "/metadata/finalizers",
+                        crd.meta().finalizers.clone(),
+                    ),
+                    JsonPatch::new_add_operation("/metadata/finalizers/-", finalizer),
+                ],
+                "add finalizer",
+            )
+            .await
+        }
     }
 
     /// Remove a finalizer. Checks `crd` to make sure the finalizer actually existed. Replaces the
@@ -124,18 +138,19 @@ pub trait CrdClient: Sized {
     async fn remove_finalizer(&self, finalizer: &str, crd: &Self::Crd) -> Result<Self::Crd> {
         trace!("removing finalizer {} for {}", finalizer, crd.object_name());
 
-        let mut finalizers: HashSet<String> = crd.finalizer_set();
-        ensure!(
-            finalizers.remove(finalizer),
-            error::DeleteMissingFinalizer { finalizer }
-        );
+        let finalizer_idx = crd
+            .finalizer_position(finalizer)
+            .context(error::DeleteMissingFinalizer { finalizer })?;
 
         self.patch(
             crd.object_name(),
-            vec![JsonPatch::new_replace_operation(
-                "/metadata/finalizers",
-                finalizers,
-            )],
+            vec![
+                JsonPatch::new_test_operation(
+                    format!("/metadata/finalizers/{}", finalizer_idx),
+                    finalizer,
+                ),
+                JsonPatch::new_remove_operation(format!("/metadata/finalizers/{}", finalizer_idx)),
+            ],
             "remove finalizer",
         )
         .await
@@ -208,6 +223,7 @@ pub trait CrdClient: Sized {
 pub(super) enum PatchOp {
     Add,
     Replace,
+    Remove,
     Test,
 }
 
@@ -243,6 +259,17 @@ impl JsonPatch {
         }
     }
 
+    pub fn new_remove_operation<S>(path: S) -> Self
+    where
+        S: Into<String>,
+    {
+        Self {
+            op: PatchOp::Remove,
+            path: path.into(),
+            value: Default::default(),
+        }
+    }
+
     pub fn new_test_operation<S, V>(path: S, value: V) -> Self
     where
         S: Into<String>,
@@ -265,6 +292,7 @@ impl JsonPatch {
                 path: self.path,
                 value: self.value,
             }),
+            PatchOp::Remove => PatchOperation::Remove(RemoveOperation { path: self.path }),
             PatchOp::Test => PatchOperation::Test(TestOperation {
                 path: self.path,
                 value: self.value,
