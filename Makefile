@@ -79,4 +79,4 @@ integ-test: controller-image example-test-agent-image example-resource-agent-ima
 	docker tag testsys-controller testsys-controller:integ
 	docker tag example-resource-agent example-resource-agent:integ
 	docker tag sonobuoy-test-agent sonobuoy-test-agent:integ
-	cargo test --features integ
+	cargo test --features integ -- --test-threads=2
