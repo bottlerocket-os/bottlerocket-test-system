@@ -1,6 +1,6 @@
 TOP := $(dir $(firstword $(MAKEFILE_LIST)))
 
-.PHONY: build sdk-openssl example-test-agent-image example-resource-agent-image controller-image images sonobuoy-test-agent-image integ-test ec2-resource-agent-image eks-resource-agent-image show-variables
+.PHONY: build sdk-openssl example-test-agent example-resource-agent controller images sonobuoy-test-agent integ-test ec2-resource-agent eks-resource-agent show-variables
 
 TESTSYS_BUILD_HOST_UNAME_ARCH=$(shell uname -m)
 TESTSYS_BUILD_HOST_GOARCH ?= $(lastword $(subst :, ,$(filter $(TESTSYS_BUILD_HOST_UNAME_ARCH):%,x86_64:amd64 aarch64:arm64)))
@@ -17,7 +17,7 @@ show-variables:
 fetch:
 	cargo fetch --locked
 
-images: fetch controller-image
+images: fetch controller sonobuoy-test-agent ec2-resource-agent eks-resource-agent
 
 # Builds, Lints and Tests the Rust workspace
 build: fetch
@@ -27,7 +27,7 @@ build: fetch
 	cargo test --locked
 
 # Build the container image for the example test-agent program
-example-test-agent-image: show-variables fetch
+example-test-agent: show-variables fetch
 	docker build $(DOCKER_BUILD_FLAGS) \
 		--build-arg ARCH="$(TESTSYS_BUILD_HOST_UNAME_ARCH)" \
 		--tag "example-testsys-agent" \
@@ -35,46 +35,38 @@ example-test-agent-image: show-variables fetch
 		-f agent/test-agent/examples/example_test_agent/Dockerfile .
 
 # Build the container image for the example resource-agent program
-example-resource-agent-image: show-variables fetch
+example-resource-agent: show-variables fetch
 	docker build $(DOCKER_BUILD_FLAGS) \
 		--build-arg ARCH="$(TESTSYS_BUILD_HOST_UNAME_ARCH)" \
 		--tag "example-resource-agent" \
 		--network none \
 		-f agent/resource-agent/examples/example_resource_agent/Dockerfile .
 
-duplicator-resource-agent-image: show-variables fetch
+# Build the container image for the example duplicator resource-agent program
+duplicator-resource-agent: show-variables fetch
 	docker build $(DOCKER_BUILD_FLAGS) \
 		--build-arg ARCH="$(TESTSYS_BUILD_HOST_UNAME_ARCH)" \
 		--tag "duplicator-resource-agent" \
 		--network none \
 		-f agent/resource-agent/examples/duplicator_resource_agent/Dockerfile .
 
-eks-resource-agent-image: show-variables fetch
-	docker build $(DOCKER_BUILD_FLAGS) \
-		--build-arg ARCH="$(TESTSYS_BUILD_HOST_UNAME_ARCH)" \
-		--tag "eks-resource-agent" \
-		-f bottlerocket-agents/src/bin/eks-resource-agent/Dockerfile .
-
-controller-image: show-variables fetch
+# Build the container image for the testsys controller
+controller: show-variables fetch
 	docker build $(DOCKER_BUILD_FLAGS) \
 		--build-arg ARCH="$(TESTSYS_BUILD_HOST_UNAME_ARCH)" \
 		--tag "testsys-controller" \
 		-f controller/Dockerfile .
 
-sonobuoy-test-agent-image: show-variables fetch
-	docker build $(DOCKER_BUILD_FLAGS) \
-		--build-arg UNAME_ARCH="$(TESTSYS_BUILD_HOST_UNAME_ARCH)" \
-		--build-arg GOARCH="$(TESTSYS_BUILD_HOST_GOARCH)" \
-		--tag "sonobuoy-test-agent" \
-		-f bottlerocket-agents/src/bin/sonobuoy-test-agent/Dockerfile .
-
-ec2-resource-agent-image: show-variables fetch
+# Build the container image for a testsys agent
+eks-resource-agent ec2-resource-agent sonobuoy-test-agent: show-variables fetch
 	docker build $(DOCKER_BUILD_FLAGS) \
 		--build-arg ARCH="$(TESTSYS_BUILD_HOST_UNAME_ARCH)" \
-		--tag "ec2-resource-agent" \
-		-f bottlerocket-agents/src/bin/ec2-resource-agent/Dockerfile .
+		--build-arg GOARCH="$(TESTSYS_BUILD_HOST_GOARCH)" \
+		--target $@ \
+		--tag $@ \
+		.
 
-integ-test: controller-image example-test-agent-image example-resource-agent-image sonobuoy-test-agent-image
+integ-test: controller example-test-agent example-resource-agent sonobuoy-test-agent
 	docker tag example-testsys-agent example-testsys-agent:integ
 	docker tag testsys-controller testsys-controller:integ
 	docker tag example-resource-agent example-resource-agent:integ
