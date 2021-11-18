@@ -1,6 +1,9 @@
 use crate::error::{self, Result};
 use kube::Client;
-use model::clients::{CrdClient, TestClient};
+use model::{
+    clients::{CrdClient, TestClient},
+    Test,
+};
 use snafu::ResultExt;
 use std::path::PathBuf;
 use structopt::StructOpt;
@@ -18,13 +21,16 @@ impl RunFile {
         // Create the test object from its path.
         let test_file =
             std::fs::File::open(&self.path).context(error::File { path: &self.path })?;
-        let test = serde_yaml::from_reader(test_file)
+        let test: Test = serde_yaml::from_reader(test_file)
             .context(error::TestFileParse { path: &self.path })?;
 
         let tests = TestClient::new_from_k8s_client(k8s_client);
+        let name = test.metadata.name.clone();
 
         tests.create(test).await.context(error::CreateTest)?;
-
+        if let Some(name) = name {
+            println!("Successfully added test '{}'.", name);
+        }
         Ok(())
     }
 }

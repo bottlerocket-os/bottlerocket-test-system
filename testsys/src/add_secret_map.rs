@@ -42,6 +42,7 @@ impl AddSecretMap {
         };
 
         create_or_update(&secrets, secret, "Secret").await?;
+        println!("Successfully added '{}' to secrets.", self.name);
         Ok(())
     }
 }

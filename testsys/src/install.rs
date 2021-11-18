@@ -86,6 +86,8 @@ impl Install {
         )
         .await?;
 
+        println!("testsys components were successfully installed.");
+
         Ok(())
     }
 }
