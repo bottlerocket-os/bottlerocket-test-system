@@ -9,6 +9,7 @@ use async_trait::async_trait;
 use model::{Configuration, Outcome};
 use serde::{Deserialize, Serialize};
 use std::fmt::{Debug, Display};
+use std::path::PathBuf;
 use test_agent::{BootstrapData, Client, Runner};
 use test_agent::{TestInfo, TestResults};
 use tokio::time::{sleep, Duration};
@@ -81,6 +82,7 @@ impl Client for MockClient {
             name: "mock-test".into(),
             configuration: C::default(),
             secrets: Default::default(),
+            results_dir: Default::default(),
         })
     }
 
@@ -104,6 +106,10 @@ impl Client for MockClient {
 
     async fn keep_running(&self) -> Result<bool, Self::E> {
         Ok(false)
+    }
+
+    async fn get_results_directory(&self) -> Result<PathBuf, Self::E> {
+        Ok(Default::default())
     }
 }
 

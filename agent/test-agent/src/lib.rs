@@ -13,6 +13,8 @@ pub use model::{Configuration, TestResults};
 use model::{SecretName, SecretType};
 use std::collections::BTreeMap;
 use std::fmt::{Debug, Display};
+use std::path::PathBuf;
+use tempfile::TempDir;
 
 /// Information that a test [`Runner`] needs before it can begin a test.
 #[derive(Debug, Clone)]
@@ -20,6 +22,7 @@ pub struct TestInfo<C: Configuration> {
     pub name: String,
     pub configuration: C,
     pub secrets: BTreeMap<SecretType, SecretName>,
+    pub results_dir: PathBuf,
 }
 
 /// The `Runner` trait provides a wrapper for any testing modality. You must implement this trait
@@ -80,6 +83,9 @@ pub trait Client: Sized {
     where
         C: Configuration;
 
+    /// Get the directory that the test's results are stored in.
+    async fn get_results_directory(&self) -> Result<PathBuf, Self::E>;
+
     /// Determine if the pod should keep running after it has finished or encountered and error.
     async fn keep_running(&self) -> Result<bool, Self::E>;
 
@@ -99,4 +105,5 @@ pub trait Client: Sized {
 pub struct DefaultClient {
     client: TestClient,
     name: String,
+    results_dir: TempDir,
 }

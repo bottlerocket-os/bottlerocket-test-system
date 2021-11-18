@@ -13,11 +13,8 @@ WORKDIR /src/agent/test-agent
 RUN --mount=type=cache,mode=0777,target=/src/target \
     cargo install --offline --locked --target ${ARCH}-bottlerocket-linux-musl --path . --example example_test_agent --root ./
 
-FROM scratch
-# Copy CA certificates store
-COPY --from=build /etc/ssl /etc/ssl
-COPY --from=build /etc/pki /etc/pki
-# Copy binary
+FROM public.ecr.aws/amazonlinux/amazonlinux:2
+
 COPY --from=build /src/agent/test-agent/bin/example_test_agent ./
 
 ENTRYPOINT ["./example_test_agent"]

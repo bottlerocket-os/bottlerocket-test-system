@@ -57,6 +57,11 @@ pub(crate) enum InnerError {
         op: String,
         source: tokio::time::error::Elapsed,
     },
+
+    #[snafu(display("An error occured while creating archive: {}", source))]
+    Archive {
+        source: std::io::Error,
+    },
 }
 
 impl<C, R> From<InnerError> for Error<C, R>
