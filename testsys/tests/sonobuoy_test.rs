@@ -1,11 +1,20 @@
 #![cfg(feature = "integ")]
 use assert_cmd::Command;
 use selftest::Cluster;
+use tokio::time::Duration;
 
 /// This test requires an external k8s cluster whose kubeconfig must be added to
 /// `test_kubeconfig`.
 #[tokio::test]
+// FIXME - remove assumptions about an existing cluster?
+#[ignore]
 async fn run_sonobuoy_test() {
+    tokio::time::timeout(Duration::from_secs(120), run_sonobuoy_test_impl())
+        .await
+        .expect("Timeout waiting for run_sonobuoy_test_impl");
+}
+
+async fn run_sonobuoy_test_impl() {
     let test_cluster = Cluster::new("sono-test").unwrap();
     let cluster = Cluster::new("sonobuoy-test").unwrap();
     cluster

@@ -1,18 +1,20 @@
-use anyhow::{format_err, Result};
+use anyhow::{format_err, Context, Result};
 use k8s_openapi::api::core::v1::Pod;
+use k8s_openapi::serde::de::DeserializeOwned;
 use kube::{
     api::ListParams,
     config::{KubeConfigOptions, Kubeconfig},
     Api, Client, Config,
 };
-use model::constants::{LABEL_COMPONENT, LABEL_PROVIDER_NAME, LABEL_TEST_NAME, NAMESPACE};
+use model::constants::{LABEL_COMPONENT, LABEL_PROVIDER_NAME, NAMESPACE};
+use std::fmt::Debug;
 use std::{convert::TryInto, fs::File};
 use std::{
     io::Write,
     path::{Path, PathBuf},
 };
-
 use tempfile::TempDir;
+use tokio::time::Duration;
 
 pub const KUBECONFIG_FILENAME: &str = "kubeconfig.yaml";
 pub const KUBECONFIG_INTERNAL_FILENAME: &str = "kubeconfig_internal.yaml";
@@ -107,52 +109,76 @@ impl Cluster {
 
     /// Returns `true` if the controller is in the running state.
     pub async fn is_controller_running(&self) -> Result<bool> {
-        let client = self.k8s_client().await?;
-        let pod_api = Api::<Pod>::namespaced(client, NAMESPACE);
-        let pods = pod_api
-            .list(&ListParams {
-                label_selector: Some(format!("{}=controller", LABEL_COMPONENT)),
-                ..Default::default()
-            })
+        let pods = self
+            .find_by_label::<Pod>(LABEL_COMPONENT, "controller")
             .await?;
+        if pods.is_empty() {
+            return Ok(false);
+        }
         for pod in pods {
-            if pod
-                .status
-                .unwrap_or_default()
-                .phase
-                .clone()
-                .unwrap_or_default()
-                == "Running"
-            {
-                return Ok(true);
+            if !is_pod_running(&pod) {
+                return Ok(false);
             }
         }
-        Ok(false)
+        Ok(true)
+    }
+
+    /// Waits until the controller is running. Will timeout after `duration` if not running.
+    pub async fn wait_for_controller(&self, duration: Duration) -> Result<()> {
+        tokio::time::timeout(duration, self.wait_for_controller_loop())
+            .await
+            .context("Timeout waiting for controller to be in the 'Running' state")?
+    }
+
+    /// Waits until the test pod is running. Will timeout after `duration` if not running.
+    pub async fn wait_for_test_pod(&self, test_name: &str, duration: Duration) -> Result<()> {
+        tokio::time::timeout(duration, self.wait_for_test_loop(test_name))
+            .await
+            .context("Timeout waiting for test '{}' pod to be in the 'Running' state")?
+    }
+
+    async fn wait_for_controller_loop(&self) -> Result<()> {
+        loop {
+            if self.is_controller_running().await? {
+                return Ok(());
+            }
+            tokio::time::sleep(Duration::from_millis(750)).await;
+        }
+    }
+
+    async fn wait_for_test_loop(&self, test_name: &str) -> Result<()> {
+        loop {
+            if self.is_test_running(test_name).await? {
+                return Ok(());
+            }
+            tokio::time::sleep(Duration::from_millis(750)).await;
+        }
     }
 
     /// Returns `true` if the `Test` named `test_name` is in the running state.
     pub async fn is_test_running(&self, test_name: &str) -> Result<bool> {
+        let pods = self.find_by_label::<Pod>("job-name", test_name).await?;
+        let pod = match pods.into_iter().next() {
+            None => return Ok(false),
+            Some(pod) => pod,
+        };
+        Ok(is_pod_running(&pod))
+    }
+
+    pub async fn find_by_label<T>(&self, key: &str, val: &str) -> Result<Vec<T>>
+    where
+        T: kube::Resource + Clone + DeserializeOwned + Debug,
+        <T as kube::Resource>::DynamicType: Default,
+    {
         let client = self.k8s_client().await?;
-        let pod_api = Api::<Pod>::namespaced(client, NAMESPACE);
-        let pods = pod_api
+        let api = Api::<T>::namespaced(client, NAMESPACE);
+        let objects = api
             .list(&ListParams {
-                label_selector: Some(format!("{}={}", LABEL_TEST_NAME, test_name)),
+                label_selector: Some(format!("{}={}", key, val)),
                 ..Default::default()
             })
             .await?;
-        for pod in pods {
-            if pod
-                .status
-                .unwrap_or_default()
-                .phase
-                .clone()
-                .unwrap_or_default()
-                == "Running"
-            {
-                return Ok(true);
-            }
-        }
-        Ok(false)
+        Ok(objects.items)
     }
 
     /// Returns `true` if the `ResourceProvider` named `provider_name` is in the running state.
@@ -232,4 +258,11 @@ impl Drop for Cluster {
             eprintln!("unable to delete kind cluster '{}': {}", self.name, e)
         }
     }
+}
+
+fn is_pod_running(pod: &Pod) -> bool {
+    pod.status
+        .as_ref()
+        .and_then(|s| s.phase.as_ref().map(|s| s == "Running"))
+        .unwrap_or(false)
 }
