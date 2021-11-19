@@ -46,7 +46,7 @@ async fn test_run_file() {
     ]);
     cmd.assert().success();
     cluster
-        .load_image_to_cluster("example-testsys-agent:integ")
+        .load_image_to_cluster("example-test-agent:integ")
         .unwrap();
     let mut cmd = Command::cargo_bin("testsys").unwrap();
     cmd.args(&[
@@ -128,7 +128,7 @@ async fn test_status() {
     ]);
     cmd.assert().success();
     cluster
-        .load_image_to_cluster("example-testsys-agent:integ")
+        .load_image_to_cluster("example-test-agent:integ")
         .unwrap();
     let mut cmd = Command::cargo_bin("testsys").unwrap();
     cmd.args(&[
@@ -177,7 +177,7 @@ async fn test_set() {
     ]);
     cmd.assert().success();
     cluster
-        .load_image_to_cluster("example-testsys-agent:integ")
+        .load_image_to_cluster("example-test-agent:integ")
         .unwrap();
     let mut cmd = Command::cargo_bin("testsys").unwrap();
     cmd.args(&[
