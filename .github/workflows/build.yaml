@@ -37,6 +37,7 @@ jobs:
          - "example-resource-agent"
          - "example-test-agent"
          - "sonobuoy-test-agent"
+         - "migration-test-agent"
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2

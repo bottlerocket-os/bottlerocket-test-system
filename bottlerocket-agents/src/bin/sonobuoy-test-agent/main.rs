@@ -27,62 +27,24 @@ spec:
       kubernetes_version: v1.21.2
     image: <your sonobuoy-test-agent image URI>
     name: sonobuoy-test-agent
+    keep_running: true
   resources: {}
 ```
 
 !*/
 
 use async_trait::async_trait;
-use bottlerocket_agents::{SonobuoyConfig, SONOBUOY_AWS_SECRET_NAME};
+use bottlerocket_agents::error::Error;
+use bottlerocket_agents::sonobuoy::{delete_sonobuoy, run_sonobuoy};
+use bottlerocket_agents::{
+    decode_write_kubeconfig, setup_env, SonobuoyConfig, AWS_CREDENTIALS_SECRET_NAME,
+    TEST_CLUSTER_KUBECONFIG_PATH,
+};
 use log::info;
-use model::{Outcome, SecretName, TestResults};
+use model::{SecretName, TestResults};
 use simplelog::{Config as LogConfig, LevelFilter, SimpleLogger};
-use snafu::{ensure, OptionExt, ResultExt, Snafu};
-use std::path::{Path, PathBuf};
-use std::process::Command;
-use std::string::FromUtf8Error;
-use std::{env, fs, process};
-use test_agent::{BootstrapData, ClientError, DefaultClient, Runner, TestAgent, TestInfo};
-
-const TEST_CLUSTER_KUBECONFIG: &str = "/local/test-cluster.kubeconfig";
-
-#[derive(Debug, Snafu)]
-enum SonobuoyError {
-    #[snafu(display("Failed to base64-decode kubeconfig for test cluster: {}", source))]
-    Base64Decode { source: base64::DecodeError },
-
-    #[snafu(display("Could not convert '{}' secret to string: {}", what, source))]
-    Conversion { what: String, source: FromUtf8Error },
-
-    #[snafu(display("Failed to setup environment variables: {}", what))]
-    EnvSetup { what: String },
-
-    #[snafu(display("Failed to write kubeconfig for test cluster: {}", source))]
-    KubeconfigWrite { source: std::io::Error },
-
-    #[snafu(display("Secret was missing: {}", source))]
-    SecretMissing {
-        source: agent_common::secrets::Error,
-    },
-
-    #[snafu(display("Failed to create sonobuoy process: {}", source))]
-    SonobuoyProcess { source: std::io::Error },
-
-    #[snafu(display("Failed to run conformance test"))]
-    SonobuoyRun,
-
-    #[snafu(display("Failed to clean-up sonobuoy resources"))]
-    SonobuoyDelete,
-
-    #[snafu(display("{}", source))]
-    DeserializeJson { source: serde_json::Error },
-
-    #[snafu(display("Missing '{}' field from sonobuoy status", field))]
-    MissingSonobuoyStatusField { field: String },
-
-    #[snafu(display("Results location is invalid"))]
-    ResultsLocation,
-}
+use std::path::PathBuf;
+use test_agent::{BootstrapData, ClientError, DefaultClient, TestAgent, TestInfo};
 
 struct SonobuoyTestRunner {
     config: SonobuoyConfig,
@@ -93,13 +55,13 @@ struct SonobuoyTestRunner {
 #[async_trait]
 impl test_agent::Runner for SonobuoyTestRunner {
     type C = SonobuoyConfig;
-    type E = SonobuoyError;
+    type E = Error;
 
     async fn new(test_info: TestInfo<Self::C>) -> Result<Self, Self::E> {
         info!("Initializing Sonobuoy test agent...");
         Ok(Self {
             config: test_info.configuration,
-            aws_secret_name: test_info.secrets.get(SONOBUOY_AWS_SECRET_NAME).cloned(),
+            aws_secret_name: test_info.secrets.get(AWS_CREDENTIALS_SECRET_NAME).cloned(),
             results_dir: test_info.results_dir,
         })
     }
@@ -107,178 +69,21 @@ impl test_agent::Runner for SonobuoyTestRunner {
     async fn run(&mut self) -> Result<TestResults, Self::E> {
         // Set up the aws credentials if they were provided.
         if let Some(aws_secret_name) = &self.aws_secret_name {
-            self.setup_env(aws_secret_name).await?;
+            setup_env(self, aws_secret_name).await?;
         }
-        info!("Decoding kubeconfig for test cluster");
-        let decoded_bytes =
-            base64::decode(self.config.kubeconfig_base64.as_bytes()).context(Base64Decode)?;
-        let path = Path::new(TEST_CLUSTER_KUBECONFIG);
-        info!("Storing kubeconfig in {}", path.display());
-        fs::write(path, decoded_bytes).context(KubeconfigWrite)?;
-        let kubconfig_arg = vec!["--kubeconfig", TEST_CLUSTER_KUBECONFIG];
-        let k8s_image_arg = match (
-            &self.config.kube_conformance_image,
-            &self.config.kubernetes_version,
-        ) {
-            (Some(image), None) | (Some(image), Some(_)) => {
-                vec!["--kube-conformance-image", image]
-            }
-            (None, Some(version)) => {
-                vec!["--kubernetes-version", version]
-            }
-            _ => {
-                vec![]
-            }
-        };
-        info!("Running sonobuoy");
 
-        let status = Command::new("/usr/bin/sonobuoy")
-            .args(kubconfig_arg.to_owned())
-            .arg("run")
-            .arg("--wait")
-            .arg("--plugin")
-            .arg(&self.config.plugin)
-            .arg("--mode")
-            .arg(&self.config.mode)
-            .args(k8s_image_arg)
-            .status()
-            .context(SonobuoyProcess)?;
-        ensure!(status.success(), SonobuoyRun);
-
-        let status = Command::new("/usr/bin/sonobuoy")
-            .current_dir(self.results_dir.to_str().context(ResultsLocation)?)
-            .args(kubconfig_arg.to_owned())
-            .arg("retrieve")
-            .status()
-            .context(SonobuoyProcess)?;
-        ensure!(status.success(), SonobuoyRun);
-
-        let run_result = Command::new("/usr/bin/sonobuoy")
-            .args(kubconfig_arg)
-            .arg("status")
-            .arg("--json")
-            .output()
-            .context(SonobuoyProcess)?;
-
-        let run_status: serde_json::Value =
-            serde_json::from_str(&String::from_utf8_lossy(&run_result.stdout))
-                .context(DeserializeJson)?;
-        let e2e_status = run_status
-            .get("plugins")
-            .context(MissingSonobuoyStatusField { field: "plugins" })?
-            .as_array()
-            .context(MissingSonobuoyStatusField { field: "plugins" })?
-            .first()
-            .context(MissingSonobuoyStatusField {
-                field: format!("plugins.{}", self.config.plugin),
-            })?;
-        let progress_status = e2e_status
-            .get("progress")
-            .context(MissingSonobuoyStatusField {
-                field: format!("plugins.{}.progress", self.config.plugin),
-            })?;
-        let result_status = e2e_status
-            .get("result-status")
-            .context(MissingSonobuoyStatusField {
-                field: format!("plugins.{}.result-status", self.config.plugin),
-            })?
-            .as_str()
-            .context(MissingSonobuoyStatusField {
-                field: format!("plugins.{}.result-status", self.config.plugin),
-            })?;
-        let result_counts = run_status
-            .get("plugins")
-            .context(MissingSonobuoyStatusField { field: "plugins" })?
-            .as_array()
-            .context(MissingSonobuoyStatusField { field: "plugins" })?
-            .first()
-            .context(MissingSonobuoyStatusField {
-                field: format!("plugins.{}", self.config.plugin),
-            })?
-            .get("result-counts")
-            .context(MissingSonobuoyStatusField {
-                field: format!("plugins.{}.result-counts", self.config.plugin),
-            })?;
-        let num_passed = result_counts
-            .get("passed")
-            .map(|v| v.as_u64().unwrap_or(0))
-            .unwrap_or(0);
-        let num_failed = result_counts
-            .get("failed")
-            .map(|v| v.as_u64().unwrap_or(0))
-            .unwrap_or(0);
-        let num_skipped = result_counts
-            .get("skipped")
-            .map(|v| v.as_u64().unwrap_or(0))
-            .unwrap_or(0);
-
-        Ok(TestResults {
-            outcome: match result_status {
-                "pass" | "passed" => Outcome::Pass,
-                "fail" | "failed" => Outcome::Fail,
-                "timeout" | "timed-out" => Outcome::Timeout,
-                _ => Outcome::Unknown,
-            },
-            num_passed,
-            num_failed,
-            num_skipped,
-            other_info: Some(progress_status.to_owned().to_string()),
-        })
+        decode_write_kubeconfig(&self.config.kubeconfig_base64, TEST_CLUSTER_KUBECONFIG_PATH)
+            .await?;
+        run_sonobuoy(
+            TEST_CLUSTER_KUBECONFIG_PATH,
+            &self.config,
+            &self.results_dir,
+        )
+        .await
     }
 
     async fn terminate(&mut self) -> Result<(), Self::E> {
-        let kubconfig_arg = vec!["--kubeconfig", TEST_CLUSTER_KUBECONFIG];
-
-        info!("Deleting sonobuoy resources from cluster");
-        let status = Command::new("/usr/bin/sonobuoy")
-            .args(kubconfig_arg)
-            .arg("delete")
-            .arg("--wait")
-            .status()
-            .context(SonobuoyProcess)?;
-        ensure!(status.success(), SonobuoyDelete);
-
-        Ok(())
-    }
-}
-
-impl SonobuoyTestRunner {
-    async fn setup_env(
-        &self,
-        aws_secret_name: &SecretName,
-    ) -> Result<(), <SonobuoyTestRunner as test_agent::Runner>::E> {
-        let aws_secret = self.get_secret(aws_secret_name).context(SecretMissing)?;
-
-        let access_key_id = String::from_utf8(
-            aws_secret
-                .get("access-key-id")
-                .context(EnvSetup {
-                    what: format!("access-key-id missing from secret '{}'", aws_secret_name),
-                })?
-                .to_owned(),
-        )
-        .context(Conversion {
-            what: "access-key-id",
-        })?;
-        let secret_access_key = String::from_utf8(
-            aws_secret
-                .get("secret-access-key")
-                .context(EnvSetup {
-                    what: format!(
-                        "secret-access-key missing from secret '{}'",
-                        aws_secret_name
-                    ),
-                })?
-                .to_owned(),
-        )
-        .context(Conversion {
-            what: "access-key-id",
-        })?;
-
-        env::set_var("AWS_ACCESS_KEY_ID", access_key_id);
-        env::set_var("AWS_SECRET_ACCESS_KEY", secret_access_key);
-
-        Ok(())
+        delete_sonobuoy(TEST_CLUSTER_KUBECONFIG_PATH).await
     }
 }
 
@@ -287,7 +92,7 @@ async fn main() {
     // SimpleLogger will send errors to stderr and anything less to stdout.
     if let Err(e) = SimpleLogger::init(LevelFilter::Info, LogConfig::default()) {
         eprintln!("{}", e);
-        process::exit(1);
+        std::process::exit(1);
     }
     if let Err(e) = run().await {
         eprintln!("{}", e);
@@ -295,7 +100,7 @@ async fn main() {
     }
 }
 
-async fn run() -> Result<(), test_agent::error::Error<ClientError, SonobuoyError>> {
+async fn run() -> Result<(), test_agent::error::Error<ClientError, Error>> {
     let mut agent = TestAgent::<DefaultClient, SonobuoyTestRunner>::new(
         BootstrapData::from_env().unwrap_or_else(|_| BootstrapData {
             test_name: "sonobuoy_test".to_string(),
