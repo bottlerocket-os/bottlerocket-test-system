@@ -12,10 +12,13 @@ jobs:
     strategy:
       matrix:
         make_target:
-         - "images"
-         - "example-resource-agent"
+         - "controller"
          - "duplicator-resource-agent"
+         - "ec2-resource-agent"
+         - "eks-resource-agent"
+         - "example-resource-agent"
          - "example-test-agent"
+         - "sonobuoy-test-agent"
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
