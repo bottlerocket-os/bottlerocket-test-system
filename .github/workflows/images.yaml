@@ -23,3 +23,19 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - run: make ${{ matrix.make_target }}
+      - run: docker save ${{ matrix.make_target }}:latest --output /tmp/${{ matrix.make_target }}.tar
+      - uses: actions/upload-artifact@v2
+        with:
+          name: ${{ matrix.make_target }}
+          path: /tmp/${{ matrix.make_target }}.tar
+  use-images:
+    needs: build-images
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v2
+        with:
+          path: /tmp
+      - run: docker load --input /tmp/controller/controller.tar
+      - run: docker load --input /tmp/duplicator-resource-agent/duplicator-resource-agent.tar
+      - run: docker load --input /tmp/example-resource-agent/example-resource-agent.tar
+      - run: docker load --input /tmp/example-test-agent/example-test-agent.tar
