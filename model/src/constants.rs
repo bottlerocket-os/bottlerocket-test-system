@@ -16,7 +16,7 @@ pub const NAMESPACE: &str = "testsys-bottlerocket-aws";
 pub const TESTSYS: &str = testsys!();
 
 // Component names
-pub const CONTROLLER: &str = "testsys-controller";
+pub const CONTROLLER: &str = "controller";
 pub const RESOURCE_AGENT: &str = "testsys-resource-agent";
 pub const RESOURCE_AGENT_BINDING: &str = "testsys-resource-agent-role-binding";
 pub const RESOURCE_AGENT_ROLE: &str = "testsys-resource-agent-role";

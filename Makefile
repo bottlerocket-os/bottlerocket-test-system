@@ -54,7 +54,7 @@ duplicator-resource-agent: show-variables fetch
 controller: show-variables fetch
 	docker build $(DOCKER_BUILD_FLAGS) \
 		--build-arg ARCH="$(TESTSYS_BUILD_HOST_UNAME_ARCH)" \
-		--tag "testsys-controller" \
+		--tag "controller" \
 		-f controller/Dockerfile .
 
 # Build the container image for a testsys agent
@@ -68,7 +68,7 @@ eks-resource-agent ec2-resource-agent sonobuoy-test-agent: show-variables fetch
 
 integ-test: controller example-test-agent example-resource-agent sonobuoy-test-agent
 	docker tag example-test-agent example-test-agent:integ
-	docker tag testsys-controller testsys-controller:integ
+	docker tag controller controller:integ
 	docker tag example-resource-agent example-resource-agent:integ
 	docker tag sonobuoy-test-agent sonobuoy-test-agent:integ
 	cargo test --features integ -- --test-threads=2

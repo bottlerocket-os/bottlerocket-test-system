@@ -17,16 +17,14 @@ async fn run_sonobuoy_test() {
 async fn run_sonobuoy_test_impl() {
     let test_cluster = Cluster::new("sono-test").unwrap();
     let cluster = Cluster::new("sonobuoy-test").unwrap();
-    cluster
-        .load_image_to_cluster("testsys-controller:integ")
-        .unwrap();
+    cluster.load_image_to_cluster("controller:integ").unwrap();
     let mut cmd = Command::cargo_bin("testsys").unwrap();
     cmd.args(&[
         "--kubeconfig",
         cluster.kubeconfig().to_str().unwrap(),
         "install",
         "--controller-uri",
-        "testsys-controller:integ",
+        "controller:integ",
     ]);
     cmd.assert().success();
     cluster
