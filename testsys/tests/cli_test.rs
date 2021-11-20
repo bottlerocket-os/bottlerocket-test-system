@@ -4,8 +4,10 @@ use assert_cmd::Command;
 use selftest::Cluster;
 use tokio::time::Duration;
 
-const CONTROLLER_TIMEOUT: Duration = Duration::from_secs(60);
-const TEST_POD_TIMEOUT: Duration = Duration::from_secs(60);
+/// The amount of time we will wait for the controller to run, a test-agent to run, etc. before we
+/// consider the selftest a failure. This can be a very long time on resource constrained or
+/// machines running a VM for docker.
+const POD_TIMEOUT: Duration = Duration::from_secs(300);
 
 #[tokio::test]
 async fn test_install() {
@@ -21,10 +23,7 @@ async fn test_install() {
         "controller:integ",
     ]);
     cmd.assert().success();
-    cluster
-        .wait_for_controller(CONTROLLER_TIMEOUT)
-        .await
-        .unwrap();
+    cluster.wait_for_controller(POD_TIMEOUT).await.unwrap();
 }
 
 #[tokio::test]
@@ -54,13 +53,10 @@ async fn test_run_file() {
     ]);
     cmd.assert().success();
 
-    cluster
-        .wait_for_controller(CONTROLLER_TIMEOUT)
-        .await
-        .unwrap();
+    cluster.wait_for_controller(POD_TIMEOUT).await.unwrap();
 
     cluster
-        .wait_for_test_pod("hello-bones", TEST_POD_TIMEOUT)
+        .wait_for_test_pod("hello-bones", POD_TIMEOUT)
         .await
         .unwrap();
 }
@@ -92,10 +88,7 @@ async fn test_add_file() {
     ]);
     cmd.assert().success();
 
-    cluster
-        .wait_for_controller(CONTROLLER_TIMEOUT)
-        .await
-        .unwrap();
+    cluster.wait_for_controller(POD_TIMEOUT).await.unwrap();
     // TODO - have an actual resource request and check that it is fulfilled.
     // while !cluster.is_provider_running("robot-provider").await.unwrap()
     //     && iter_count < max_wait_iter
@@ -132,13 +125,10 @@ async fn test_status() {
     ]);
     cmd.assert().success();
 
-    cluster
-        .wait_for_controller(CONTROLLER_TIMEOUT)
-        .await
-        .unwrap();
+    cluster.wait_for_controller(POD_TIMEOUT).await.unwrap();
 
     cluster
-        .wait_for_test_pod("hello-bones", TEST_POD_TIMEOUT)
+        .wait_for_test_pod("hello-bones", POD_TIMEOUT)
         .await
         .unwrap();
 
@@ -179,13 +169,10 @@ async fn test_set() {
     ]);
     cmd.assert().success();
 
-    cluster
-        .wait_for_controller(CONTROLLER_TIMEOUT)
-        .await
-        .unwrap();
+    cluster.wait_for_controller(POD_TIMEOUT).await.unwrap();
 
     cluster
-        .wait_for_test_pod("hello-bones", TEST_POD_TIMEOUT)
+        .wait_for_test_pod("hello-bones", POD_TIMEOUT)
         .await
         .unwrap();
 
