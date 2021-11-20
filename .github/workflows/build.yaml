@@ -58,7 +58,11 @@ jobs:
       - run: docker load --input /tmp/duplicator-resource-agent/duplicator-resource-agent.tar
       - run: docker load --input /tmp/example-resource-agent/example-resource-agent.tar
       - run: docker load --input /tmp/example-test-agent/example-test-agent.tar
+      - run: docker load --input /tmp/sonobuoy-test-agent/sonobuoy-test-agent.tar
       - run: cd /tmp/build-artifacts && tar -xf cargo.gz
       - run: cd /tmp/build-artifacts && tar -xf target.gz
       - run: mv /tmp/build-artifacts/cargo .cargo
       - run: mv /tmp/build-artifacts/target target
+      - run: make integ-test
+        env:
+          TESTSYS_SELFTEST_SKIP_IMAGE_BUILDS: true
