@@ -4,6 +4,7 @@ TOP := $(dir $(firstword $(MAKEFILE_LIST)))
 
 TESTSYS_BUILD_HOST_UNAME_ARCH=$(shell uname -m)
 TESTSYS_BUILD_HOST_GOARCH ?= $(lastword $(subst :, ,$(filter $(TESTSYS_BUILD_HOST_UNAME_ARCH):%,x86_64:amd64 aarch64:arm64)))
+TESTSYS_BUILD_HOST_PLATFORM=$(shell uname | tr '[:upper:]' '[:lower:]')
 
 export DOCKER_BUILDKIT=1
 export CARGO_HOME = $(TOP)/.cargo
@@ -11,7 +12,8 @@ export CARGO_HOME = $(TOP)/.cargo
 show-variables:
 	$(info TESTSYS_BUILD_HOST_UNAME_ARCH=$(TESTSYS_BUILD_HOST_UNAME_ARCH))
 	$(info TESTSYS_BUILD_HOST_GOARCH=$(TESTSYS_BUILD_HOST_GOARCH))
-	 @echo > /dev/null
+	$(info TESTSYS_BUILD_HOST_PLATFORM=$(TESTSYS_BUILD_HOST_PLATFORM))
+	@echo > /dev/null
 
 # Fetches crates from upstream
 fetch:
@@ -67,9 +69,13 @@ eks-resource-agent ec2-resource-agent sonobuoy-test-agent: show-variables fetch
 		--tag $@ \
 		.
 
-integ-test: controller example-test-agent example-resource-agent sonobuoy-test-agent
+# If TESTSYS_SELFTEST_SKIP_IMAGE_BUILDS is set to a non-zero-length string, the container images
+# will not be rebuilt.
+integ-test: export TESTSYS_SELFTEST_KIND_PATH := $(shell pwd)/bin/kind
+integ-test: $(if $(TESTSYS_SELFTEST_SKIP_IMAGE_BUILDS), ,controller example-test-agent example-resource-agent sonobuoy-test-agent)
+	$(shell pwd)/bin/download-kind.sh --platform $(TESTSYS_BUILD_HOST_PLATFORM) --goarch ${TESTSYS_BUILD_HOST_GOARCH}
 	docker tag example-test-agent example-test-agent:integ
 	docker tag controller controller:integ
 	docker tag example-resource-agent example-resource-agent:integ
 	docker tag sonobuoy-test-agent sonobuoy-test-agent:integ
-	cargo test --features integ -- --test-threads=2
+	cargo test --features integ -- --test-threads=1
