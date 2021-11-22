@@ -3,10 +3,9 @@ use crate::{BootstrapData, Client, Runner};
 use log::{debug, error};
 use snafu::ResultExt;
 use std::fs::File;
+use std::path::PathBuf;
 use std::time::Duration;
 use tar::Builder;
-
-pub const TESTSYS_RESULTS_FILE: &str = "/output.tar.gz";
 
 /// The `TestAgent` is the main entrypoint for the program running in a TestPod. It starts a test
 /// run, regularly checks the health of the test run, observes cancellation of a test run, and sends
@@ -70,6 +69,7 @@ where
             }
             tokio::time::sleep(Duration::from_millis(2000)).await;
         }
+        // We want the running error first if there was one.
         match result {
             Err(e) => Err(e),
             Ok(()) => tar_result,
@@ -138,11 +138,11 @@ where
     async fn tar_results(&mut self) -> Result<(), C::E, R::E> {
         let results_dir = self
             .client
-            .get_results_directory()
+            .results_directory()
             .await
             .map_err(Error::Client)?;
 
-        let tar = File::create(TESTSYS_RESULTS_FILE)
+        let tar = File::create(self.client.results_file().await.map_err(Error::Client)?)
             .context(error::Archive)
             .map_err(|e| Error::Agent(AgentError::from(e)))?;
         let mut archive = Builder::new(tar);
@@ -155,5 +155,9 @@ where
             .context(error::Archive)
             .map_err(|e| Error::Agent(AgentError::from(e)))?;
         Ok(())
+    }
+
+    pub async fn results_file(&self) -> Result<PathBuf, C::E, R::E> {
+        self.client.results_file().await.map_err(Error::Client)
     }
 }

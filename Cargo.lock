@@ -2138,7 +2138,6 @@ dependencies = [
  "serde_yaml",
  "snafu",
  "structopt",
- "test-agent",
  "tokio",
  "tokio-util",
  "yamlgen",

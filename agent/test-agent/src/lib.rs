@@ -2,7 +2,6 @@ mod agent;
 mod bootstrap;
 pub mod error;
 mod k8s_client;
-pub use agent::TESTSYS_RESULTS_FILE;
 
 pub use crate::agent::TestAgent;
 use agent_common::secrets::{Result as SecretsResult, SecretData, SecretsReader};
@@ -85,7 +84,10 @@ pub trait Client: Sized {
         C: Configuration;
 
     /// Get the directory that the test's results are stored in.
-    async fn get_results_directory(&self) -> Result<PathBuf, Self::E>;
+    async fn results_directory(&self) -> Result<PathBuf, Self::E>;
+
+    /// Get the file that the test's tar results should be stored in.
+    async fn results_file(&self) -> Result<PathBuf, Self::E>;
 
     /// Determine if the pod should keep running after it has finished or encountered and error.
     async fn keep_running(&self) -> Result<bool, Self::E>;

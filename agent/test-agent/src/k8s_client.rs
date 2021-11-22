@@ -1,6 +1,7 @@
 use crate::{BootstrapData, Client, DefaultClient, TestInfo, TestResults};
 use async_trait::async_trait;
 use model::clients::{CrdClient, ResourceClient, TestClient};
+use model::constants::TESTSYS_RESULTS_FILE;
 use model::{Configuration, TaskState};
 use serde_json::Value;
 use snafu::{ResultExt, Snafu};
@@ -106,7 +107,11 @@ impl Client for DefaultClient {
         Ok(())
     }
 
-    async fn get_results_directory(&self) -> Result<PathBuf, Self::E> {
+    async fn results_directory(&self) -> Result<PathBuf, Self::E> {
         return Ok(self.results_dir.path().to_path_buf());
+    }
+
+    async fn results_file(&self) -> Result<PathBuf, Self::E> {
+        return Ok(PathBuf::from(TESTSYS_RESULTS_FILE));
     }
 }
