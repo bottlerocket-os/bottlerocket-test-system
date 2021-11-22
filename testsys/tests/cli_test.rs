@@ -11,16 +11,14 @@ const TEST_POD_TIMEOUT: Duration = Duration::from_secs(60);
 async fn test_install() {
     let cluster_name = "install-test";
     let cluster = Cluster::new(cluster_name).unwrap();
-    cluster
-        .load_image_to_cluster("testsys-controller:integ")
-        .unwrap();
+    cluster.load_image_to_cluster("controller:integ").unwrap();
     let mut cmd = Command::cargo_bin("testsys").unwrap();
     cmd.args(&[
         "--kubeconfig",
         cluster.kubeconfig().to_str().unwrap(),
         "install",
         "--controller-uri",
-        "testsys-controller:integ",
+        "controller:integ",
     ]);
     cmd.assert().success();
     cluster
@@ -33,20 +31,18 @@ async fn test_install() {
 async fn test_run_file() {
     let cluster_name = "run-file-test";
     let cluster = Cluster::new(cluster_name).unwrap();
-    cluster
-        .load_image_to_cluster("testsys-controller:integ")
-        .unwrap();
+    cluster.load_image_to_cluster("controller:integ").unwrap();
     let mut cmd = Command::cargo_bin("testsys").unwrap();
     cmd.args(&[
         "--kubeconfig",
         cluster.kubeconfig().to_str().unwrap(),
         "install",
         "--controller-uri",
-        "testsys-controller:integ",
+        "controller:integ",
     ]);
     cmd.assert().success();
     cluster
-        .load_image_to_cluster("example-testsys-agent:integ")
+        .load_image_to_cluster("example-test-agent:integ")
         .unwrap();
     let mut cmd = Command::cargo_bin("testsys").unwrap();
     cmd.args(&[
@@ -73,16 +69,14 @@ async fn test_run_file() {
 async fn test_add_file() {
     let cluster_name = "add-file-test";
     let cluster = Cluster::new(cluster_name).unwrap();
-    cluster
-        .load_image_to_cluster("testsys-controller:integ")
-        .unwrap();
+    cluster.load_image_to_cluster("controller:integ").unwrap();
     let mut cmd = Command::cargo_bin("testsys").unwrap();
     cmd.args(&[
         "--kubeconfig",
         cluster.kubeconfig().to_str().unwrap(),
         "install",
         "--controller-uri",
-        "testsys-controller:integ",
+        "controller:integ",
     ]);
     cmd.assert().success();
     cluster
@@ -115,20 +109,18 @@ async fn test_add_file() {
 async fn test_status() {
     let cluster_name = "status-test";
     let cluster = Cluster::new(cluster_name).unwrap();
-    cluster
-        .load_image_to_cluster("testsys-controller:integ")
-        .unwrap();
+    cluster.load_image_to_cluster("controller:integ").unwrap();
     let mut cmd = Command::cargo_bin("testsys").unwrap();
     cmd.args(&[
         "--kubeconfig",
         cluster.kubeconfig().to_str().unwrap(),
         "install",
         "--controller-uri",
-        "testsys-controller:integ",
+        "controller:integ",
     ]);
     cmd.assert().success();
     cluster
-        .load_image_to_cluster("example-testsys-agent:integ")
+        .load_image_to_cluster("example-test-agent:integ")
         .unwrap();
     let mut cmd = Command::cargo_bin("testsys").unwrap();
     cmd.args(&[
@@ -164,20 +156,18 @@ async fn test_status() {
 async fn test_set() {
     let cluster_name = "set-test";
     let cluster = Cluster::new(cluster_name).unwrap();
-    cluster
-        .load_image_to_cluster("testsys-controller:integ")
-        .unwrap();
+    cluster.load_image_to_cluster("controller:integ").unwrap();
     let mut cmd = Command::cargo_bin("testsys").unwrap();
     cmd.args(&[
         "--kubeconfig",
         cluster.kubeconfig().to_str().unwrap(),
         "install",
         "--controller-uri",
-        "testsys-controller:integ",
+        "controller:integ",
     ]);
     cmd.assert().success();
     cluster
-        .load_image_to_cluster("example-testsys-agent:integ")
+        .load_image_to_cluster("example-test-agent:integ")
         .unwrap();
     let mut cmd = Command::cargo_bin("testsys").unwrap();
     cmd.args(&[

@@ -6,7 +6,7 @@ metadata:
 spec:
   agent:
     name: hello-agent
-    image: "example-testsys-agent:integ"
+    image: "example-test-agent:integ"
     keep_running: true
     configuration:
       mode: Fast
