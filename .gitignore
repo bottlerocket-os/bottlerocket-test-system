@@ -1,3 +1,4 @@
 /target/
 /.cargo/*
 !.cargo/config.toml
+/bin/kind
