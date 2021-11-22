@@ -40,6 +40,9 @@ pub struct Agent {
     pub pull_secret: Option<String>,
     /// Determine if the pod should keep running after it has finished or encountered and error.
     pub keep_running: bool,
+    /// The maximum amount of time an agent should be left to run.
+    #[schemars(schema_with = "timeout_schema")]
+    pub timeout: Option<String>,
     /// The configuration to pass to the agent. This is 'open' to allow agents to define their own
     /// schemas.
     #[schemars(schema_with = "config_schema")]
@@ -68,6 +71,24 @@ pub fn config_schema(_: &mut schemars::gen::SchemaGenerator) -> schemars::schema
     );
     let schema = SchemaObject {
         instance_type: Some(InstanceType::Object.into()),
+        extensions,
+        ..SchemaObject::default()
+    };
+    schema.into()
+}
+
+pub fn timeout_schema(_: &mut schemars::gen::SchemaGenerator) -> schemars::schema::Schema {
+    let mut extensions = BTreeMap::<String, Value>::new();
+    extensions.insert("nullable".to_string(), Value::Bool(true));
+    let schema = SchemaObject {
+        string: Some(Box::new(StringValidation {
+            max_length: Some(253),
+            min_length: Some(1),
+            pattern: Some(
+                r#"^((([0-9]+)d)?(([0-9]+)h)?(([0-9]+)m)?(([0-9]+)s)?|\d+)$"#.to_string(),
+            ),
+        })),
+        instance_type: Some(InstanceType::String.into()),
         extensions,
         ..SchemaObject::default()
     };

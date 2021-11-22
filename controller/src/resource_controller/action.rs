@@ -6,6 +6,7 @@ use log::trace;
 use model::clients::CrdClient;
 use model::constants::{FINALIZER_CREATION_JOB, FINALIZER_MAIN, FINALIZER_RESOURCE};
 use model::{CrdExt, ResourceAction, TaskState};
+use parse_duration::parse;
 
 /// The action that the controller needs to take in order to reconcile the [`Resource`].
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -45,6 +46,7 @@ pub(super) enum ErrorState {
     JobExited,
     JobFailed,
     JobRemoved,
+    JobTimeout,
     TaskFailed,
     Zombie,
 }
@@ -117,13 +119,25 @@ async fn creation_not_done_action(
         JobState::Unknown => Ok(CreationAction::WaitForCreation),
         JobState::Running(None) => Ok(CreationAction::WaitForCreation),
         JobState::Running(Some(duration)) => {
+            if let Ok(std_duration) = duration.to_std() {
+                if r.resource()
+                    .spec
+                    .agent
+                    .timeout
+                    .as_ref()
+                    .map(|timeout| parse(timeout).map(|timeout| std_duration > timeout))
+                    .unwrap_or(Ok(false))
+                    .unwrap_or(false)
+                {
+                    return Ok(CreationAction::Error(ErrorState::JobTimeout));
+                }
+            }
             if r.resource().creation_task_state() == TaskState::Unknown
                 && duration >= *TEST_START_TIME_LIMIT
             {
-                Ok(CreationAction::Error(ErrorState::JobStart))
-            } else {
-                Ok(CreationAction::WaitForCreation)
+                return Ok(CreationAction::Error(ErrorState::JobStart));
             }
+            Ok(CreationAction::WaitForCreation)
         }
         JobState::Failed => Ok(CreationAction::Error(ErrorState::JobFailed)),
         JobState::Exited => Ok(CreationAction::Error(ErrorState::JobExited)),
@@ -190,13 +204,25 @@ async fn destruction_not_done_action(
         JobState::Unknown => Ok(DestructionAction::Wait),
         JobState::Running(None) => Ok(DestructionAction::Wait),
         JobState::Running(Some(duration)) => {
+            if let Ok(std_duration) = duration.to_std() {
+                if r.resource()
+                    .spec
+                    .agent
+                    .timeout
+                    .as_ref()
+                    .map(|timeout| parse(timeout).map(|timeout| std_duration > timeout))
+                    .unwrap_or(Ok(false))
+                    .unwrap_or(false)
+                {
+                    return Ok(DestructionAction::Error(ErrorState::JobTimeout));
+                }
+            }
             if r.resource().destruction_task_state() == TaskState::Unknown
                 && duration >= *TEST_START_TIME_LIMIT
             {
-                Ok(DestructionAction::Error(ErrorState::JobStart))
-            } else {
-                Ok(DestructionAction::Wait)
+                return Ok(DestructionAction::Error(ErrorState::JobStart));
             }
+            Ok(DestructionAction::Wait)
         }
         JobState::Failed => Ok(DestructionAction::Error(ErrorState::JobFailed)),
         JobState::Exited => Ok(DestructionAction::Error(ErrorState::JobExited)),

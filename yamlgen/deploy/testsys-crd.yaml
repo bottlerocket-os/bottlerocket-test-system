@@ -53,11 +53,19 @@ spec:
                       description: "A map of `SecretType` -> `SecretName` where `SecretType` is defined by the agent that will use it, and `SecretName` is provided by the user. `SecretName` is constrained to ascii alphanumerics plus underscores and dashes."
                       nullable: true
                       type: object
+                    timeout:
+                      description: The maximum amount of time an agent should be left to run.
+                      maxLength: 253
+                      minLength: 1
+                      nullable: true
+                      pattern: "^((([0-9]+)d)?(([0-9]+)h)?(([0-9]+)m)?(([0-9]+)s)?|\\d+)$"
+                      type: string
                   required:
                     - configuration
                     - image
                     - keep_running
                     - name
+                    - timeout
                   type: object
                 resources:
                   description: The list of resources required by this test. The test controller will wait for these resources to become ready before running the test agent.
@@ -195,11 +203,19 @@ spec:
                       description: "A map of `SecretType` -> `SecretName` where `SecretType` is defined by the agent that will use it, and `SecretName` is provided by the user. `SecretName` is constrained to ascii alphanumerics plus underscores and dashes."
                       nullable: true
                       type: object
+                    timeout:
+                      description: The maximum amount of time an agent should be left to run.
+                      maxLength: 253
+                      minLength: 1
+                      nullable: true
+                      pattern: "^((([0-9]+)d)?(([0-9]+)h)?(([0-9]+)m)?(([0-9]+)s)?|\\d+)$"
+                      type: string
                   required:
                     - configuration
                     - image
                     - keep_running
                     - name
+                    - timeout
                   type: object
                 depends_on:
                   description: Other resources that must to be created before this one can be created.

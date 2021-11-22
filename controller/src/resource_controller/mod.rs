@@ -164,6 +164,7 @@ async fn handle_error_state(r: &ResourceInterface, a: ResourceAction, e: ErrorSt
             ErrorState::JobFailed => "Container exited with an error",
             ErrorState::JobRemoved => "Container was killed before it was done",
             ErrorState::TaskFailed => "Task failed",
+            ErrorState::JobTimeout => "Job did not complete within time limit",
             ErrorState::Zombie => {
                 warn!("Resource still exists after main finalizer was removed");
                 return Ok(());

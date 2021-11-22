@@ -6,6 +6,7 @@ use kube::Api;
 use log::trace;
 use model::constants::{FINALIZER_MAIN, FINALIZER_TEST_JOB, NAMESPACE};
 use model::{CrdExt, Resource, ResourceAction, TaskState};
+use parse_duration::parse;
 use std::fmt::{Display, Formatter};
 
 /// The action that the controller needs to take in order to reconcile the `Test`.
@@ -33,6 +34,7 @@ pub(super) enum ErrorState {
     JobFailure,
     JobStart,
     JobExitBeforeDone,
+    JobTimeout,
     HandleJobRemovedBeforeDone,
 }
 
@@ -49,6 +51,9 @@ impl Display for ErrorState {
             ErrorState::JobStart => Display::fmt("The job failed to start in time", f),
             ErrorState::JobExitBeforeDone => {
                 Display::fmt("The test agent exited before marking the test complete", f)
+            }
+            ErrorState::JobTimeout => {
+                Display::fmt("The test agent did not finish within the specified time", f)
             }
             ErrorState::HandleJobRemovedBeforeDone => {
                 Display::fmt("The job was removed before the test completed", f)
@@ -175,6 +180,19 @@ async fn task_not_done_action(t: &TestInterface, is_task_state_running: bool) ->
             Ok(Action::WaitForTest)
         }
         JobState::Running(Some(duration)) => {
+            if let Ok(std_duration) = duration.to_std() {
+                if t.test()
+                    .spec
+                    .agent
+                    .timeout
+                    .as_ref()
+                    .map(|timeout| parse(timeout).map(|timeout| std_duration > timeout))
+                    .unwrap_or(Ok(false))
+                    .unwrap_or(false)
+                {
+                    return Ok(Action::Error(ErrorState::JobTimeout));
+                }
+            }
             if t.test().agent_status().task_state == TaskState::Unknown
                 && duration >= *TEST_START_TIME_LIMIT
             {
@@ -182,11 +200,10 @@ async fn task_not_done_action(t: &TestInterface, is_task_state_running: bool) ->
                     "Test '{}' failed to reach running state within time limit",
                     t.name()
                 );
-                Ok(Action::Error(ErrorState::JobStart))
-            } else {
-                trace!("Test '{}' is running", t.name());
-                Ok(Action::WaitForTest)
+                return Ok(Action::Error(ErrorState::JobStart));
             }
+            trace!("Test '{}' is running", t.name());
+            Ok(Action::WaitForTest)
         }
         JobState::Failed => Ok(Action::Error(ErrorState::JobFailure)),
         JobState::Exited => Ok(Action::Error(ErrorState::JobExitBeforeDone)),

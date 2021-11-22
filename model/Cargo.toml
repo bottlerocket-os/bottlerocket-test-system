@@ -16,6 +16,7 @@ kube = { version = "0.59.0", default-features = false, features = [ "derive", "j
 lazy_static = "1"
 log = "0.4"
 maplit = "1.0.2"
+parse_duration = "2.1"
 regex = "1"
 schemars = "0.8"
 serde = { version = "1", features = [ "derive" ] }

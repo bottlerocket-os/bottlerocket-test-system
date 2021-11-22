@@ -97,6 +97,7 @@ impl RunSonobuoy {
                     image: self.image.clone(),
                     pull_secret: self.pull_secret.clone(),
                     keep_running: self.keep_running,
+                    timeout: None,
                     configuration: Some(
                         SonobuoyConfig {
                             kubeconfig_base64: kubeconfig_string,
