@@ -25,6 +25,7 @@ build: fetch
 	cargo clippy --locked
 	cargo build --locked
 	cargo test --locked
+	cargo test --features integ --no-run
 
 # Build the container image for the example test-agent program
 example-test-agent: show-variables fetch
