@@ -6,7 +6,7 @@ use std::fs::File;
 use std::time::Duration;
 use tar::Builder;
 
-const TESTSYS_RESULTS_FILE: &str = "/output.tar.gz";
+pub const TESTSYS_RESULTS_FILE: &str = "/output.tar.gz";
 
 /// The `TestAgent` is the main entrypoint for the program running in a TestPod. It starts a test
 /// run, regularly checks the health of the test run, observes cancellation of a test run, and sends

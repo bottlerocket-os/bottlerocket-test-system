@@ -2,6 +2,7 @@ mod agent;
 mod bootstrap;
 pub mod error;
 mod k8s_client;
+pub use agent::TESTSYS_RESULTS_FILE;
 
 pub use crate::agent::TestAgent;
 use agent_common::secrets::{Result as SecretsResult, SecretData, SecretsReader};
