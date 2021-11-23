@@ -2,7 +2,8 @@ pub mod error;
 pub mod sonobuoy;
 
 use crate::error::Error;
-use log::info;
+use env_logger::Builder;
+use log::{info, LevelFilter};
 use model::{Configuration, SecretName};
 use serde::{Deserialize, Serialize};
 use snafu::{OptionExt, ResultExt};
@@ -13,6 +14,7 @@ use test_agent::Runner;
 
 pub const AWS_CREDENTIALS_SECRET_NAME: &str = "aws-credentials";
 pub const TEST_CLUSTER_KUBECONFIG_PATH: &str = "/local/test-cluster.kubeconfig";
+pub const DEFAULT_AGENT_LEVEL_FILTER: LevelFilter = LevelFilter::Info;
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, Default)]
 pub struct ClusterInfo {
@@ -68,6 +70,25 @@ pub async fn decode_write_kubeconfig(
     info!("Storing kubeconfig in {}", kubeconfig_path.display());
     fs::write(kubeconfig_path, decoded_bytes).context(error::KubeconfigWrite)?;
     Ok(())
+}
+
+/// Extract the value of `RUST_LOG` if it exists, otherwise log this application at
+/// `DEFAULT_AGENT_LEVEL_FILTER`.
+pub fn init_agent_logger() {
+    match env::var(env_logger::DEFAULT_FILTER_ENV).ok() {
+        Some(_) => {
+            // RUST_LOG exists; env_logger will use it.
+            Builder::from_default_env().init();
+        }
+        None => {
+            // RUST_LOG does not exist; use default log level except AWS SDK.
+            Builder::new()
+                .filter_level(DEFAULT_AGENT_LEVEL_FILTER)
+                .filter(Some("aws_"), LevelFilter::Error)
+                .filter(Some("tracing"), LevelFilter::Error)
+                .init();
+        }
+    }
 }
 
 /// Set up AWS credential secrets in the process's environment

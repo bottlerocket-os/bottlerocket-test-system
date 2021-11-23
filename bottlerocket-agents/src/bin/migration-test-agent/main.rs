@@ -43,11 +43,12 @@ use async_trait::async_trait;
 use aws_config::meta::region::RegionProviderChain;
 use aws_sdk_ssm::Region;
 use bottlerocket_agents::error::Error;
-use bottlerocket_agents::{setup_env, MigrationConfig, AWS_CREDENTIALS_SECRET_NAME};
+use bottlerocket_agents::{
+    init_agent_logger, setup_env, MigrationConfig, AWS_CREDENTIALS_SECRET_NAME,
+};
 use log::{error, info};
 use maplit::hashmap;
 use model::{Outcome, SecretName, TestResults};
-use simplelog::{Config as LogConfig, LevelFilter, SimpleLogger};
 use std::path::Path;
 use test_agent::{BootstrapData, ClientError, DefaultClient, TestAgent, TestInfo};
 
@@ -205,11 +206,7 @@ impl test_agent::Runner for MigrationTestRunner {
 
 #[tokio::main]
 async fn main() {
-    // SimpleLogger will send errors to stderr and anything less to stdout.
-    if let Err(e) = SimpleLogger::init(LevelFilter::Info, LogConfig::default()) {
-        eprintln!("{}", e);
-        std::process::exit(1);
-    }
+    init_agent_logger();
     if let Err(e) = run().await {
         error!("{}", e);
         std::process::exit(1);

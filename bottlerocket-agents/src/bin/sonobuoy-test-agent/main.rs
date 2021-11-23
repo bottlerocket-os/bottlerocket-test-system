@@ -37,12 +37,11 @@ use async_trait::async_trait;
 use bottlerocket_agents::error::Error;
 use bottlerocket_agents::sonobuoy::{delete_sonobuoy, run_sonobuoy};
 use bottlerocket_agents::{
-    decode_write_kubeconfig, setup_env, SonobuoyConfig, AWS_CREDENTIALS_SECRET_NAME,
-    TEST_CLUSTER_KUBECONFIG_PATH,
+    decode_write_kubeconfig, init_agent_logger, setup_env, SonobuoyConfig,
+    AWS_CREDENTIALS_SECRET_NAME, TEST_CLUSTER_KUBECONFIG_PATH,
 };
 use log::info;
 use model::{SecretName, TestResults};
-use simplelog::{Config as LogConfig, LevelFilter, SimpleLogger};
 use std::path::PathBuf;
 use test_agent::{BootstrapData, ClientError, DefaultClient, TestAgent, TestInfo};
 
@@ -89,11 +88,7 @@ impl test_agent::Runner for SonobuoyTestRunner {
 
 #[tokio::main]
 async fn main() {
-    // SimpleLogger will send errors to stderr and anything less to stdout.
-    if let Err(e) = SimpleLogger::init(LevelFilter::Info, LogConfig::default()) {
-        eprintln!("{}", e);
-        std::process::exit(1);
-    }
+    init_agent_logger();
     if let Err(e) = run().await {
         eprintln!("{}", e);
         std::process::exit(1);

@@ -158,7 +158,7 @@ pub(crate) async fn ssm_run_command(
     {
         let invocations = invocations_result?;
         for i in &invocations {
-            info!(
+            debug!(
                 "Instance: {}, Command Status: {}, Command Output: {:?}",
                 i.instance_id.to_owned().unwrap_or_default(),
                 i.status.as_ref().map(|s| s.as_str()).unwrap_or_default(),
