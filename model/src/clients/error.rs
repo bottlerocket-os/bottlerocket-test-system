@@ -1,3 +1,4 @@
+use crate::clients::{HttpStatusCode, StatusCode};
 use crate::Error as ModelError;
 use snafu::Snafu;
 
@@ -60,5 +61,35 @@ pub(crate) enum InnerError {
 impl From<ModelError> for Error {
     fn from(e: ModelError) -> Self {
         Error(InnerError::ConfigSerde { source: e })
+    }
+}
+
+impl HttpStatusCode for InnerError {
+    fn status_code(&self) -> Option<StatusCode> {
+        match self {
+            InnerError::ConfigSerde { .. }
+            | InnerError::ConfigResolution { .. }
+            | InnerError::Serde { .. }
+            | InnerError::Initialization { .. } => None,
+            InnerError::KubeApiCall {
+                method: _,
+                source: e,
+                what: _,
+            } => e.status_code(),
+            InnerError::KubeApiCallFor {
+                operation: _,
+                name: _,
+                source: e,
+            } => e.status_code(),
+            InnerError::DuplicateFinalizer { .. } | InnerError::DeleteMissingFinalizer { .. } => {
+                None
+            }
+        }
+    }
+}
+
+impl HttpStatusCode for Error {
+    fn status_code(&self) -> Option<StatusCode> {
+        self.0.status_code()
     }
 }

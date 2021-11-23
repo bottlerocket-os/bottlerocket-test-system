@@ -1257,6 +1257,7 @@ dependencies = [
  "async-trait",
  "derive_more",
  "futures",
+ "http",
  "json-patch",
  "k8s-openapi",
  "kube",

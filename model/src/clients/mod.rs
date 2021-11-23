@@ -4,7 +4,9 @@ pub use test_client::TestClient;
 
 mod crd_client;
 mod error;
+mod http_status_code;
 mod resource_client;
 mod test_client;
 
 pub use crd_client::CrdClient;
+pub use http_status_code::{HttpStatusCode, StatusCode};
