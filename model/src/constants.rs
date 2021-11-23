@@ -55,6 +55,8 @@ pub const FINALIZER_MAIN: &str = testsys!("controlled");
 pub const FINALIZER_RESOURCE: &str = testsys!("resources-exist");
 pub const FINALIZER_TEST_JOB: &str = testsys!("test-job");
 
+pub const TESTSYS_RESULTS_FILE: &str = "/output.tar.gz";
+
 #[test]
 fn testsys_constants_macro_test() {
     assert_eq!("testsys.bottlerocket.aws", testsys!());

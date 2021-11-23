@@ -38,7 +38,7 @@ use log::info;
 use model::{Outcome, SecretName, TestResults};
 use simplelog::{Config as LogConfig, LevelFilter, SimpleLogger};
 use snafu::{ensure, OptionExt, ResultExt, Snafu};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::string::FromUtf8Error;
 use std::{env, fs, process};
@@ -79,11 +79,15 @@ enum SonobuoyError {
 
     #[snafu(display("Missing '{}' field from sonobuoy status", field))]
     MissingSonobuoyStatusField { field: String },
+
+    #[snafu(display("Results location is invalid"))]
+    ResultsLocation,
 }
 
 struct SonobuoyTestRunner {
     config: SonobuoyConfig,
     aws_secret_name: Option<SecretName>,
+    results_dir: PathBuf,
 }
 
 #[async_trait]
@@ -96,6 +100,7 @@ impl test_agent::Runner for SonobuoyTestRunner {
         Ok(Self {
             config: test_info.configuration,
             aws_secret_name: test_info.secrets.get(SONOBUOY_AWS_SECRET_NAME).cloned(),
+            results_dir: test_info.results_dir,
         })
     }
 
@@ -126,6 +131,7 @@ impl test_agent::Runner for SonobuoyTestRunner {
             }
         };
         info!("Running sonobuoy");
+
         let status = Command::new("/usr/bin/sonobuoy")
             .args(kubconfig_arg.to_owned())
             .arg("run")
@@ -135,6 +141,14 @@ impl test_agent::Runner for SonobuoyTestRunner {
             .arg("--mode")
             .arg(&self.config.mode)
             .args(k8s_image_arg)
+            .status()
+            .context(SonobuoyProcess)?;
+        ensure!(status.success(), SonobuoyRun);
+
+        let status = Command::new("/usr/bin/sonobuoy")
+            .current_dir(self.results_dir.to_str().context(ResultsLocation)?)
+            .args(kubconfig_arg.to_owned())
+            .arg("retrieve")
             .status()
             .context(SonobuoyProcess)?;
         ensure!(status.success(), SonobuoyRun);

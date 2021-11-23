@@ -1,10 +1,13 @@
 use crate::{BootstrapData, Client, DefaultClient, TestInfo, TestResults};
 use async_trait::async_trait;
 use model::clients::{CrdClient, ResourceClient, TestClient};
+use model::constants::TESTSYS_RESULTS_FILE;
 use model::{Configuration, TaskState};
 use serde_json::Value;
 use snafu::{ResultExt, Snafu};
 use std::fmt::{Debug, Display};
+use std::path::PathBuf;
+use tempfile::TempDir;
 
 /// The public error type for the default [`Client`].
 #[derive(Debug, Snafu)]
@@ -27,6 +30,9 @@ pub(crate) enum InnerError {
 
     #[snafu(display("Unable to resolve config templates: {}", source))]
     ResolveConfig { source: model::clients::Error },
+
+    #[snafu(display("An error occured while creating a `TempDir`: {}", source))]
+    TempDirCreate { source: std::io::Error },
 }
 
 #[async_trait]
@@ -37,6 +43,7 @@ impl Client for DefaultClient {
         Ok(Self {
             client: TestClient::new().await.context(K8s)?,
             name: bootstrap_data.test_name,
+            results_dir: TempDir::new().context(TempDirCreate)?,
         })
     }
 
@@ -69,6 +76,7 @@ impl Client for DefaultClient {
             name: self.name.clone(),
             configuration,
             secrets: test_data.spec.agent.secrets.unwrap_or_default(),
+            results_dir: self.results_dir.path().to_path_buf(),
         })
     }
 
@@ -97,5 +105,13 @@ impl Client for DefaultClient {
             .await
             .context(K8s)?;
         Ok(())
+    }
+
+    async fn results_directory(&self) -> Result<PathBuf, Self::E> {
+        return Ok(self.results_dir.path().to_path_buf());
+    }
+
+    async fn results_file(&self) -> Result<PathBuf, Self::E> {
+        return Ok(PathBuf::from(TESTSYS_RESULTS_FILE));
     }
 }

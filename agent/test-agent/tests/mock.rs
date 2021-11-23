@@ -9,6 +9,8 @@ use async_trait::async_trait;
 use model::{Configuration, Outcome};
 use serde::{Deserialize, Serialize};
 use std::fmt::{Debug, Display};
+use std::path::PathBuf;
+use tempfile::{tempdir, TempDir};
 use test_agent::{BootstrapData, Client, Runner};
 use test_agent::{TestInfo, TestResults};
 use tokio::time::{sleep, Duration};
@@ -61,7 +63,10 @@ impl Runner for MyRunner {
 
 /// So that we do not need a running k8s system in order to test [`MyRunner`], we implement a mock
 /// of [`Client`]. In this case it just prints out its function calls.
-struct MockClient {}
+struct MockClient {
+    results_dir: TempDir,
+    results_file: TempDir,
+}
 
 #[async_trait]
 impl Client for MockClient {
@@ -69,7 +74,10 @@ impl Client for MockClient {
     type E = String;
 
     async fn new(_: BootstrapData) -> Result<Self, Self::E> {
-        Ok(Self {})
+        Ok(Self {
+            results_dir: tempdir().unwrap(),
+            results_file: tempdir().unwrap(),
+        })
     }
 
     async fn get_test_info<C>(&self) -> Result<TestInfo<C>, Self::E>
@@ -81,6 +89,7 @@ impl Client for MockClient {
             name: "mock-test".into(),
             configuration: C::default(),
             secrets: Default::default(),
+            results_dir: Default::default(),
         })
     }
 
@@ -105,6 +114,14 @@ impl Client for MockClient {
     async fn keep_running(&self) -> Result<bool, Self::E> {
         Ok(false)
     }
+
+    async fn results_directory(&self) -> Result<PathBuf, Self::E> {
+        Ok(self.results_dir.path().to_path_buf())
+    }
+
+    async fn results_file(&self) -> Result<PathBuf, Self::E> {
+        Ok(self.results_file.path().join("result.tar.gz"))
+    }
 }
 
 /// This test runs [`MyRunner`] inside a [`TestAgent`] with k8s and the container environment mocked
@@ -117,5 +134,6 @@ async fn mock_test() -> std::io::Result<()> {
     .await
     .unwrap();
     agent_main.run().await.unwrap();
+    assert!(std::path::Path::new(&agent_main.results_file().await.unwrap()).is_file());
     Ok(())
 }

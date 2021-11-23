@@ -1,7 +1,11 @@
-use crate::error::{self, Error, Result};
+use crate::error::{self, AgentError, Error, Result};
 use crate::{BootstrapData, Client, Runner};
 use log::{debug, error};
+use snafu::ResultExt;
+use std::fs::File;
+use std::path::PathBuf;
 use std::time::Duration;
+use tar::Builder;
 
 /// The `TestAgent` is the main entrypoint for the program running in a TestPod. It starts a test
 /// run, regularly checks the health of the test run, observes cancellation of a test run, and sends
@@ -48,6 +52,8 @@ where
     /// is `false`.
     pub async fn run(&mut self) -> Result<(), C::E, R::E> {
         let result = self.run_inner().await;
+        let tar_result = self.tar_results().await;
+
         loop {
             let keep_running = match self.client.keep_running().await {
                 Err(e) => {
@@ -63,7 +69,11 @@ where
             }
             tokio::time::sleep(Duration::from_millis(2000)).await;
         }
-        result
+        // We want the running error first if there was one.
+        match result {
+            Err(e) => Err(e),
+            Ok(()) => tar_result,
+        }
     }
 
     /// Run the `TestAgent`. This function returns once the test has completed.
@@ -122,5 +132,32 @@ where
         if let Err(e) = self.runner.terminate().await.map_err(error::Error::Runner) {
             self.send_error_best_effort(&e).await;
         }
+    }
+
+    /// Converts the provided directory to a tar saved to `TESTSYS_RESULTS`.
+    async fn tar_results(&mut self) -> Result<(), C::E, R::E> {
+        let results_dir = self
+            .client
+            .results_directory()
+            .await
+            .map_err(Error::Client)?;
+
+        let tar = File::create(self.client.results_file().await.map_err(Error::Client)?)
+            .context(error::Archive)
+            .map_err(|e| Error::Agent(AgentError::from(e)))?;
+        let mut archive = Builder::new(tar);
+        archive
+            .append_dir_all("test-results", results_dir)
+            .context(error::Archive)
+            .map_err(|e| Error::Agent(AgentError::from(e)))?;
+        archive
+            .into_inner()
+            .context(error::Archive)
+            .map_err(|e| Error::Agent(AgentError::from(e)))?;
+        Ok(())
+    }
+
+    pub async fn results_file(&self) -> Result<PathBuf, C::E, R::E> {
+        self.client.results_file().await.map_err(Error::Client)
     }
 }
