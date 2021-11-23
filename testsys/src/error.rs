@@ -26,6 +26,9 @@ pub(crate) enum Error {
     #[snafu(display("Error creating test: {}", source))]
     CreateTest { source: model::clients::Error },
 
+    #[snafu(display("Error creating resource: {}", source))]
+    CreateResource { source: model::clients::Error },
+
     #[snafu(display("The following tests failed to run '{:?}'", tests))]
     FailedTest { tests: Vec<String> },
 
