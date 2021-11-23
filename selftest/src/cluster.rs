@@ -1,3 +1,4 @@
+use crate::test_settings::TestSettings;
 use anyhow::{format_err, Context, Result};
 use k8s_openapi::api::core::v1::Pod;
 use k8s_openapi::serde::de::DeserializeOwned;
@@ -46,7 +47,7 @@ impl Cluster {
     /// Creates a kubeconfig for use within the kind network and returns its path.
     pub fn get_internal_kubeconfig(&self) -> Result<PathBuf> {
         use std::process::Command;
-        let output = Command::new("kind")
+        let output = Command::new(TestSettings::kind_path())
             .arg("get")
             .arg("kubeconfig")
             .arg("--internal")
@@ -81,7 +82,7 @@ impl Cluster {
     /// Uses `kind load` to load an image from the machine to the kind cluster.
     pub fn load_image_to_cluster(&self, image_name: &str) -> Result<()> {
         use std::process::Command;
-        let output = Command::new("kind")
+        let output = Command::new(TestSettings::kind_path())
             .arg("load")
             .arg("docker-image")
             .arg(image_name)
@@ -208,7 +209,7 @@ impl Cluster {
 
     fn create_kind_cluster(name: &str, kubeconfig: &Path) -> Result<()> {
         use std::process::Command;
-        let output = Command::new("kind")
+        let output = Command::new(TestSettings::kind_path())
             .arg("--kubeconfig")
             .arg(kubeconfig.to_str().ok_or_else(|| {
                 format_err!(
@@ -234,7 +235,7 @@ impl Cluster {
 
     fn delete_kind_cluster(name: &str) -> Result<()> {
         use std::process::Command;
-        let output = Command::new("kind")
+        let output = Command::new(TestSettings::kind_path())
             .arg("delete")
             .arg("cluster")
             .arg("--name")

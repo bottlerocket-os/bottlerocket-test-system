@@ -8,7 +8,25 @@ on:
       - '**.md'
     branches: [develop]
 jobs:
-  build-images:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - run: rustup update stable
+      - run: make build
+      # Seems like artifact upload/download doesn't like hidden files.
+      - run: mv .cargo cargo
+      # Tar these with quick compression.
+      - run: tar -I "gzip -2" -cvf cargo.gz cargo
+      - run: tar -I "gzip -2" -cvf target.gz target
+      # Upload these artifacts for later use.
+      - uses: actions/upload-artifact@v2
+        with:
+          name: build-artifacts
+          path: |
+            cargo.gz
+            target.gz
+  images:
     strategy:
       matrix:
         make_target:
@@ -28,10 +46,11 @@ jobs:
         with:
           name: ${{ matrix.make_target }}
           path: /tmp/${{ matrix.make_target }}.tar
-  use-images:
-    needs: build-images
+  integ:
+    needs: [images, build]
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v2
       - uses: actions/download-artifact@v2
         with:
           path: /tmp
@@ -39,3 +58,11 @@ jobs:
       - run: docker load --input /tmp/duplicator-resource-agent/duplicator-resource-agent.tar
       - run: docker load --input /tmp/example-resource-agent/example-resource-agent.tar
       - run: docker load --input /tmp/example-test-agent/example-test-agent.tar
+      - run: docker load --input /tmp/sonobuoy-test-agent/sonobuoy-test-agent.tar
+      - run: cd /tmp/build-artifacts && tar -xf cargo.gz
+      - run: cd /tmp/build-artifacts && tar -xf target.gz
+      - run: mv /tmp/build-artifacts/cargo .cargo
+      - run: mv /tmp/build-artifacts/target target
+      - run: make integ-test
+        env:
+          TESTSYS_SELFTEST_SKIP_IMAGE_BUILDS: true
