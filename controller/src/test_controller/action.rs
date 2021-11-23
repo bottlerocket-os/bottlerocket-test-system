@@ -4,6 +4,7 @@ use crate::test_controller::context::TestInterface;
 use anyhow::Context;
 use kube::Api;
 use log::trace;
+use model::clients::{HttpStatusCode, StatusCode};
 use model::constants::{FINALIZER_MAIN, FINALIZER_TEST_JOB, NAMESPACE};
 use model::{CrdExt, Resource, ResourceAction, TaskState};
 use parse_duration::parse;
@@ -122,13 +123,11 @@ async fn resource_readiness(t: &TestInterface) -> Result<Resources> {
     let resources_names = &t.test().spec.resources;
     for resource_name in resources_names {
         let result = resource_client.get(resource_name).await;
-        if let Err(kube::Error::Api(response)) = &result {
-            if response.code == 404 {
-                return Ok(Resources::Error(format!(
-                    "Resource '{}' not found",
-                    resource_name
-                )));
-            }
+        if result.is_status_code(StatusCode::NOT_FOUND) {
+            return Ok(Resources::Error(format!(
+                "Resource '{}' not found",
+                resource_name
+            )));
         }
         let resource =
             result.with_context(|| format!("Unable to get resource '{}'", resource_name))?;
