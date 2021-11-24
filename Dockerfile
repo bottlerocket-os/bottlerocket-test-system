@@ -81,3 +81,11 @@ RUN temp_dir="$(mktemp -d --suffix sonobuoy-setup)" && \
 COPY --from=build /src/bottlerocket-agents/bin/sonobuoy-test-agent ./
 
 ENTRYPOINT ["./sonobuoy-test-agent"]
+
+FROM public.ecr.aws/amazonlinux/amazonlinux:2 AS migration-test-agent
+# Copy binary
+COPY --from=build /src/bottlerocket-agents/bin/migration-test-agent ./
+# Copy SSM documents
+COPY --from=build /src/bottlerocket-agents/src/bin/migration-test-agent/ssm-documents/ /local/ssm-documents/
+
+ENTRYPOINT ["./migration-test-agent"]

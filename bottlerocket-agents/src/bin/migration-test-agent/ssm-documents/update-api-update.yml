@@ -1,0 +1,20 @@
+---
+schemaVersion: "2.2"
+description: "Update the Bottlerocket host via the Bottlerocket Update API"
+parameters:
+  TargetVersion:
+    type: "String"
+    description: "The target version of Bottlerocket to upgrade to (e.g. 0.5.0)"
+mainSteps:
+  - name: "setTargetVersion"
+    action: "aws:runShellScript"
+    inputs:
+      timeoutSeconds: '20'
+      runCommand:
+        - "apiclient set updates.version-lock=\"{{ TargetVersion }}\" updates.ignore-waves=true"
+  - name: "updateBottlerocket"
+    action: "aws:runShellScript"
+    inputs:
+      timeoutSeconds: '120'
+      runCommand:
+        - "apiclient update apply --check"

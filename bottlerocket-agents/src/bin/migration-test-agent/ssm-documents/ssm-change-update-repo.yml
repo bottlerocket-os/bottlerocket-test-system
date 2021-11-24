@@ -1,0 +1,17 @@
+---
+schemaVersion: "2.2"
+description: "Change the update repository via the Bottlerocket API"
+parameters:
+  MetadataBaseUrl:
+    type: "String"
+    description: "The metadata base URL of the update repository to change to"
+  TargetsBaseUrl:
+    type: "String"
+    description: "The targets base URL of the update repository to change to"
+mainSteps:
+- action: "aws:runShellScript"
+  name: "changeUpdateRepository"
+  inputs:
+    timeoutSeconds: '30'
+    runCommand:
+    - "apiclient set updates.metadata-base-url=\"{{ MetadataBaseUrl }}\" updates.targets-base-url=\"{{ TargetsBaseUrl }}\""

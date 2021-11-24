@@ -1,14 +1,13 @@
 use crate::error::{self, Result};
+use bottlerocket_agents::{SonobuoyConfig, AWS_CREDENTIALS_SECRET_NAME};
 use kube::{api::ObjectMeta, Client};
+use model::clients::CrdClient;
 use model::{
     clients::TestClient,
     constants::{API_VERSION, NAMESPACE},
     Agent, Configuration, SecretName, Test, TestSpec,
 };
 use snafu::ResultExt;
-// use sonobuoy_test_agent::SonobuoyConfig;
-use bottlerocket_agents::{SonobuoyConfig, SONOBUOY_AWS_SECRET_NAME};
-use model::clients::CrdClient;
 use std::{collections::BTreeMap, fs::read_to_string, path::PathBuf};
 use structopt::StructOpt;
 
@@ -112,7 +111,7 @@ impl RunSonobuoy {
                     secrets: self.aws_secret.as_ref().map(|secret_name| {
                         let mut secrets_map = BTreeMap::new();
                         secrets_map
-                            .insert(SONOBUOY_AWS_SECRET_NAME.to_string(), secret_name.clone());
+                            .insert(AWS_CREDENTIALS_SECRET_NAME.to_string(), secret_name.clone());
                         secrets_map
                     }),
                 },
