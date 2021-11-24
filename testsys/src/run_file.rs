@@ -1,9 +1,10 @@
 use crate::error::{self, Result};
 use kube::Client;
 use model::{
-    clients::{CrdClient, TestClient},
-    Test,
+    clients::{CrdClient, ResourceClient, TestClient},
+    Resource, Test,
 };
+use serde::{Deserialize, Serialize};
 use snafu::ResultExt;
 use std::path::PathBuf;
 use structopt::StructOpt;
@@ -18,19 +19,46 @@ pub(crate) struct RunFile {
 
 impl RunFile {
     pub(crate) async fn run(&self, k8s_client: Client) -> Result<()> {
-        // Create the test object from its path.
-        let test_file =
-            std::fs::File::open(&self.path).context(error::File { path: &self.path })?;
-        let test: Test = serde_yaml::from_reader(test_file)
-            .context(error::TestFileParse { path: &self.path })?;
-
-        let tests = TestClient::new_from_k8s_client(k8s_client);
-        let name = test.metadata.name.clone();
-
-        tests.create(test).await.context(error::CreateTest)?;
-        if let Some(name) = name {
-            println!("Successfully added test '{}'.", name);
+        // Create the resource objects from its path.
+        let manifest_string =
+            std::fs::read_to_string(&self.path).context(error::File { path: &self.path })?;
+        let tests = TestClient::new_from_k8s_client(k8s_client.clone());
+        let resources = ResourceClient::new_from_k8s_client(k8s_client);
+        for crd_doc in serde_yaml::Deserializer::from_str(&manifest_string) {
+            let value = serde_yaml::Value::deserialize(crd_doc)
+                .context(error::ResourceProviderFileParse { path: &self.path })?;
+            let crd: Crd = serde_yaml::from_value(value)
+                .context(error::ResourceProviderFileParse { path: &self.path })?;
+            let name = crd.name();
+            match crd {
+                Crd::Test(test) => Crd::Test(tests.create(test).await.context(error::CreateTest)?),
+                Crd::Resource(resource) => Crd::Resource(
+                    resources
+                        .create(resource)
+                        .await
+                        .context(error::CreateResource)?,
+                ),
+            };
+            if let Some(name) = name {
+                println!("Successfully added '{}'.", name);
+            }
         }
         Ok(())
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+#[serde(untagged)]
+enum Crd {
+    Test(Test),
+    Resource(Resource),
+}
+
+impl Crd {
+    fn name(&self) -> Option<String> {
+        match self {
+            Self::Test(test) => test.metadata.name.to_owned(),
+            Self::Resource(resource) => resource.metadata.name.to_owned(),
+        }
     }
 }
