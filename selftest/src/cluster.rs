@@ -7,6 +7,7 @@ use kube::{
     config::{KubeConfigOptions, Kubeconfig},
     Api, Client, Config,
 };
+use model::clients::{HttpStatusCode, StatusCode};
 use model::constants::{LABEL_COMPONENT, LABEL_PROVIDER_NAME, NAMESPACE};
 use std::fmt::Debug;
 use std::{convert::TryInto, fs::File};
@@ -30,7 +31,7 @@ pub struct Cluster {
 
 impl Cluster {
     /// Creates a `Cluster` while initializing a kind cluster. If a cluster named `cluster_name`
-    ///  already exists, it will be deleted.
+    /// already exists, it will be deleted.
     pub fn new(cluster_name: &str) -> Result<Cluster> {
         let kubeconfig_dir = TempDir::new()?;
         Self::delete_kind_cluster(cluster_name)?;
@@ -138,6 +139,27 @@ impl Cluster {
             .context("Timeout waiting for test '{}' pod to be in the 'Running' state")?
     }
 
+    /// Waits for a Kubernetes object to become available (retries on 404).
+    pub async fn wait_for_object<T>(
+        &self,
+        name: &str,
+        namespace: Option<&str>,
+        duration: Duration,
+    ) -> Result<()>
+    where
+        T: kube::Resource + Clone + DeserializeOwned + Debug,
+        <T as kube::Resource>::DynamicType: Default,
+    {
+        let k8s_client = self.k8s_client().await?;
+        let api = match namespace {
+            None => Api::all(k8s_client),
+            Some(namespace) => Api::<T>::namespaced(k8s_client, namespace),
+        };
+        tokio::time::timeout(duration, self.wait_for_object_loop(api, name))
+            .await
+            .context("Timeout waiting for object '{}' to exist in the cluster")?
+    }
+
     async fn wait_for_controller_loop(&self) -> Result<()> {
         loop {
             if self.is_controller_running().await? {
@@ -150,6 +172,21 @@ impl Cluster {
     async fn wait_for_test_loop(&self, test_name: &str) -> Result<()> {
         loop {
             if self.is_test_running(test_name).await? {
+                return Ok(());
+            }
+            tokio::time::sleep(Duration::from_millis(750)).await;
+        }
+    }
+
+    pub async fn wait_for_object_loop<T>(&self, api: Api<T>, name: &str) -> Result<()>
+    where
+        T: kube::Resource + Clone + DeserializeOwned + Debug,
+        <T as kube::Resource>::DynamicType: Default,
+    {
+        loop {
+            let get_result = api.get(name).await;
+            if !get_result.is_status_code(StatusCode::NOT_FOUND) {
+                let _ = get_result?;
                 return Ok(());
             }
             tokio::time::sleep(Duration::from_millis(750)).await;

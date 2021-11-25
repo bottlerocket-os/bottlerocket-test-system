@@ -281,6 +281,7 @@ impl CrdClient for ResourceClient {
 #[cfg(feature = "integ")]
 mod test {
     use super::*;
+    use crate::constants::NAMESPACE;
     use crate::{Agent, CrdExt, ErrorResources, ResourceSpec};
     use k8s_openapi::api::core::v1::Namespace;
     use k8s_openapi::apiextensions_apiserver::pkg::apis::apiextensions::v1::CustomResourceDefinition;
@@ -335,9 +336,21 @@ mod test {
             .create(&PostParams::default(), &crate::system::testsys_namespace())
             .await
             .unwrap();
+        cluster
+            .wait_for_object::<Namespace>(NAMESPACE, None, tokio::time::Duration::from_secs(10))
+            .await
+            .unwrap();
         let crd_api: Api<CustomResourceDefinition> = Api::all(k8s_client.clone());
         crd_api
             .create(&PostParams::default(), &Resource::crd())
+            .await
+            .unwrap();
+        cluster
+            .wait_for_object::<CustomResourceDefinition>(
+                "resources.testsys.bottlerocket.aws",
+                None,
+                tokio::time::Duration::from_secs(10),
+            )
             .await
             .unwrap();
         let rc = ResourceClient::new_from_k8s_client(cluster.k8s_client().await.unwrap());
