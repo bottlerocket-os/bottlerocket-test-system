@@ -17,15 +17,15 @@ jobs:
       # Seems like artifact upload/download doesn't like hidden files.
       - run: mv .cargo cargo
       # Tar these with quick compression.
-      - run: tar -I "gzip -2" -cvf cargo.gz cargo
-      - run: tar -I "gzip -2" -cvf target.gz target
+      - run: tar cf - cargo | lz4 -2 - cargo.tar.lz4
+      - run: tar cf - target | lz4 -2 - target.tar.lz4
       # Upload these artifacts for later use.
       - uses: actions/upload-artifact@v2
         with:
           name: build-artifacts
           path: |
-            cargo.gz
-            target.gz
+            cargo.tar.lz4
+            target.tar.lz4
   images:
     strategy:
       matrix:
@@ -60,8 +60,8 @@ jobs:
       - run: docker load --input /tmp/example-resource-agent/example-resource-agent.tar
       - run: docker load --input /tmp/example-test-agent/example-test-agent.tar
       - run: docker load --input /tmp/sonobuoy-test-agent/sonobuoy-test-agent.tar
-      - run: cd /tmp/build-artifacts && tar -xf cargo.gz
-      - run: cd /tmp/build-artifacts && tar -xf target.gz
+      - run: cd /tmp/build-artifacts && lz4 cargo.tar.lz4 - | tar xvf -
+      - run: cd /tmp/build-artifacts && lz4 target.tar.lz4 - | tar xvf -
       - run: mv /tmp/build-artifacts/cargo .cargo
       - run: mv /tmp/build-artifacts/target target
       - run: make integ-test
