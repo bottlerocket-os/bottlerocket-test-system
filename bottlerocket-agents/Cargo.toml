@@ -12,14 +12,14 @@ aws-sdk-eks = "0.0.26-alpha"
 aws-sdk-iam = "0.0.26-alpha"
 aws-sdk-ssm = "0.0.26-alpha"
 base64 = "0.13.0"
-log = "0.4"
+env_logger = "0.9"
 hex ="0.4.3"
+log = "0.4"
 maplit = "1.0.2"
 model = { path = "../model" }
 resource-agent = { path = "../agent/resource-agent" }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-env_logger = "0.9"
 sha2 ="0.9.8"
 snafu = "0.6"
 test-agent = { path = "../agent/test-agent" }

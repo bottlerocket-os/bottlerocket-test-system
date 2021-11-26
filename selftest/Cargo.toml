@@ -14,4 +14,4 @@ lazy_static = "1"
 model = { path = "../model"}
 serde = "1"
 tempfile = "3"
-tokio = { version = "1", features = [ "time" ] }
+tokio = { version = "1", features = ["time"] }

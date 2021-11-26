@@ -1,9 +1,9 @@
 [workspace]
 members = [
     "agent/agent-common",
-    "bottlerocket-agents",
     "agent/resource-agent",
     "agent/test-agent",
+    "bottlerocket-agents",
     "controller",
     "model",
     "selftest",
