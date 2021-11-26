@@ -75,6 +75,9 @@ async fn test_status() {
         "controller:integ",
     ]);
     cmd.assert().success();
+
+    cluster.wait_for_controller(POD_TIMEOUT).await.unwrap();
+
     cluster
         .load_image_to_cluster("example-test-agent:integ")
         .unwrap();
@@ -87,8 +90,6 @@ async fn test_status() {
         data::hello_example_path().to_str().unwrap(),
     ]);
     cmd.assert().success();
-
-    cluster.wait_for_controller(POD_TIMEOUT).await.unwrap();
 
     cluster
         .wait_for_test_pod("hello-bones", POD_TIMEOUT)
