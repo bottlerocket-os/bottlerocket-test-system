@@ -32,7 +32,7 @@ use async_trait::async_trait;
 use model::{Outcome, TestResults};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use test_agent::{BootstrapData, Configuration, TestInfo};
+use test_agent::{BootstrapData, Configuration, Spec};
 use tokio::time::{sleep, Duration};
 
 struct ExampleTestRunner {
@@ -61,10 +61,10 @@ impl test_agent::Runner for ExampleTestRunner {
     type C = ExampleConfig;
     type E = String;
 
-    async fn new(test_info: TestInfo<Self::C>) -> Result<Self, Self::E> {
+    async fn new(spec: Spec<Self::C>) -> Result<Self, Self::E> {
         println!("Initializing example testsys agent...");
         Ok(Self {
-            config: test_info.configuration,
+            config: spec.configuration,
         })
     }
 

@@ -43,7 +43,7 @@ use bottlerocket_agents::{
 use log::info;
 use model::{SecretName, TestResults};
 use std::path::PathBuf;
-use test_agent::{BootstrapData, ClientError, DefaultClient, TestAgent, TestInfo};
+use test_agent::{BootstrapData, ClientError, DefaultClient, Spec, TestAgent};
 
 struct SonobuoyTestRunner {
     config: SonobuoyConfig,
@@ -56,12 +56,12 @@ impl test_agent::Runner for SonobuoyTestRunner {
     type C = SonobuoyConfig;
     type E = Error;
 
-    async fn new(test_info: TestInfo<Self::C>) -> Result<Self, Self::E> {
+    async fn new(spec: Spec<Self::C>) -> Result<Self, Self::E> {
         info!("Initializing Sonobuoy test agent...");
         Ok(Self {
-            config: test_info.configuration,
-            aws_secret_name: test_info.secrets.get(AWS_CREDENTIALS_SECRET_NAME).cloned(),
-            results_dir: test_info.results_dir,
+            config: spec.configuration,
+            aws_secret_name: spec.secrets.get(AWS_CREDENTIALS_SECRET_NAME).cloned(),
+            results_dir: spec.results_dir,
         })
     }
 

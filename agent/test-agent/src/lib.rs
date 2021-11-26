@@ -18,7 +18,7 @@ use tempfile::TempDir;
 
 /// Information that a test [`Runner`] needs before it can begin a test.
 #[derive(Debug, Clone)]
-pub struct TestInfo<C: Configuration> {
+pub struct Spec<C: Configuration> {
     pub name: String,
     pub configuration: C,
     pub secrets: BTreeMap<SecretType, SecretName>,
@@ -47,7 +47,7 @@ pub trait Runner: Sized {
     type E: Debug + Display + Send + Sync + 'static;
 
     /// Creates a new instance of the `Runner`.
-    async fn new(test_info: TestInfo<Self::C>) -> Result<Self, Self::E>;
+    async fn new(spec: Spec<Self::C>) -> Result<Self, Self::E>;
 
     /// Runs the test(s) and returns when they are done. If the tests cannot be completed, returns
     /// an error.
@@ -79,7 +79,7 @@ pub trait Client: Sized {
     async fn new(bootstrap_data: BootstrapData) -> Result<Self, Self::E>;
 
     /// Get the information needed by a test [`Runner`] from the k8s API.
-    async fn get_test_info<C>(&self) -> Result<TestInfo<C>, Self::E>
+    async fn spec<C>(&self) -> Result<Spec<C>, Self::E>
     where
         C: Configuration;
 

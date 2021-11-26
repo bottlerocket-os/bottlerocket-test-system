@@ -43,8 +43,8 @@ where
     /// construct the `Runner`.
     pub async fn new(b: BootstrapData) -> Result<Self, C::E, R::E> {
         let client = C::new(b).await.map_err(Error::Client)?;
-        let test_info = client.get_test_info().await.map_err(Error::Client)?;
-        let runner = R::new(test_info).await.map_err(Error::Runner)?;
+        let spec = client.spec().await.map_err(Error::Client)?;
+        let runner = R::new(spec).await.map_err(Error::Runner)?;
         Ok(Self { runner, client })
     }
 

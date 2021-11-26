@@ -1,4 +1,4 @@
-use crate::{BootstrapData, Client, DefaultClient, TestInfo, TestResults};
+use crate::{BootstrapData, Client, DefaultClient, Spec, TestResults};
 use async_trait::async_trait;
 use model::clients::{CrdClient, ResourceClient, TestClient};
 use model::constants::TESTSYS_RESULTS_FILE;
@@ -52,7 +52,7 @@ impl Client for DefaultClient {
         Ok(test_data.spec.agent.keep_running)
     }
 
-    async fn get_test_info<C>(&self) -> Result<TestInfo<C>, Self::E>
+    async fn spec<C>(&self) -> Result<Spec<C>, Self::E>
     where
         C: Configuration,
     {
@@ -72,7 +72,7 @@ impl Client for DefaultClient {
         let configuration =
             serde_json::from_value(Value::Object(resolved_config)).context(Deserialization)?;
 
-        Ok(TestInfo {
+        Ok(Spec {
             name: self.name.clone(),
             configuration,
             secrets: test_data.spec.agent.secrets.unwrap_or_default(),
