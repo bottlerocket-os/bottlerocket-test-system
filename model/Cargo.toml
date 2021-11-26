@@ -7,7 +7,6 @@ publish = false
 [dependencies]
 async-recursion = "0"
 async-trait = "0.1"
-derive_more = { version = "0", default-features = false, features = [ "error" ] }
 futures = "0.3"
 http = "0"
 json-patch = "0.2"
@@ -17,7 +16,6 @@ kube = { version = "0.64", default-features = false, features = [ "config", "der
 lazy_static = "1"
 log = "0.4"
 maplit = "1.0.2"
-parse_duration = "2.1"
 regex = "1"
 schemars = "0"
 serde = { version = "1", features = [ "derive" ] }
