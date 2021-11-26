@@ -30,12 +30,12 @@ pub struct Memo {
 impl Configuration for Memo {}
 
 #[derive(Clone, Debug, Default, Eq, PartialEq, Serialize, Deserialize)]
-pub struct InstanceRequest {
+pub struct InstanceConfig {
     num_instances: u32,
     instance_type: String,
 }
 
-impl Configuration for InstanceRequest {}
+impl Configuration for InstanceConfig {}
 
 #[derive(Clone, Debug, Default, Eq, PartialEq, Serialize, Deserialize)]
 pub struct CreatedInstances {
@@ -46,13 +46,13 @@ impl Configuration for CreatedInstances {}
 
 #[async_trait::async_trait]
 impl Create for InstanceCreator {
+    type Config = InstanceConfig;
     type Info = Memo;
-    type Request = InstanceRequest;
     type Resource = CreatedInstances;
 
     async fn create<I>(
         &self,
-        spec: Spec<Self::Request>,
+        spec: Spec<Self::Config>,
         client: &I,
     ) -> ProviderResult<Self::Resource>
     where
@@ -72,13 +72,13 @@ impl Create for InstanceCreator {
 
 #[async_trait::async_trait]
 impl Destroy for InstanceDestroyer {
+    type Config = InstanceConfig;
     type Info = Memo;
-    type Request = InstanceRequest;
     type Resource = CreatedInstances;
 
     async fn destroy<I>(
         &self,
-        _spec: Option<Spec<Self::Request>>,
+        _spec: Option<Spec<Self::Config>>,
         resource: Option<Self::Resource>,
         client: &I,
     ) -> ProviderResult<()>

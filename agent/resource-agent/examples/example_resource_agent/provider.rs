@@ -46,7 +46,7 @@ impl Configuration for ProductionMemo {}
 /// When a TestSys test needs some robots, it needs to tell us how many and what color they should
 /// be.
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
-pub struct RobotProductionRequest {
+pub struct RobotConfig {
     /// The color of robots to create in this batch.
     pub color: Color,
 
@@ -54,7 +54,7 @@ pub struct RobotProductionRequest {
     pub number_of_robots: NonZeroU16,
 }
 
-impl Default for RobotProductionRequest {
+impl Default for RobotConfig {
     fn default() -> Self {
         Self {
             color: Default::default(),
@@ -63,7 +63,7 @@ impl Default for RobotProductionRequest {
     }
 }
 
-impl Configuration for RobotProductionRequest {}
+impl Configuration for RobotConfig {}
 
 /// Once we have fulfilled the `Create` request, we return information about the batch of robots we
 /// created.
@@ -97,18 +97,18 @@ pub struct RobotCreator {}
 /// We need to implement the [`Create`] trait in order to provide robots for tests.
 #[async_trait::async_trait]
 impl Create for RobotCreator {
+    /// The configuration for creating robots.
+    type Config = RobotConfig;
+
     /// The struct we will use to remember things like the IDs of robots we have created so far.
     type Info = ProductionMemo;
-
-    /// The request for robots that a test will have when it needs us to create them.
-    type Request = RobotProductionRequest;
 
     /// The response we will give back describing the batch of robots we have created.
     type Resource = CreatedRobotLot;
 
     async fn create<I>(
         &self,
-        spec: Spec<Self::Request>,
+        spec: Spec<Self::Config>,
         client: &I,
     ) -> ProviderResult<Self::Resource>
     where
@@ -174,8 +174,8 @@ pub struct RobotDestroyer {}
 /// created for TestSys tests.
 #[async_trait::async_trait]
 impl Destroy for RobotDestroyer {
-    /// The struct we will use to configure out provider.
-    type Request = RobotProductionRequest;
+    /// The configuration that was used to create the robots.
+    type Config = RobotConfig;
 
     /// The struct we will use to remember things like the IDs of robots we have created so far.
     type Info = ProductionMemo;
@@ -185,7 +185,7 @@ impl Destroy for RobotDestroyer {
 
     async fn destroy<I>(
         &self,
-        _spec: Option<Spec<Self::Request>>,
+        _spec: Option<Spec<Self::Config>>,
         resource: Option<Self::Resource>,
         client: &I,
     ) -> ProviderResult<()>

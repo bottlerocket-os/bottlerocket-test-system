@@ -16,9 +16,9 @@ impl AgentClient for MockAgentClient {
         Ok(())
     }
 
-    async fn get_spec<Request>(&self) -> ClientResult<Spec<Request>>
+    async fn get_spec<Config>(&self) -> ClientResult<Spec<Config>>
     where
-        Request: Configuration,
+        Config: Configuration,
     {
         Ok(Spec::default())
     }

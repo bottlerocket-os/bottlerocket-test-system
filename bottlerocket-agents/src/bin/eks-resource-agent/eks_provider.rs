@@ -81,13 +81,13 @@ pub struct EksCreator {}
 
 #[async_trait::async_trait]
 impl Create for EksCreator {
+    type Config = ClusterConfig;
     type Info = ProductionMemo;
-    type Request = ClusterConfig;
     type Resource = CreatedCluster;
 
     async fn create<I>(
         &self,
-        request: Spec<Self::Request>,
+        spec: Spec<Self::Config>,
         client: &I,
     ) -> ProviderResult<Self::Resource>
     where
@@ -98,7 +98,7 @@ impl Create for EksCreator {
             .await
             .context(Resources::Clear, "Unable to get info from client")?;
 
-        let region = request
+        let region = spec
             .configuration
             .region
             .as_ref()
@@ -106,14 +106,14 @@ impl Create for EksCreator {
             .to_string();
 
         // Write aws credentials if we need them so we can run eksctl
-        if let Some(aws_secret_name) = request.secrets.get("aws-credentials") {
+        if let Some(aws_secret_name) = spec.secrets.get("aws-credentials") {
             setup_env(client, aws_secret_name, Resources::Clear).await?;
             memo.aws_secret_name = Some(aws_secret_name.clone());
         }
 
         let kubeconfig_dir = temp_dir().join("kubeconfig.yaml");
 
-        let cluster_name = match request.configuration.cluster_name.clone() {
+        let cluster_name = match spec.configuration.cluster_name.clone() {
             Cluster::Existing(cluster_name) => {
                 memo.current_status = "Writing existing cluster kubeconfig".into();
                 client
@@ -132,8 +132,8 @@ impl Create for EksCreator {
                 create_cluster(
                     &cluster_name,
                     &region,
-                    &request.configuration.zones,
-                    &request.configuration.version,
+                    &spec.configuration.zones,
+                    &spec.configuration.version,
                     &kubeconfig_dir,
                 )?;
                 cluster_name
@@ -150,7 +150,7 @@ impl Create for EksCreator {
         };
 
         memo.current_status = "Cluster Created".into();
-        memo.cluster_name = Some(request.configuration.cluster_name);
+        memo.cluster_name = Some(spec.configuration.cluster_name);
         memo.region = Some(region);
         client.send_info(memo.clone()).await.context(
             Resources::Remaining,
@@ -598,14 +598,14 @@ pub struct EksDestroyer {}
 
 #[async_trait::async_trait]
 impl Destroy for EksDestroyer {
-    type Request = ClusterConfig;
+    type Config = ClusterConfig;
     type Info = ProductionMemo;
     type Resource = CreatedCluster;
 
     async fn destroy<I>(
         &self,
-        _request: Option<Spec<Self::Request>>,
-        _resource: Option<Self::Resource>,
+        _: Option<Spec<Self::Config>>,
+        _: Option<Self::Resource>,
         client: &I,
     ) -> ProviderResult<()>
     where

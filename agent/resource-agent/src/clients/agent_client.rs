@@ -18,9 +18,9 @@ pub trait AgentClient: Sized {
     async fn send_init_error(&self, action: ResourceAction, error: &str) -> ClientResult<()>;
 
     /// Get the resource specifications for this resource provider.
-    async fn get_spec<Request>(&self) -> ClientResult<Spec<Request>>
+    async fn get_spec<Config>(&self) -> ClientResult<Spec<Config>>
     where
-        Request: Configuration;
+        Config: Configuration;
 
     /// Get the resource that this resource provider created. `None` if it hasn't been created.
     async fn get_created_resource<Resource>(&self) -> ClientResult<Option<Resource>>
