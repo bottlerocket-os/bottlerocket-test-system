@@ -1,7 +1,7 @@
 [package]
 name = "model"
 version = "0.1.0"
-edition = "2018"
+edition = "2021"
 publish = false
 
 [dependencies]
@@ -12,8 +12,8 @@ futures = "0.3"
 http = "0"
 json-patch = "0.2"
 # k8s-openapi must match the version required by kube and enable a k8s version feature
-k8s-openapi = { version = "0.13.0", default-features = false, features = ["v1_20"] }
-kube = { version = "0.59.0", default-features = false, features = [ "derive", "jsonpatch", "client", "native-tls" ] }
+k8s-openapi = { version = "0", default-features = false, features = ["v1_20"] }
+kube = { version = "0.64", default-features = false, features = [ "config", "derive", "jsonpatch", "client", "native-tls" ] }
 lazy_static = "1"
 log = "0.4"
 maplit = "1.0.2"

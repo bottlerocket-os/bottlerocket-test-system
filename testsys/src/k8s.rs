@@ -21,7 +21,7 @@ pub(crate) async fn k8s_client(kubeconfig: &Option<PathBuf>) -> Result<Client> {
             let kubeconfig = Kubeconfig::read_from(config_path).context(error::ConfigRead)?;
             let config = Config::from_custom_kubeconfig(kubeconfig, &KubeConfigOptions::default())
                 .await
-                .context(error::ClientCreate)?;
+                .context(error::ClientCreateKubeconfig)?;
             Ok(config.try_into().context(error::ClientCreate)?)
         }
     }

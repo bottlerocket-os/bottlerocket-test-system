@@ -17,8 +17,15 @@ pub(crate) enum Error {
     #[snafu(display("Unable to create client: {}", source))]
     ClientCreate { source: kube::Error },
 
+    #[snafu(display("Unable to create client: {}", source))]
+    ClientCreateKubeconfig {
+        source: kube::config::KubeconfigError,
+    },
+
     #[snafu(display("Unable to read kubeconfig: {}", source))]
-    ConfigRead { source: kube::Error },
+    ConfigRead {
+        source: kube::config::KubeconfigError,
+    },
 
     #[snafu(display("Error Creating {}: {}", what, source))]
     Creation { what: String, source: kube::Error },
