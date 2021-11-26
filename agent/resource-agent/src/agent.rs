@@ -17,8 +17,8 @@ use std::marker::PhantomData;
 /// ## Configuration Types
 ///
 /// These are "plain old data" structs that you define to carry custom information needed to create
-/// and destroy your resources. These types are `Config`, `Info`, `Request` and `Resource`. See
-/// the [`Create`] and [`Destroy`] traits for more information on these.
+/// and destroy your resources. These types are `Config`, `Info` and `Resource`. See the [`Create`]
+/// and [`Destroy`] traits for more information on these.
 ///
 /// ## Dependency Injection for Testing
 ///
@@ -31,15 +31,15 @@ use std::marker::PhantomData;
 /// You implement the `Creator` (see [`Create`]) and `Destroyer` (see [`Destroy`]) types to create
 /// and destroy resources.
 ///
-pub struct Agent<Info, Request, Resource, IClient, AClient, Creator, Destroyer>
+pub struct Agent<Config, Info, Resource, IClient, AClient, Creator, Destroyer>
 where
+    Config: Configuration,
     Info: Configuration,
-    Request: Configuration,
     Resource: Configuration,
     IClient: InfoClient,
     AClient: AgentClient,
-    Creator: Create<Request = Request, Info = Info, Resource = Resource>,
-    Destroyer: Destroy<Request = Request, Info = Info, Resource = Resource>,
+    Creator: Create<Config = Config, Info = Info, Resource = Resource>,
+    Destroyer: Destroy<Config = Config, Info = Info, Resource = Resource>,
 {
     /// This field ensures that we are using all of the generic types in the struct's signature
     /// which helps us resolve the agent's generic types during construction.
@@ -69,16 +69,16 @@ where
     pub agent_client: PhantomData<AClient>,
 }
 
-impl<Info, Request, Resource, IClient, AClient, Creator, Destroyer>
-    Agent<Info, Request, Resource, IClient, AClient, Creator, Destroyer>
+impl<Config, Info, Resource, IClient, AClient, Creator, Destroyer>
+    Agent<Config, Info, Resource, IClient, AClient, Creator, Destroyer>
 where
+    Config: Configuration,
     Info: Configuration,
-    Request: Configuration,
     Resource: Configuration,
     IClient: InfoClient,
     AClient: AgentClient,
-    Creator: Create<Request = Request, Info = Info, Resource = Resource>,
-    Destroyer: Destroy<Request = Request, Info = Info, Resource = Resource>,
+    Creator: Create<Config = Config, Info = Info, Resource = Resource>,
+    Destroyer: Destroy<Config = Config, Info = Info, Resource = Resource>,
 {
     /// Create a new `Agent` by providing the necessary bootstrapping data and all of the specific
     /// types that we will be using.
@@ -87,7 +87,6 @@ where
         bootstrap_data: BootstrapData,
         creator: Creator,
         destroyer: Destroyer,
-        // t: Types<Info, Request, Resource, IClient, AClient, Creator, Destroyer>,
     ) -> AgentResult<Self> {
         info!("Initializing Agent");
         // Initialize the clients.
@@ -132,10 +131,10 @@ where
     async fn create(&self) -> AgentResult<()> {
         trace!("sending create start signal");
         self.agent_client.send_create_starting().await?;
-        debug!("Getting configuration (i.e. request)");
-        let request = self.agent_client.get_spec().await?;
-        trace!("request\n{:?}", request);
-        match self.creator.create(request, &self.info_client).await {
+        debug!("Getting configuration");
+        let config = self.agent_client.get_spec().await?;
+        trace!("config\n{:?}", config);
+        match self.creator.create(config, &self.info_client).await {
             Ok(resource) => Ok(self.agent_client.send_create_succeeded(resource).await?),
             Err(e) => {
                 if let Err(client_error) = self.agent_client.send_create_failed(&e).await {
@@ -158,17 +157,17 @@ where
             }
         };
 
-        let request = match self.agent_client.get_spec::<Request>().await {
+        let spec = match self.agent_client.get_spec::<Config>().await {
             Ok(r) => Some(r),
             Err(e) => {
-                error!("Unable to obtain resource request from Kubernetes: {}", e);
+                error!("Unable to obtain resource config from Kubernetes: {}", e);
                 None
             }
         };
 
         match self
             .destroyer
-            .destroy(request, resource, &self.info_client)
+            .destroy(spec, resource, &self.info_client)
             .await
         {
             Ok(()) => Ok(self.agent_client.send_destroy_succeeded().await?),

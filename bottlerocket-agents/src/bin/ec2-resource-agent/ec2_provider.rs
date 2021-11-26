@@ -44,7 +44,7 @@ pub struct ProductionMemo {
 impl Configuration for ProductionMemo {}
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, Default)]
-pub struct Ec2ProductionRequest {
+pub struct Ec2Config {
     /// The AMI ID of the AMI to use for the worker nodes.
     node_ami: String,
 
@@ -59,7 +59,7 @@ pub struct Ec2ProductionRequest {
     cluster: ClusterInfo,
 }
 
-impl Configuration for Ec2ProductionRequest {}
+impl Configuration for Ec2Config {}
 
 /// Once we have fulfilled the `Create` request, we return information about the batch of ec2 instances we
 /// created.
@@ -75,13 +75,13 @@ pub struct Ec2Creator {}
 
 #[async_trait::async_trait]
 impl Create for Ec2Creator {
+    type Config = Ec2Config;
     type Info = ProductionMemo;
-    type Request = Ec2ProductionRequest;
     type Resource = CreatedEc2Instances;
 
     async fn create<I>(
         &self,
-        request: Spec<Self::Request>,
+        spec: Spec<Self::Config>,
         client: &I,
     ) -> ProviderResult<Self::Resource>
     where
@@ -101,12 +101,12 @@ impl Create for Ec2Creator {
             .context(&memo, "Error storing uuid in info client")?;
 
         // Write aws credentials if we need them so we can run eksctl
-        if let Some(aws_secret_name) = request.secrets.get("aws-credentials") {
+        if let Some(aws_secret_name) = spec.secrets.get("aws-credentials") {
             setup_env(client, aws_secret_name, &memo).await?;
             memo.aws_secret_name = Some(aws_secret_name.clone());
         }
 
-        let cluster = &request.configuration.cluster;
+        let cluster = &spec.configuration.cluster;
 
         // Setup aws_sdk_config and clients.
         let region_provider =
@@ -120,14 +120,14 @@ impl Create for Ec2Creator {
 
         // Determine the instance type to use. If provided use that one. Otherwise, for `x86_64` use `m5.large`
         // and for `aarch64` use `m6g.large`
-        let instance_type = if let Some(instance_type) = request.configuration.instance_type {
+        let instance_type = if let Some(instance_type) = spec.configuration.instance_type {
             instance_type
         } else {
-            instance_type(&ec2_client, &request.configuration.node_ami, &memo).await?
+            instance_type(&ec2_client, &spec.configuration.node_ami, &memo).await?
         };
 
         // Run the ec2 instances
-        let instance_count = request
+        let instance_count = spec
             .configuration
             .instance_count
             .unwrap_or(DEFAULT_INSTANCE_COUNT);
@@ -137,7 +137,7 @@ impl Create for Ec2Creator {
             .max_count(instance_count)
             .subnet_id(first_subnet_id(&cluster.private_subnet_ids, &memo)?)
             .set_security_group_ids(Some(security_groups))
-            .image_id(request.configuration.node_ami)
+            .image_id(spec.configuration.node_ami)
             .instance_type(InstanceType::from(instance_type.as_str()))
             .tag_specifications(tag_specifications(&cluster.name, &instance_uuid))
             .user_data(userdata(
@@ -422,13 +422,13 @@ pub struct Ec2Destroyer {}
 
 #[async_trait::async_trait]
 impl Destroy for Ec2Destroyer {
-    type Request = Ec2ProductionRequest;
+    type Config = Ec2Config;
     type Info = ProductionMemo;
     type Resource = CreatedEc2Instances;
 
     async fn destroy<I>(
         &self,
-        _request: Option<Spec<Self::Request>>,
+        _: Option<Spec<Self::Config>>,
         resource: Option<Self::Resource>,
         client: &I,
     ) -> ProviderResult<()>

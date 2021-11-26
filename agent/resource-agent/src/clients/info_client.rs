@@ -5,7 +5,7 @@ use model::clients::ResourceClient;
 use model::{Configuration, SecretName};
 
 /// `InfoClient` allows [`Create`] and [`Destroy`] objects to store arbitrary information in the
-/// Kubernetes status fields associated with the resource request. For example, you might want to
+/// Kubernetes status fields associated with the `Resource` CRD. For example, you might want to
 /// store a name or an ID of a resource even before the `create` process is done. That way, if a
 /// failure occurs, you can retrieve that information in order to destroy the resources when
 /// `destroy` is called.

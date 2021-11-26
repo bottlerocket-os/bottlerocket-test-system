@@ -12,7 +12,7 @@ use std::fmt::{Debug, Display};
 use std::path::PathBuf;
 use tempfile::{tempdir, TempDir};
 use test_agent::{BootstrapData, Client, Runner};
-use test_agent::{TestInfo, TestResults};
+use test_agent::{Spec, TestResults};
 use tokio::time::{sleep, Duration};
 
 /// When creating a test, this is the object that you create which will implement the [`Runner`]
@@ -20,7 +20,7 @@ use tokio::time::{sleep, Duration};
 struct MyRunner {
     /// In an actual [`Runner`] you would probably want to hold this information, which is provided
     /// by `new`.
-    _info: TestInfo<MyConfig>,
+    _spec: Spec<MyConfig>,
 }
 
 /// When implementing an actual [`Runner`], you may need some input in order to start the test.
@@ -38,8 +38,8 @@ impl Runner for MyRunner {
     /// The error type. In this case we use a `String`, but you can use a real error type.
     type E = String;
 
-    async fn new(info: TestInfo<Self::C>) -> Result<Self, Self::E> {
-        Ok(Self { _info: info })
+    async fn new(spec: Spec<Self::C>) -> Result<Self, Self::E> {
+        Ok(Self { _spec: spec })
     }
 
     async fn run(&mut self) -> Result<TestResults, Self::E> {
@@ -80,12 +80,12 @@ impl Client for MockClient {
         })
     }
 
-    async fn get_test_info<C>(&self) -> Result<TestInfo<C>, Self::E>
+    async fn spec<C>(&self) -> Result<Spec<C>, Self::E>
     where
         C: Configuration,
     {
         println!("MockClient::get");
-        Ok(TestInfo {
+        Ok(Spec {
             name: "mock-test".into(),
             configuration: C::default(),
             secrets: Default::default(),

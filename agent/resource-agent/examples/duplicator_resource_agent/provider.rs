@@ -16,18 +16,18 @@ use serde_json::Value;
 
 #[derive(Clone, Debug, Default, Eq, PartialEq, Serialize, Deserialize)]
 pub struct Memo {
-    info: Option<DuplicationRequest>,
+    info: Option<DuplicationConfig>,
 }
 
 impl Configuration for Memo {}
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, Default)]
-pub struct DuplicationRequest {
+pub struct DuplicationConfig {
     /// The info that will be copied to `DuplicatedData`.
     pub info: Value,
 }
 
-impl Configuration for DuplicationRequest {}
+impl Configuration for DuplicationConfig {}
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, Default)]
 pub struct DuplicatedData {
@@ -41,13 +41,13 @@ pub struct DuplicationCreator {}
 
 #[async_trait::async_trait]
 impl Create for DuplicationCreator {
+    type Config = DuplicationConfig;
     type Info = Memo;
-    type Request = DuplicationRequest;
     type Resource = DuplicatedData;
 
     async fn create<I>(
         &self,
-        request: Spec<Self::Request>,
+        spec: Spec<Self::Config>,
         client: &I,
     ) -> ProviderResult<Self::Resource>
     where
@@ -57,13 +57,13 @@ impl Create for DuplicationCreator {
             .get_info()
             .await
             .context(Resources::Clear, "Unable to get info from client")?;
-        memo.info = Some(request.configuration.clone());
+        memo.info = Some(spec.configuration.clone());
         client.send_info(memo.clone()).await.context(
             Resources::Remaining,
             "Error sending cluster created message",
         )?;
         Ok(DuplicatedData {
-            info: request.configuration.info.clone(),
+            info: spec.configuration.info.clone(),
         })
     }
 }
@@ -71,13 +71,13 @@ impl Create for DuplicationCreator {
 pub struct DuplicationDestroyer {}
 #[async_trait::async_trait]
 impl Destroy for DuplicationDestroyer {
-    type Request = DuplicationRequest;
+    type Config = DuplicationConfig;
     type Info = Memo;
     type Resource = DuplicatedData;
 
     async fn destroy<I>(
         &self,
-        _request: Option<Spec<Self::Request>>,
+        _spec: Option<Spec<Self::Config>>,
         _resource: Option<Self::Resource>,
         _client: &I,
     ) -> ProviderResult<()>

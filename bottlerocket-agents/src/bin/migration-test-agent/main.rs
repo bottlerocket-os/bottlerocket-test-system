@@ -50,7 +50,7 @@ use log::{error, info};
 use maplit::hashmap;
 use model::{Outcome, SecretName, TestResults};
 use std::path::Path;
-use test_agent::{BootstrapData, ClientError, DefaultClient, TestAgent, TestInfo};
+use test_agent::{BootstrapData, ClientError, DefaultClient, Spec, TestAgent};
 
 const BR_CHANGE_UPDATE_REPO_DOCUMENT_NAME: &str = "BR-ChangeUpdateRepo";
 const BR_CHANGE_UPDATE_REPO_DOCUMENT_PATH: &str = "/local/ssm-documents/ssm-change-update-repo.yml";
@@ -67,11 +67,11 @@ impl test_agent::Runner for MigrationTestRunner {
     type C = MigrationConfig;
     type E = Error;
 
-    async fn new(test_info: TestInfo<Self::C>) -> Result<Self, Self::E> {
+    async fn new(spec: Spec<Self::C>) -> Result<Self, Self::E> {
         info!("Initializing migration test agent...");
         Ok(Self {
-            config: test_info.configuration,
-            aws_secret_name: test_info.secrets.get(AWS_CREDENTIALS_SECRET_NAME).cloned(),
+            config: spec.configuration,
+            aws_secret_name: spec.secrets.get(AWS_CREDENTIALS_SECRET_NAME).cloned(),
         })
     }
 
