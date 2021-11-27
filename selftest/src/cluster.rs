@@ -136,7 +136,10 @@ impl Cluster {
     pub async fn wait_for_test_pod(&self, test_name: &str, duration: Duration) -> Result<()> {
         tokio::time::timeout(duration, self.wait_for_test_loop(test_name))
             .await
-            .context("Timeout waiting for test '{}' pod to be in the 'Running' state")?
+            .context(format!(
+                "Timeout waiting for test '{}' pod to be in the 'Running' state",
+                test_name
+            ))?
     }
 
     /// Waits for a Kubernetes object to become available (retries on 404).
