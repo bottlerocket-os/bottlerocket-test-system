@@ -91,6 +91,7 @@ impl RunSonobuoy {
             },
             spec: TestSpec {
                 resources: self.resource.clone(),
+                depends_on: Default::default(),
                 agent: Agent {
                     name: "sonobuoy-test-agent".to_string(),
                     image: self.image.clone(),

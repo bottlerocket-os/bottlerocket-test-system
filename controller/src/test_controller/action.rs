@@ -2,11 +2,11 @@ use crate::error::Result;
 use crate::job::{JobState, TEST_START_TIME_LIMIT};
 use crate::test_controller::context::TestInterface;
 use anyhow::Context;
-use kube::Api;
+use kube::{Api, ResourceExt};
 use log::trace;
-use model::clients::{HttpStatusCode, StatusCode};
+use model::clients::{CrdClient, HttpStatusCode, StatusCode};
 use model::constants::{FINALIZER_MAIN, FINALIZER_TEST_JOB, NAMESPACE};
-use model::{CrdExt, Resource, ResourceAction, TaskState};
+use model::{CrdExt, Outcome, Resource, ResourceAction, TaskState};
 use parse_duration::parse;
 use std::fmt::{Display, Formatter};
 
@@ -17,6 +17,7 @@ pub(super) enum Action {
     AddMainFinalizer,
     WaitForResources,
     RegisterResourceCreationError(String),
+    WaitForDependency(String),
     AddJobFinalizer,
     StartTest,
     WaitForTest,
@@ -152,6 +153,38 @@ async fn resource_readiness(t: &TestInterface) -> Result<Resources> {
     Ok(Resources::Ready)
 }
 
+async fn dependency_wait_action(t: &TestInterface) -> Result<Option<Action>> {
+    let depends_on = if let Some(depends_on) = &t.test().spec.depends_on {
+        if depends_on.is_empty() {
+            return Ok(None);
+        }
+        depends_on
+    } else {
+        return Ok(None);
+    };
+
+    // Make sure each resource in depends_on is ready.
+    // TODO - error if cyclical dependencies https://github.com/bottlerocket-os/bottlerocket-test-system/issues/156
+    for needed in depends_on {
+        // TODO - error if 404/not-found https://github.com/bottlerocket-os/bottlerocket-test-system/issues/157
+        let needed_test = match t.test_client().get(needed).await {
+            Ok(test) => test,
+            Err(_) => return Ok(Some(Action::WaitForDependency(needed.clone()))),
+        };
+
+        if needed_test
+            .agent_status()
+            .results
+            .as_ref()
+            .map(|results| results.outcome != Outcome::Pass)
+            .unwrap_or(true)
+        {
+            return Ok(Some(Action::WaitForDependency(needed_test.name())));
+        }
+    }
+    Ok(None)
+}
+
 async fn task_not_done_action(t: &TestInterface, is_task_state_running: bool) -> Result<Action> {
     if !is_task_state_running && !t.test().has_finalizer(FINALIZER_TEST_JOB) {
         return Ok(Action::AddJobFinalizer);
@@ -167,7 +200,9 @@ async fn task_not_done_action(t: &TestInterface, is_task_state_running: bool) ->
                     Ok(Action::Error(ErrorState::ResourceErrorExists(s)))
                 }
             }
-            Resources::Ready => Ok(Action::StartTest),
+            Resources::Ready => Ok(dependency_wait_action(t)
+                .await?
+                .unwrap_or(Action::StartTest)),
         },
         JobState::None => Ok(Action::Error(ErrorState::HandleJobRemovedBeforeDone)),
         JobState::Unknown => {
