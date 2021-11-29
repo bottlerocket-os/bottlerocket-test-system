@@ -44,6 +44,7 @@ pub(crate) async fn reconcile(t: Test, context: Context) -> ReconciliationResult
                 ))?;
             Ok(REQUEUE_SLOW)
         }
+        Action::WaitForDependency(_) => Ok(REQUEUE),
         Action::AddJobFinalizer => {
             t.test_client()
                 .add_finalizer(FINALIZER_TEST_JOB, t.test())

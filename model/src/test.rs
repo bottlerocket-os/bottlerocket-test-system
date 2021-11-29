@@ -25,6 +25,8 @@ pub struct TestSpec {
     /// The list of resources required by this test. The test controller will wait for these
     /// resources to become ready before running the test agent.
     pub resources: Vec<String>,
+    /// Other tests that must be completed before this one can be run.
+    pub depends_on: Option<Vec<String>>,
     /// Information about the test agent.
     pub agent: Agent,
 }

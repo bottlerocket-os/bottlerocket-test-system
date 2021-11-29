@@ -17,3 +17,4 @@ spec:
         data: 
           inside: ${dup1.info}
   resources: [dup1]
+  depends_on: []
