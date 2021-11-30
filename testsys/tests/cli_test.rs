@@ -9,9 +9,18 @@ use tokio::time::Duration;
 /// machines running a VM for docker.
 const POD_TIMEOUT: Duration = Duration::from_secs(300);
 
+const TEST_TIMEOUT: Duration = Duration::from_secs(30);
+
+/// We will test:
+/// `testsys install`
+/// 'testsys run` (with a manifest)
+/// `testsys status`
+/// Ensure templating of resources and tests works
+/// Ensure depends on for resources and tests works
+
 #[tokio::test]
-async fn test_install() {
-    let cluster_name = "install-test";
+async fn test_system() {
+    let cluster_name = "integ-test";
     let cluster = Cluster::new(cluster_name).unwrap();
     cluster.load_image_to_cluster("controller:integ").unwrap();
     let mut cmd = Command::cargo_bin("testsys").unwrap();
@@ -23,139 +32,104 @@ async fn test_install() {
         "controller:integ",
     ]);
     cmd.assert().success();
-    cluster.wait_for_controller(POD_TIMEOUT).await.unwrap();
-}
-
-#[tokio::test]
-async fn test_run_file() {
-    let cluster_name = "run-file-test";
-    let cluster = Cluster::new(cluster_name).unwrap();
-    cluster.load_image_to_cluster("controller:integ").unwrap();
-    let mut cmd = Command::cargo_bin("testsys").unwrap();
-    cmd.args(&[
-        "--kubeconfig",
-        cluster.kubeconfig().to_str().unwrap(),
-        "install",
-        "--controller-uri",
-        "controller:integ",
-    ]);
-    cmd.assert().success();
-    cluster
-        .load_image_to_cluster("example-test-agent:integ")
-        .unwrap();
-    let mut cmd = Command::cargo_bin("testsys").unwrap();
-    cmd.args(&[
-        "--kubeconfig",
-        cluster.kubeconfig().to_str().unwrap(),
-        "run",
-        "file",
-        data::hello_example_path().to_str().unwrap(),
-    ]);
-    cmd.assert().success();
-
-    cluster.wait_for_controller(POD_TIMEOUT).await.unwrap();
-
-    cluster
-        .wait_for_test_pod("hello-bones", POD_TIMEOUT)
-        .await
-        .unwrap();
-}
-
-#[tokio::test]
-async fn test_status() {
-    let cluster_name = "status-test";
-    let cluster = Cluster::new(cluster_name).unwrap();
-    cluster.load_image_to_cluster("controller:integ").unwrap();
-    let mut cmd = Command::cargo_bin("testsys").unwrap();
-    cmd.args(&[
-        "--kubeconfig",
-        cluster.kubeconfig().to_str().unwrap(),
-        "install",
-        "--controller-uri",
-        "controller:integ",
-    ]);
-    cmd.assert().success();
-
-    cluster.wait_for_controller(POD_TIMEOUT).await.unwrap();
-
-    cluster
-        .load_image_to_cluster("example-test-agent:integ")
-        .unwrap();
-    let mut cmd = Command::cargo_bin("testsys").unwrap();
-    cmd.args(&[
-        "--kubeconfig",
-        cluster.kubeconfig().to_str().unwrap(),
-        "run",
-        "file",
-        data::hello_example_path().to_str().unwrap(),
-    ]);
-    cmd.assert().success();
-
-    cluster
-        .wait_for_test_pod("hello-bones", POD_TIMEOUT)
-        .await
-        .unwrap();
 
     let mut cmd = Command::cargo_bin("testsys").unwrap();
     cmd.args(&[
         "--kubeconfig",
         cluster.kubeconfig().to_str().unwrap(),
         "status",
+        "-c",
         "--wait",
-    ]);
+    ])
+    .timeout(POD_TIMEOUT);
     cmd.assert().success();
-}
 
-#[tokio::test]
-async fn test_set() {
-    let cluster_name = "set-test";
-    let cluster = Cluster::new(cluster_name).unwrap();
-    cluster.load_image_to_cluster("controller:integ").unwrap();
-    let mut cmd = Command::cargo_bin("testsys").unwrap();
-    cmd.args(&[
-        "--kubeconfig",
-        cluster.kubeconfig().to_str().unwrap(),
-        "install",
-        "--controller-uri",
-        "controller:integ",
-    ]);
-    cmd.assert().success();
     cluster
         .load_image_to_cluster("example-test-agent:integ")
         .unwrap();
+    cluster
+        .load_image_to_cluster("duplicator-resource-agent:integ")
+        .unwrap();
+
     let mut cmd = Command::cargo_bin("testsys").unwrap();
     cmd.args(&[
         "--kubeconfig",
         cluster.kubeconfig().to_str().unwrap(),
         "run",
         "file",
-        data::hello_example_path().to_str().unwrap(),
+        data::integ_test_dependent_path().to_str().unwrap(),
     ]);
     cmd.assert().success();
 
-    cluster.wait_for_controller(POD_TIMEOUT).await.unwrap();
+    let mut cmd = Command::cargo_bin("testsys").unwrap();
+    cmd.args(&[
+        "--kubeconfig",
+        cluster.kubeconfig().to_str().unwrap(),
+        "status",
+        "-t",
+        "hello-bones-1",
+        "-r",
+        "dup-1",
+        "--wait",
+    ])
+    .timeout(TEST_TIMEOUT);
+    cmd.assert().failure();
 
-    cluster
-        .wait_for_test_pod("hello-bones", POD_TIMEOUT)
-        .await
-        .unwrap();
+    let mut cmd = Command::cargo_bin("testsys").unwrap();
+    cmd.args(&[
+        "--kubeconfig",
+        cluster.kubeconfig().to_str().unwrap(),
+        "run",
+        "file",
+        data::integ_test_depended_on_path().to_str().unwrap(),
+    ]);
+    cmd.assert().success();
+
+    let mut cmd = Command::cargo_bin("testsys").unwrap();
+    cmd.args(&[
+        "--kubeconfig",
+        cluster.kubeconfig().to_str().unwrap(),
+        "status",
+        "-t",
+        "hello-bones-2",
+        "--wait",
+    ])
+    .timeout(POD_TIMEOUT);
+    cmd.assert().success();
 
     let mut cmd = Command::cargo_bin("testsys").unwrap();
     cmd.args(&[
         "--kubeconfig",
         cluster.kubeconfig().to_str().unwrap(),
         "set",
-        "hello-bones",
+        "hello-bones-1",
         "--keep-running",
         "false",
     ]);
     cmd.assert().success();
+
     let mut cmd = Command::cargo_bin("testsys").unwrap();
     cmd.args(&[
         "--kubeconfig",
         cluster.kubeconfig().to_str().unwrap(),
         "status",
+        "-t",
+        "hello-bones-1",
         "--wait",
-    ]);
+    ])
+    .timeout(POD_TIMEOUT);
+    cmd.assert().success();
+
+    let mut cmd = Command::cargo_bin("testsys").unwrap();
+    cmd.args(&[
+        "--kubeconfig",
+        cluster.kubeconfig().to_str().unwrap(),
+        "status",
+        "-t",
+        "-r",
+        "-c",
+        "--wait",
+    ])
+    .timeout(POD_TIMEOUT);
     cmd.assert().success();
 }

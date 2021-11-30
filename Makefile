@@ -74,10 +74,9 @@ eks-resource-agent ec2-resource-agent sonobuoy-test-agent migration-test-agent: 
 # If TESTSYS_SELFTEST_SKIP_IMAGE_BUILDS is set to a non-zero-length string, the container images
 # will not be rebuilt.
 integ-test: export TESTSYS_SELFTEST_KIND_PATH := $(shell pwd)/bin/kind
-integ-test: $(if $(TESTSYS_SELFTEST_SKIP_IMAGE_BUILDS), ,controller example-test-agent example-resource-agent sonobuoy-test-agent)
+integ-test: $(if $(TESTSYS_SELFTEST_SKIP_IMAGE_BUILDS), ,controller example-test-agent duplicator-resource-agent)
 	$(shell pwd)/bin/download-kind.sh --platform $(TESTSYS_BUILD_HOST_PLATFORM) --goarch ${TESTSYS_BUILD_HOST_GOARCH}
 	docker tag example-test-agent example-test-agent:integ
 	docker tag controller controller:integ
-	docker tag example-resource-agent example-resource-agent:integ
-	docker tag sonobuoy-test-agent sonobuoy-test-agent:integ
+	docker tag duplicator-resource-agent duplicator-resource-agent:integ
 	cargo test --features integ -- --test-threads=1
