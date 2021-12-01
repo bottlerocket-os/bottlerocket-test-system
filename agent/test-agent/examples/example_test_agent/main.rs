@@ -42,6 +42,7 @@ struct ExampleTestRunner {
 /// When implementing an actual [`Runner`], you may need some input in order to start the test.
 /// You would define that input in a struct which implements [`Configuration`].
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 struct ExampleConfig {
     person: String,
     hello_count: u32,

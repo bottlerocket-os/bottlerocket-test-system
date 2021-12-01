@@ -15,6 +15,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 #[derive(Clone, Debug, Default, Eq, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct Memo {
     info: Option<DuplicationConfig>,
 }
@@ -22,6 +23,7 @@ pub struct Memo {
 impl Configuration for Memo {}
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "camelCase")]
 pub struct DuplicationConfig {
     /// The info that will be copied to `DuplicatedData`.
     pub info: Value,
@@ -30,6 +32,7 @@ pub struct DuplicationConfig {
 impl Configuration for DuplicationConfig {}
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "camelCase")]
 pub struct DuplicatedData {
     /// The info we have duplicated.
     info: Value,

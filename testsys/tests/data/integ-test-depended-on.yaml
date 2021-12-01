@@ -8,10 +8,10 @@ spec:
   agent:
     name: dup-2-agent
     image: "duplicator-resource-agent:integ"
-    keep_running: false
+    keepRunning: false
     configuration:
       info: 3
-  depends_on: []
+  dependsOn: []
 ---
 apiVersion: testsys.bottlerocket.aws/v1
 kind: Test
@@ -22,11 +22,11 @@ spec:
   agent:
     name: hello-agent
     image: "example-test-agent:integ"
-    keep_running: false
+    keepRunning: false
     configuration:
       mode: Fast
       person: Bones the Cat
-      hello_count: ${dup-1.info}
-      hello_duration_milliseconds: 500
+      helloCount: ${dup-1.info}
+      helloDurationMilliseconds: 500
   resources: [dup-1]
-  depends_on: []
+  dependsOn: []

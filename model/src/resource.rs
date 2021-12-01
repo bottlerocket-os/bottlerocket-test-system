@@ -22,6 +22,7 @@ use std::fmt::{Display, Formatter};
     status = "ResourceStatus",
     version = "v1"
 )]
+#[serde(rename_all = "camelCase")]
 pub struct ResourceSpec {
     /// Other resources that must to be created before this one can be created.
     pub depends_on: Option<Vec<String>>,
@@ -103,6 +104,7 @@ serde_plain::derive_display_from_serialize!(ResourceAction);
 /// When a resource agent encounters an error, it uses this enum to tell us whether or not resources
 /// were left behind.
 #[derive(Serialize, Deserialize, Debug, Eq, PartialEq, Clone, Copy, JsonSchema)]
+#[serde(rename_all = "camelCase")]
 pub enum ErrorResources {
     /// The resource agent has left resources behind and has no way of destroying them. The
     /// controller will **not** run `destroy`.  
@@ -144,6 +146,7 @@ impl ErrorResources {
 
 /// A status struct to be used by a resource agent.
 #[derive(Serialize, Deserialize, Debug, Default, Eq, PartialEq, Clone, JsonSchema)]
+#[serde(rename_all = "camelCase")]
 pub struct ResourceStatus {
     /// The state or the resource agent when creating resources.
     pub creation: ResourceAgentState,
@@ -167,12 +170,14 @@ impl CrdExt for Resource {
 }
 
 #[derive(Serialize, Deserialize, Debug, Default, Eq, PartialEq, Clone, JsonSchema)]
+#[serde(rename_all = "camelCase")]
 pub struct ResourceAgentState {
     pub task_state: TaskState,
     pub error: Option<ResourceError>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Default, Eq, PartialEq, Clone, JsonSchema)]
+#[serde(rename_all = "camelCase")]
 pub struct ResourceError {
     /// The error message.
     pub error: String,

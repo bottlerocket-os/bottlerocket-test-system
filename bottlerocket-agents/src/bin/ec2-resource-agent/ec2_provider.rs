@@ -4,7 +4,7 @@ use aws_sdk_ec2::model::{
     TagSpecification,
 };
 use aws_sdk_ec2::Region;
-use bottlerocket_agents::ClusterInfo;
+use bottlerocket_agents::{ClusterInfo, AWS_CREDENTIALS_SECRET_NAME};
 use model::{Configuration, SecretName};
 use resource_agent::clients::InfoClient;
 use resource_agent::provider::{
@@ -24,6 +24,7 @@ const DEFAULT_INSTANCE_COUNT: i32 = 2;
 const INSTANCE_UUID_TAG_NAME: &str = "testsys-ec2-uuid";
 
 #[derive(Clone, Debug, Default, Eq, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ProductionMemo {
     /// In this resource we put some traces here that describe what our provider is doing.
     pub current_status: String,
@@ -44,6 +45,7 @@ pub struct ProductionMemo {
 impl Configuration for ProductionMemo {}
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "camelCase")]
 pub struct Ec2Config {
     /// The AMI ID of the AMI to use for the worker nodes.
     node_ami: String,
@@ -64,6 +66,7 @@ impl Configuration for Ec2Config {}
 /// Once we have fulfilled the `Create` request, we return information about the batch of ec2 instances we
 /// created.
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "camelCase")]
 pub struct CreatedEc2Instances {
     /// The ids of all created instances
     pub ids: HashSet<String>,
@@ -101,7 +104,7 @@ impl Create for Ec2Creator {
             .context(&memo, "Error storing uuid in info client")?;
 
         // Write aws credentials if we need them so we can run eksctl
-        if let Some(aws_secret_name) = spec.secrets.get("aws-credentials") {
+        if let Some(aws_secret_name) = spec.secrets.get(AWS_CREDENTIALS_SECRET_NAME) {
             setup_env(client, aws_secret_name, &memo).await?;
             memo.aws_secret_name = Some(aws_secret_name.clone());
         }

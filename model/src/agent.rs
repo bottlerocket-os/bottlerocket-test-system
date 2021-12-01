@@ -17,6 +17,7 @@ use std::str::FromStr;
 /// The states that an agent declares about its task (e.g. running tests or creating/destroying
 /// resources).
 #[derive(Serialize, Deserialize, Debug, Eq, PartialEq, Clone, Copy, JsonSchema)]
+#[serde(rename_all = "camelCase")]
 pub enum TaskState {
     Unknown,
     Running,
@@ -31,6 +32,7 @@ impl Default for TaskState {
 }
 
 #[derive(Serialize, Deserialize, Debug, Default, Eq, PartialEq, Clone, JsonSchema)]
+#[serde(rename_all = "camelCase")]
 pub struct Agent {
     /// The name of the agent.
     pub name: String,

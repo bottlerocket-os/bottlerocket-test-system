@@ -21,6 +21,7 @@ use std::borrow::Cow;
     status = "TestStatus",
     version = "v1"
 )]
+#[serde(rename_all = "camelCase")]
 pub struct TestSpec {
     /// The list of resources required by this test. The test controller will wait for these
     /// resources to become ready before running the test agent.
@@ -34,6 +35,7 @@ pub struct TestSpec {
 /// The status field of the TestSys Test CRD. This is where the controller and agents will write
 /// information about the status of the test run.
 #[derive(Serialize, Deserialize, Debug, Default, Eq, PartialEq, Clone, JsonSchema)]
+#[serde(rename_all = "camelCase")]
 pub struct TestStatus {
     /// Information written by the controller.
     pub controller: ControllerStatus,
@@ -43,6 +45,7 @@ pub struct TestStatus {
 
 /// The `Outcome` of a test run, reported by the test agent.
 #[derive(Serialize, Deserialize, Debug, Eq, PartialEq, Copy, Clone, JsonSchema)]
+#[serde(rename_all = "camelCase")]
 pub enum Outcome {
     Pass,
     Fail,
@@ -57,6 +60,7 @@ impl Default for Outcome {
 }
 
 #[derive(Serialize, Deserialize, Debug, Default, Eq, PartialEq, Clone, JsonSchema)]
+#[serde(rename_all = "camelCase")]
 pub struct TestResults {
     pub outcome: Outcome,
     pub num_passed: u64,
@@ -73,6 +77,7 @@ impl TestResults {
 }
 
 #[derive(Serialize, Deserialize, Debug, Default, Eq, PartialEq, Clone, JsonSchema)]
+#[serde(rename_all = "camelCase")]
 pub struct AgentStatus {
     pub task_state: TaskState,
     /// Due to structural OpenAPI constraints, the error message must be provided separately instead
@@ -84,6 +89,7 @@ pub struct AgentStatus {
 }
 
 #[derive(Serialize, Deserialize, Debug, Default, Eq, PartialEq, Clone, JsonSchema)]
+#[serde(rename_all = "camelCase")]
 pub struct ControllerStatus {
     pub resource_error: Option<String>,
 }
@@ -93,6 +99,7 @@ pub struct ControllerStatus {
 /// from the state of the `Test` CRD. Note that resource state cannot be represented here
 /// because the `Resource` CRDs would need to be queried.
 #[derive(Serialize, Deserialize, Debug, Eq, PartialEq, Clone, Copy)]
+#[serde(rename_all = "camelCase")]
 pub enum TestUserState {
     /// The test state cannot be determined.
     Unknown,

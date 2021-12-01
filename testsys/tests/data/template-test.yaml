@@ -7,14 +7,14 @@ spec:
   agent:
     name: hello-agent
     image: "example-test-agent:integ"
-    keep_running: false
+    keepRunning: false
     configuration:
       mode: Fast
       person: Bones the Cat
-      hello_count: ${dup1.info}
-      hello_duration_milliseconds: 500
+      helloCount: ${dup1.info}
+      helloDurationMilliseconds: 500
       nested:
         data: 
           inside: ${dup1.info}
   resources: [dup1]
-  depends_on: []
+  dependsOn: []
