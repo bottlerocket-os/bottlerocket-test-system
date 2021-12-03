@@ -23,6 +23,7 @@ pub(crate) struct InstanceCreator {}
 pub(crate) struct InstanceDestroyer {}
 
 #[derive(Clone, Debug, Default, Eq, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct Memo {
     information: String,
 }
@@ -30,6 +31,7 @@ pub struct Memo {
 impl Configuration for Memo {}
 
 #[derive(Clone, Debug, Default, Eq, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct InstanceConfig {
     num_instances: u32,
     instance_type: String,
@@ -38,6 +40,7 @@ pub struct InstanceConfig {
 impl Configuration for InstanceConfig {}
 
 #[derive(Clone, Debug, Default, Eq, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct CreatedInstances {
     instance_ids: Vec<String>,
 }

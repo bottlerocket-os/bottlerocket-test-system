@@ -33,6 +33,7 @@ impl Default for Color {
 /// While we are creating robots, we might need to remember some things in case we encounter an
 /// error. We can define a struct for that purpose.
 #[derive(Clone, Debug, Default, Eq, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ProductionMemo {
     /// In this example we put some traces here that describe what our provider is doing.
     pub current_status: String,
@@ -46,6 +47,7 @@ impl Configuration for ProductionMemo {}
 /// When a TestSys test needs some robots, it needs to tell us how many and what color they should
 /// be.
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct RobotConfig {
     /// The color of robots to create in this batch.
     pub color: Color,
@@ -68,6 +70,7 @@ impl Configuration for RobotConfig {}
 /// Once we have fulfilled the `Create` request, we return information about the batch of robots we
 /// created.
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct CreatedRobotLot {
     /// The color of robots we created.
     pub color: Color,

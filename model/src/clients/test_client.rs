@@ -30,7 +30,7 @@ impl TestClient {
         self.patch(
             name,
             vec![JsonPatch::new_replace_operation(
-                "/spec/agent/keep_running",
+                "/spec/agent/keepRunning",
                 keep_running,
             )],
             "set 'keep running'",
@@ -55,7 +55,7 @@ impl TestClient {
         self.patch_status(
             test_name,
             vec![JsonPatch::new_add_operation(
-                "/status/controller/resource_error",
+                "/status/controller/resourceError",
                 error,
             )],
             "send resource error",
@@ -67,7 +67,7 @@ impl TestClient {
         self.patch_status(
             name,
             vec![JsonPatch::new_add_operation(
-                "/status/agent/task_state",
+                "/status/agent/taskState",
                 task_state,
             )],
             "send agent task state",
@@ -79,7 +79,7 @@ impl TestClient {
         self.patch_status(
             name,
             vec![
-                JsonPatch::new_add_operation("/status/agent/task_state", TaskState::Completed),
+                JsonPatch::new_add_operation("/status/agent/taskState", TaskState::Completed),
                 JsonPatch::new_add_operation("/status/agent/results", results),
             ],
             "send test completion results",
@@ -91,7 +91,7 @@ impl TestClient {
         self.patch_status(
             name,
             vec![
-                JsonPatch::new_add_operation("/status/agent/task_state", TaskState::Error),
+                JsonPatch::new_add_operation("/status/agent/taskState", TaskState::Error),
                 JsonPatch::new_add_operation("/status/agent/error", error),
             ],
             "send agent error",
@@ -137,6 +137,7 @@ mod test {
     const TEST_NAME: &str = "my-test";
 
     #[derive(Default, Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]
+    #[serde(rename_all = "camelCase")]
     struct TestConfig {
         field_a: u64,
         field_b: u64,

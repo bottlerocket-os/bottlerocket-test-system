@@ -12,11 +12,12 @@ use std::path::Path;
 use std::{env, fs};
 use test_agent::Runner;
 
-pub const AWS_CREDENTIALS_SECRET_NAME: &str = "aws-credentials";
+pub const AWS_CREDENTIALS_SECRET_NAME: &str = "awsCredentials";
 pub const TEST_CLUSTER_KUBECONFIG_PATH: &str = "/local/test-cluster.kubeconfig";
 pub const DEFAULT_AGENT_LEVEL_FILTER: LevelFilter = LevelFilter::Info;
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "camelCase")]
 pub struct ClusterInfo {
     pub name: String,
     pub region: String,
@@ -31,6 +32,7 @@ pub struct ClusterInfo {
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct SonobuoyConfig {
     // FIXME: need a better way of passing test cluster information
     pub kubeconfig_base64: String,
@@ -43,12 +45,14 @@ pub struct SonobuoyConfig {
 impl Configuration for SonobuoyConfig {}
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct TufRepoConfig {
     pub metadata_url: String,
     pub targets_url: String,
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct MigrationConfig {
     pub aws_region: String,
     pub instance_ids: HashSet<String>,

@@ -7,11 +7,11 @@ spec:
   agent:
     name: hello-agent
     image: "example-test-agent:integ"
-    keep_running: true
+    keepRunning: true
     configuration:
       mode: Fast
       person: Bones the Cat
-      hello_count: 3
-      hello_duration_milliseconds: 500
+      helloCount: 3
+      helloDurationMilliseconds: 500
   resources: [eks]
-  depends_on: []
+  dependsOn: []

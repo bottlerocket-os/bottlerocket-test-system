@@ -7,14 +7,14 @@ spec:
   agent:
     name: hello-agent
     image: "example-test-agent:integ"
-    keep_running: true
+    keepRunning: true
     configuration:
       mode: Fast
       person: Bones the Cat
-      hello_count: 3
-      hello_duration_milliseconds: 500
+      helloCount: 3
+      helloDurationMilliseconds: 500
   resources: []
-  depends_on: [hello-bones-2]
+  dependsOn: [hello-bones-2]
 ---
 apiVersion: testsys.bottlerocket.aws/v1
 kind: Resource
@@ -25,7 +25,7 @@ spec:
   agent:
     name: dup-1-agent
     image: "duplicator-resource-agent:integ"
-    keep_running: false
+    keepRunning: false
     configuration:
       info: ${dup-2.info}
-  depends_on: [dup-2]
+  dependsOn: [dup-2]

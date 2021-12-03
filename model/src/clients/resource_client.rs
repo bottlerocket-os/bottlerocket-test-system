@@ -57,7 +57,7 @@ impl ResourceClient {
         trace!("patching agent info for resource '{}'", name);
         self.patch_status(
             name,
-            vec![JsonPatch::new_add_operation("/status/agent_info", info)],
+            vec![JsonPatch::new_add_operation("/status/agentInfo", info)],
             "send agent info",
         )
         .await
@@ -106,8 +106,8 @@ impl ResourceClient {
         self.patch_status(
             name,
             vec![
-                JsonPatch::new_add_operation("/status/creation/task_state", TaskState::Completed),
-                JsonPatch::new_add_operation("/status/created_resource", created_resource),
+                JsonPatch::new_add_operation("/status/creation/taskState", TaskState::Completed),
+                JsonPatch::new_add_operation("/status/createdResource", created_resource),
             ],
             "send creation success",
         )
@@ -142,7 +142,7 @@ impl ResourceClient {
             ResourceAction::Destroy => "/status/destruction",
         };
         let error_path = format!("{}/error", path_prefix);
-        let task_state_path = format!("{}/task_state", path_prefix);
+        let task_state_path = format!("{}/taskState", path_prefix);
         self.patch_status(
             name,
             vec![
@@ -167,8 +167,8 @@ impl ResourceClient {
             name
         );
         let path = match op {
-            ResourceAction::Create => "/status/creation/task_state",
-            ResourceAction::Destroy => "/status/destruction/task_state",
+            ResourceAction::Create => "/status/creation/taskState",
+            ResourceAction::Destroy => "/status/destruction/taskState",
         }
         .to_string();
 
@@ -296,6 +296,7 @@ mod test {
     const RESOURCE_NAME: &str = "my-resource";
 
     #[derive(Default, Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]
+    #[serde(rename_all = "camelCase")]
     struct AgentInfo {
         field_a: String,
         field_b: u64,
@@ -304,6 +305,7 @@ mod test {
     impl Configuration for AgentInfo {}
 
     #[derive(Default, Debug, Clone, Copy, Serialize, Deserialize, Eq, PartialEq)]
+    #[serde(rename_all = "camelCase")]
     struct RobotRequest {
         robot_lucky_number: u64,
         robot_unlucky_number: u64,
@@ -317,6 +319,7 @@ mod test {
     };
 
     #[derive(Default, Debug, Clone, Copy, Serialize, Deserialize, Eq, PartialEq)]
+    #[serde(rename_all = "camelCase")]
     struct CreatedRobot {
         instance_id: u64,
     }

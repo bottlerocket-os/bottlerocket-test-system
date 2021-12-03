@@ -1,7 +1,7 @@
 use aws_config::meta::region::RegionProviderChain;
 use aws_sdk_ec2::model::{Filter, SecurityGroup, Subnet};
 use aws_sdk_ec2::Region;
-use bottlerocket_agents::ClusterInfo;
+use bottlerocket_agents::{ClusterInfo, AWS_CREDENTIALS_SECRET_NAME};
 use model::{Configuration, SecretName};
 use resource_agent::clients::InfoClient;
 use resource_agent::provider::{
@@ -19,6 +19,7 @@ const DEFAULT_VERSION: &str = "1.21";
 
 /// The configuration information for a eks instance provider.
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "camelCase")]
 pub struct ClusterConfig {
     #[serde(flatten)]
     /// The name of the eks cluster to create or an existing cluster.
@@ -36,9 +37,9 @@ pub struct ClusterConfig {
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub enum Cluster {
-    #[serde(rename = "existing-cluster-name")]
+    #[serde(rename = "existingClusterName")]
     Existing(String),
-    #[serde(rename = "cluster-name")]
+    #[serde(rename = "clusterName")]
     Create(String),
 }
 
@@ -51,6 +52,7 @@ impl Default for Cluster {
 impl Configuration for ClusterConfig {}
 
 #[derive(Clone, Debug, Default, Eq, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ProductionMemo {
     pub current_status: String,
 
@@ -67,6 +69,7 @@ pub struct ProductionMemo {
 impl Configuration for ProductionMemo {}
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "camelCase")]
 pub struct CreatedCluster {
     /// The name of the cluster we created.
     pub cluster: ClusterInfo,
@@ -106,7 +109,7 @@ impl Create for EksCreator {
             .to_string();
 
         // Write aws credentials if we need them so we can run eksctl
-        if let Some(aws_secret_name) = spec.secrets.get("aws-credentials") {
+        if let Some(aws_secret_name) = spec.secrets.get(AWS_CREDENTIALS_SECRET_NAME) {
             setup_env(client, aws_secret_name, Resources::Clear).await?;
             memo.aws_secret_name = Some(aws_secret_name.clone());
         }

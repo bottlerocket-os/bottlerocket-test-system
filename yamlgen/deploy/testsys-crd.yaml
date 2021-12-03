@@ -34,13 +34,13 @@ spec:
                     image:
                       description: The URI of the agent container image.
                       type: string
-                    keep_running:
+                    keepRunning:
                       description: Determine if the pod should keep running after it has finished or encountered and error.
                       type: boolean
                     name:
                       description: The name of the agent.
                       type: string
-                    pull_secret:
+                    pullSecret:
                       description: The name of an image registry pull secret if one is needed to pull the agent image.
                       nullable: true
                       type: string
@@ -63,11 +63,11 @@ spec:
                   required:
                     - configuration
                     - image
-                    - keep_running
+                    - keepRunning
                     - name
                     - timeout
                   type: object
-                depends_on:
+                dependsOn:
                   description: Other tests that must be completed before this one can be run.
                   items:
                     type: string
@@ -96,50 +96,50 @@ spec:
                     results:
                       nullable: true
                       properties:
-                        num_failed:
+                        numFailed:
                           format: uint64
                           minimum: 0.0
                           type: integer
-                        num_passed:
+                        numPassed:
                           format: uint64
                           minimum: 0.0
                           type: integer
-                        num_skipped:
+                        numSkipped:
                           format: uint64
                           minimum: 0.0
                           type: integer
-                        other_info:
+                        otherInfo:
                           nullable: true
                           type: string
                         outcome:
                           description: "The `Outcome` of a test run, reported by the test agent."
                           enum:
-                            - Pass
-                            - Fail
-                            - Timeout
-                            - Unknown
+                            - pass
+                            - fail
+                            - timeout
+                            - unknown
                           type: string
                       required:
-                        - num_failed
-                        - num_passed
-                        - num_skipped
+                        - numFailed
+                        - numPassed
+                        - numSkipped
                         - outcome
                       type: object
-                    task_state:
+                    taskState:
                       description: The states that an agent declares about its task (e.g. running tests or creating/destroying resources).
                       enum:
-                        - Unknown
-                        - Running
-                        - Completed
-                        - Error
+                        - unknown
+                        - running
+                        - completed
+                        - error
                       type: string
                   required:
-                    - task_state
+                    - taskState
                   type: object
                 controller:
                   description: Information written by the controller.
                   properties:
-                    resource_error:
+                    resourceError:
                       nullable: true
                       type: string
                   type: object
@@ -190,13 +190,13 @@ spec:
                     image:
                       description: The URI of the agent container image.
                       type: string
-                    keep_running:
+                    keepRunning:
                       description: Determine if the pod should keep running after it has finished or encountered and error.
                       type: boolean
                     name:
                       description: The name of the agent.
                       type: string
-                    pull_secret:
+                    pullSecret:
                       description: The name of an image registry pull secret if one is needed to pull the agent image.
                       nullable: true
                       type: string
@@ -219,11 +219,11 @@ spec:
                   required:
                     - configuration
                     - image
-                    - keep_running
+                    - keepRunning
                     - name
                     - timeout
                   type: object
-                depends_on:
+                dependsOn:
                   description: Other resources that must to be created before this one can be created.
                   items:
                     type: string
@@ -236,12 +236,12 @@ spec:
               description: A status struct to be used by a resource agent.
               nullable: true
               properties:
-                agent_info:
+                agentInfo:
                   description: Open content to be used by the resource agent to store state.
                   nullable: true
                   type: object
                   x-kubernetes-preserve-unknown-fields: true
-                created_resource:
+                createdResource:
                   description: A description of the resource that has been created by the resource agent.
                   nullable: true
                   type: object
@@ -255,28 +255,28 @@ spec:
                         error:
                           description: The error message.
                           type: string
-                        error_resources:
+                        errorResources:
                           description: "The status of left-behind resources, if any."
                           enum:
-                            - Orphaned
-                            - Remaining
-                            - Clear
-                            - Unknown
+                            - orphaned
+                            - remaining
+                            - clear
+                            - unknown
                           type: string
                       required:
                         - error
-                        - error_resources
+                        - errorResources
                       type: object
-                    task_state:
+                    taskState:
                       description: The states that an agent declares about its task (e.g. running tests or creating/destroying resources).
                       enum:
-                        - Unknown
-                        - Running
-                        - Completed
-                        - Error
+                        - unknown
+                        - running
+                        - completed
+                        - error
                       type: string
                   required:
-                    - task_state
+                    - taskState
                   type: object
                 destruction:
                   description: The state of the resource agent when destroying resources.
@@ -287,32 +287,32 @@ spec:
                         error:
                           description: The error message.
                           type: string
-                        error_resources:
+                        errorResources:
                           description: "The status of left-behind resources, if any."
                           enum:
-                            - Orphaned
-                            - Remaining
-                            - Clear
-                            - Unknown
+                            - orphaned
+                            - remaining
+                            - clear
+                            - unknown
                           type: string
                       required:
                         - error
-                        - error_resources
+                        - errorResources
                       type: object
-                    task_state:
+                    taskState:
                       description: The states that an agent declares about its task (e.g. running tests or creating/destroying resources).
                       enum:
-                        - Unknown
-                        - Running
-                        - Completed
-                        - Error
+                        - unknown
+                        - running
+                        - completed
+                        - error
                       type: string
                   required:
-                    - task_state
+                    - taskState
                   type: object
               required:
-                - agent_info
-                - created_resource
+                - agentInfo
+                - createdResource
                 - creation
                 - destruction
               type: object
