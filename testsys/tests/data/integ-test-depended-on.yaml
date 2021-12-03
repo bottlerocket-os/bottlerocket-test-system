@@ -1,0 +1,32 @@
+---
+apiVersion: testsys.bottlerocket.aws/v1
+kind: Resource
+metadata:
+  name: dup-2
+  namespace: testsys-bottlerocket-aws
+spec:
+  agent:
+    name: dup-2-agent
+    image: "duplicator-resource-agent:integ"
+    keep_running: false
+    configuration:
+      info: 3
+  depends_on: []
+---
+apiVersion: testsys.bottlerocket.aws/v1
+kind: Test
+metadata:
+  name: hello-bones-2
+  namespace: testsys-bottlerocket-aws
+spec:
+  agent:
+    name: hello-agent
+    image: "example-test-agent:integ"
+    keep_running: false
+    configuration:
+      mode: Fast
+      person: Bones the Cat
+      hello_count: ${dup-1.info}
+      hello_duration_milliseconds: 500
+  resources: [dup-1]
+  depends_on: []

@@ -51,8 +51,11 @@ pub(crate) enum Error {
         source: kube::Error,
     },
 
-    #[snafu(display("Unable to get test: {}", source))]
-    GetTest { source: model::clients::Error },
+    #[snafu(display("Unable to get '{}': {}", what, source))]
+    Get {
+        what: String,
+        source: model::clients::Error,
+    },
 
     #[snafu(display("The arguments given were invalid: {}", why))]
     InvalidArguments { why: String },
