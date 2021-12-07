@@ -1,3 +1,4 @@
+# syntax=docker/dockerfile:1.1.3-experimental
 # This Dockfile contains separate targets for each testsys agent
 # =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^=
 # Shared build stage used to build the testsys agent binary
