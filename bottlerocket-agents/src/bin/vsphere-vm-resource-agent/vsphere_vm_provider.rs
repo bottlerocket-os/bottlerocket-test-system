@@ -1,0 +1,702 @@
+use crate::aws::{create_ssm_activation, ensure_ssm_service_role, wait_for_ssm_ready};
+use crate::tuf::download_target;
+use aws_config::meta::region::RegionProviderChain;
+use aws_sdk_ssm::Region;
+use bottlerocket_agents::{
+    decode_write_kubeconfig, TufRepoConfig, VSphereClusterInfo, AWS_CREDENTIALS_SECRET_NAME,
+    TEST_CLUSTER_KUBECONFIG_PATH, VSPHERE_CREDENTIALS_SECRET_NAME,
+};
+use k8s_openapi::api::core::v1::Service;
+use kube::api::ListParams;
+use kube::config::{KubeConfigOptions, Kubeconfig};
+use kube::{Api, Config};
+use log::{debug, info};
+use model::{Configuration, SecretName};
+use resource_agent::clients::InfoClient;
+use resource_agent::provider::{
+    Create, Destroy, IntoProviderError, ProviderError, ProviderResult, Resources, Spec,
+};
+use serde::{Deserialize, Serialize};
+use serde_json::json;
+use std::collections::HashSet;
+use std::convert::TryFrom;
+use std::env;
+use std::fmt::Debug;
+use std::fs::File;
+use std::path::Path;
+use std::process::Command;
+use std::time::Duration;
+use url::Url;
+
+/// The default number of VMs to spin up.
+const DEFAULT_VM_COUNT: i32 = 2;
+
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct VSphereVM {
+    /// Name of the created VSphere VM.
+    name: String,
+
+    /// Instance IDs of the created VSphere VM.
+    instance_id: String,
+
+    /// The public IP addresses of the vSphere worker node
+    ip_address: String,
+}
+
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ProductionMemo {
+    /// In this resource we put some traces here that describe what our provider is doing.
+    pub current_status: String,
+
+    /// Name of the VM template used to create the worker nodes
+    pub vm_template: String,
+
+    /// Instance IDs of all created VSphere VMs.
+    pub vms: Vec<VSphereVM>,
+
+    pub ssm_activation_id: String,
+
+    /// The name of the secret containing aws credentials.
+    pub aws_secret_name: Option<SecretName>,
+
+    /// The name of the secret containing vCenter credentials.
+    pub vcenter_secret_name: Option<SecretName>,
+}
+
+impl Configuration for ProductionMemo {}
+
+#[derive(Clone, Debug, Serialize, Deserialize, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct VSphereVmConfig {
+    /// The name of the OVA file used for the VSphere worker nodes.
+    ova_name: String,
+
+    /// TUF repository where the OVA file can be found
+    tuf_repo: TufRepoConfig,
+
+    /// The number of VMs to create. If no value is provided 2 VMs will be created.
+    vm_count: Option<i32>,
+
+    /// URL of the vCenter instance to connect to
+    vcenter_host_url: String,
+
+    /// vCenter datacenter
+    vcenter_datacenter: String,
+
+    /// vCenter datastore
+    vcenter_datastore: String,
+
+    /// vCenter network
+    vcenter_network: String,
+
+    /// vCenter resource pool
+    vcenter_resource_pool: String,
+
+    /// The workloads folder to create the K8s cluster control plane in.
+    vcenter_workload_folder: String,
+
+    /// vSphere cluster information
+    cluster: VSphereClusterInfo,
+}
+
+impl Configuration for VSphereVmConfig {}
+
+/// Once we have fulfilled the `Create` request, we return information about the batch of VSphere VMs
+/// we've created
+#[derive(Clone, Debug, Serialize, Deserialize, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct CreatedVSphereVms {
+    /// The instance IDs of all SSM-registered VMs
+    pub instance_ids: HashSet<String>,
+}
+
+impl Configuration for CreatedVSphereVms {}
+
+pub struct VMCreator {}
+
+#[async_trait::async_trait]
+impl Create for VMCreator {
+    type Config = VSphereVmConfig;
+    type Info = ProductionMemo;
+    type Resource = CreatedVSphereVms;
+
+    async fn create<I>(
+        &self,
+        spec: Spec<Self::Config>,
+        client: &I,
+    ) -> ProviderResult<Self::Resource>
+    where
+        I: InfoClient,
+    {
+        let mut memo: ProductionMemo = client
+            .get_info()
+            .await
+            .context(Resources::Unknown, "Unable to get info from info client")?;
+        // Keep track of the state of resources
+        let mut resources = Resources::Clear;
+        let (metadata_url, targets_url) = tuf_repo_urls(&spec.configuration.tuf_repo, &resources)?;
+
+        // Set up the aws credentials if they were provided.
+        if let Some(aws_secret_name) = spec.secrets.get(AWS_CREDENTIALS_SECRET_NAME) {
+            setup_aws_creds(client, aws_secret_name, &resources).await?;
+            memo.aws_secret_name = Some(aws_secret_name.clone());
+        }
+        let region_provider = RegionProviderChain::first_try(Region::new("us-west-2"));
+        let shared_config = aws_config::from_env().region(region_provider).load().await;
+        let ssm_client = aws_sdk_ssm::Client::new(&shared_config);
+        let iam_client = aws_sdk_iam::Client::new(&shared_config);
+
+        // Ensure we have a SSM service role we can attach to the VMs
+        ensure_ssm_service_role(&iam_client).await?;
+
+        // Get vSphere credentials to authenticate to vCenter via govmomi
+        let secret_name = spec
+            .secrets
+            .get(VSPHERE_CREDENTIALS_SECRET_NAME)
+            .context(resources, "Unable to fetch vSphere credentials")?;
+        vsphere_credentials(client, secret_name, &resources).await?;
+        memo.vcenter_secret_name = Some(secret_name.clone());
+
+        // Set up environment variables for govc cli
+        set_govc_env_vars(&spec.configuration);
+
+        let vsphere_cluster = spec.configuration.cluster.clone();
+        decode_write_kubeconfig(
+            &vsphere_cluster.kubeconfig_base64,
+            TEST_CLUSTER_KUBECONFIG_PATH,
+        )
+        .await
+        .context(
+            Resources::Clear,
+            "Failed to write out kubeconfig for vSphere cluster",
+        )?;
+        let kubeconfig_arg = vec!["--kubeconfig", TEST_CLUSTER_KUBECONFIG_PATH];
+        let kubeconfig = Kubeconfig::read_from(TEST_CLUSTER_KUBECONFIG_PATH)
+            .context(resources, "Unable to read kubeconfig")?;
+        let config =
+            Config::from_custom_kubeconfig(kubeconfig.to_owned(), &KubeConfigOptions::default())
+                .await
+                .context(resources, "Unable load kubeconfig")?;
+        let k8s_client = kube::client::Client::try_from(config)
+            .context(resources, "Unable create K8s client from kubeconfig")?;
+
+        // Retrieve the OVA file
+        let ova_name = spec.configuration.ova_name.to_owned();
+        info!("Downloading OVA '{}'", &spec.configuration.ova_name);
+        let outdir = Path::new("/local/");
+        tokio::task::spawn_blocking(move || -> ProviderResult<()> {
+            download_target(
+                resources,
+                &metadata_url,
+                &targets_url,
+                &outdir.to_owned(),
+                &ova_name,
+            )
+        })
+        .await
+        .context(resources, "Failed to join threads")??;
+
+        // Get necessary information for Bottlerocket nodes to join the test cluster
+        let k8s_services: Api<Service> = Api::namespaced(k8s_client, "kube-system");
+        let list = k8s_services
+            .list(&ListParams::default().labels("k8s-app=kube-dns"))
+            .await
+            .context(resources, "Failed to query for K8s cluster services")?;
+        let cluster_dns_ip = list
+            .items
+            .first()
+            .and_then(|item| item.spec.as_ref())
+            .and_then(|spec| spec.cluster_ip.to_owned())
+            .context(resources, "Missing Cluster DNS IP")?;
+        debug!("Got cluster-dns-ip '{}'", &cluster_dns_ip);
+
+        let cluster_certificate = &kubeconfig
+            .clusters
+            .first()
+            .and_then(|cluster| cluster.cluster.certificate_authority_data.as_ref())
+            .context(resources, "Missing Cluster certificate authority data")?;
+        debug!("Got certificate-authority-data '{}'", &cluster_certificate);
+
+        info!("Create a bootstrap token for node registrations");
+        let token_create_output = Command::new("kubeadm")
+            .args(&kubeconfig_arg)
+            .arg("token")
+            .arg("create")
+            .output()
+            .context(resources, "Failed to start kubeadm")?;
+        let bootstrap_token = String::from_utf8_lossy(&token_create_output.stdout);
+        let bootstrap_token = bootstrap_token.trim_end();
+
+        // Update the import spec for the OVA
+        let import_spec_output = Command::new("govc")
+            .arg("import.spec")
+            .arg(format!("/local/{}", &spec.configuration.ova_name))
+            .output()
+            .context(resources, "Failed to start govc")?;
+        let mut import_spec: serde_json::Value =
+            serde_json::from_str(&String::from_utf8_lossy(&import_spec_output.stdout))
+                .context(resources, "Failed to deserialize govc import.spec output")?;
+        let network_mappings = import_spec
+            .get_mut("NetworkMapping")
+            .and_then(|network_mapping| network_mapping.as_array_mut())
+            .context(resources, "Missing network mappings for VM network")?;
+        network_mappings.clear();
+        network_mappings
+            .push(json!({"Name": "VM Network", "Network": &spec.configuration.vcenter_network}));
+        let import_spec_file = File::create("/local/ova.importspec")
+            .context(resources, "Failed to create ova import spec file")?;
+        serde_json::to_writer_pretty(&import_spec_file, &import_spec)
+            .context(resources, "Failed to write out OVA import spec file")?;
+
+        // Import OVA and create a template out of it
+        info!("Importing OVA and creating a VM template out of it");
+        let vm_template_name = format!("{}-node-vmtemplate", vsphere_cluster.name);
+        let import_ova_output = Command::new("govc")
+            .arg("import.ova")
+            .arg("-options=/local/ova.importspec")
+            .arg(format!("-name={}", vm_template_name))
+            .arg(format!("/local/{}", &spec.configuration.ova_name))
+            .output()
+            .context(resources, "Failed to start govc")?;
+        resources = Resources::Unknown;
+        if !import_ova_output.status.success() {
+            return Err(ProviderError::new_with_context(
+                resources,
+                format!(
+                    "Failed to import OVA: {}",
+                    String::from_utf8_lossy(&import_ova_output.stderr)
+                ),
+            ));
+        }
+        resources = Resources::Remaining;
+        let markastemplate_output = Command::new("govc")
+            .arg("vm.markastemplate")
+            .arg(&vm_template_name)
+            .output()
+            .context(resources, "Failed to start govc")?;
+        if !markastemplate_output.status.success() {
+            return Err(ProviderError::new_with_context(
+                resources,
+                format!(
+                    "Failed to mark VM as template: {}",
+                    String::from_utf8_lossy(&markastemplate_output.stderr)
+                ),
+            ));
+        }
+        memo.vm_template = vm_template_name.to_owned();
+
+        let vm_count = spec.configuration.vm_count.unwrap_or(DEFAULT_VM_COUNT);
+        // Generate SSM activation codes and IDs
+        let activation =
+            create_ssm_activation(resources, &vsphere_cluster.name, vm_count, &ssm_client).await?;
+        memo.ssm_activation_id = activation.0.to_owned();
+        let control_host_ctr_userdata = json!({"ssm":{"activation-id": activation.0.to_string(), "activation-code":activation.1.to_string(),"region":"us-west-2"}});
+        debug!(
+            "Control container host container userdata: {}",
+            control_host_ctr_userdata
+        );
+        let encoded_control_host_ctr_userdata =
+            base64::encode(control_host_ctr_userdata.to_string());
+
+        // Base64 encode userdata
+        let userdata = userdata(
+            &vsphere_cluster.control_plane_endpoint_ip,
+            &cluster_dns_ip,
+            bootstrap_token,
+            cluster_certificate,
+            &encoded_control_host_ctr_userdata,
+        );
+
+        info!("Launching {} Bottlerocket worker nodes", vm_count);
+        for i in 0..vm_count {
+            let node_name = format!("{}-node-{}", vsphere_cluster.name, i + 1);
+            info!("Cloning VM for worker node '{}'", node_name);
+            let vm_clone_output = Command::new("govc")
+                .arg("vm.clone")
+                .arg("-vm")
+                .arg(&vm_template_name)
+                .arg("-on=false")
+                .arg(&node_name)
+                .output()
+                .context(resources, "Failed to start govc")?;
+            if !vm_clone_output.status.success() {
+                return Err(ProviderError::new_with_context(
+                    resources,
+                    format!(
+                        "Failed to clone VM from template: {}",
+                        String::from_utf8_lossy(&vm_clone_output.stderr)
+                    ),
+                ));
+            }
+            // Inject encoded userdata
+            let vm_change_output = Command::new("govc")
+                .arg("vm.change")
+                .arg("-vm")
+                .arg(&node_name)
+                .arg("-e")
+                .arg(format!("guestinfo.userdata={}", userdata))
+                .arg("-e")
+                .arg("guestinfo.userdata.encoding=base64".to_string())
+                .output()
+                .context(resources, "Failed to start govc")?;
+            if !vm_change_output.status.success() {
+                return Err(ProviderError::new_with_context(
+                    resources,
+                    format!(
+                        "Failed to inject user-data for '{}': {}",
+                        node_name,
+                        String::from_utf8_lossy(&vm_change_output.stderr)
+                    ),
+                ));
+            }
+            info!("Powering on '{}'...", node_name);
+            let vm_power_output = Command::new("govc")
+                .arg("vm.power")
+                .arg("-wait=true")
+                .arg("-on")
+                .arg(&node_name)
+                .output()
+                .context(resources, "Failed to start govc")?;
+            if !vm_power_output.status.success() {
+                return Err(ProviderError::new_with_context(
+                    resources,
+                    format!(
+                        "Failed to power on '{}': {}",
+                        node_name,
+                        String::from_utf8_lossy(&vm_power_output.stderr)
+                    ),
+                ));
+            }
+
+            // Grab the IP address of the VM
+            // Note that the DNS name of the VM is the same as its IP address.
+            // The hostname of the VM takes a while to show up and we can't wait for it
+            // So we just take its IP address as soon as the VM gets one.
+            let vm_info_output = Command::new("govc")
+                .arg("vm.info")
+                .arg("-waitip=true")
+                .arg("-json=true")
+                .arg(&node_name)
+                .output()
+                .context(resources, "Failed to start govc")?;
+            let vm_info: serde_json::Value =
+                serde_json::from_str(&String::from_utf8_lossy(&vm_info_output.stdout))
+                    .context(resources, "Failed to deserialize govc vm.info output")?;
+            let ip = vm_info
+                .get("VirtualMachines")
+                .and_then(|vms| vms.as_array())
+                .and_then(|vms| vms.first())
+                .and_then(|vm| vm.get("Guest"))
+                .and_then(|guest| guest.get("IpAddress"))
+                .and_then(|ip| ip.as_str())
+                .context(
+                    resources,
+                    format!("Failed to get ip address for '{}'", node_name),
+                )?;
+
+            let instance_info = tokio::time::timeout(
+                Duration::from_secs(60),
+                wait_for_ssm_ready(resources, &ssm_client, &memo.ssm_activation_id, ip),
+            )
+            .await
+            .context(
+                resources,
+                format!("Timed out waiting for SSM agent to be ready on VM '{}'", ip),
+            )??;
+
+            memo.vms.push(VSphereVM {
+                name: node_name,
+                instance_id: instance_info.instance_id.context(
+                    resources,
+                    format!("Missing managed instance information for VM '{}'", ip),
+                )?,
+                ip_address: ip.to_string(),
+            });
+        }
+
+        // We are done, set our custom status to say so.
+        memo.current_status = "VM(s) Created".into();
+
+        client
+            .send_info(memo.clone())
+            .await
+            .context(resources, "Error sending final creation message")?;
+
+        Ok(CreatedVSphereVms {
+            instance_ids: memo
+                .vms
+                .iter()
+                .map(|vm| vm.instance_id.to_owned())
+                .collect(),
+        })
+    }
+}
+
+fn tuf_repo_urls(tuf_repo: &TufRepoConfig, resources: &Resources) -> ProviderResult<(Url, Url)> {
+    let metadata_url = Url::parse(&tuf_repo.metadata_url).context(
+        resources,
+        format!(
+            "Failed to parse TUF repo's metadata URL '{}'",
+            tuf_repo.metadata_url
+        ),
+    )?;
+    let targets_url = Url::parse(&tuf_repo.targets_url).context(
+        resources,
+        format!(
+            "Failed to parse TUF repo's targets URL '{}'",
+            tuf_repo.targets_url
+        ),
+    )?;
+    Ok((metadata_url, targets_url))
+}
+
+fn userdata(
+    endpoint: &str,
+    cluster_dns_ip: &str,
+    bootstrap_token: &str,
+    certificate: &str,
+    control_container_userdata: &str,
+) -> String {
+    base64::encode(format!(
+        r#"[settings.updates]
+ignore-waves = true
+
+[settings.host-containers.control]
+enabled = true
+user-data = "{}"
+
+[settings.kubernetes]
+api-server = "https://{}:6443"
+cluster-dns-ip = "{}"
+bootstrap-token = "{}"
+cluster-certificate = "{}""#,
+        control_container_userdata, endpoint, cluster_dns_ip, bootstrap_token, certificate
+    ))
+}
+
+/// This is the object that will destroy ec2 instances.
+pub struct VMDestroyer {}
+
+#[async_trait::async_trait]
+impl Destroy for VMDestroyer {
+    type Config = VSphereVmConfig;
+    type Info = ProductionMemo;
+    type Resource = CreatedVSphereVms;
+
+    async fn destroy<I>(
+        &self,
+        spec: Option<Spec<Self::Config>>,
+        _resource: Option<Self::Resource>,
+        client: &I,
+    ) -> ProviderResult<()>
+    where
+        I: InfoClient,
+    {
+        let mut memo: ProductionMemo = client.get_info().await.map_err(|e| {
+            ProviderError::new_with_source_and_context(
+                Resources::Unknown,
+                "Unable to get info from client",
+                e,
+            )
+        })?;
+        let resources = if !memo.vms.is_empty()
+            || !memo.ssm_activation_id.is_empty()
+            || !memo.vm_template.is_empty()
+        {
+            Resources::Remaining
+        } else {
+            Resources::Clear
+        };
+        let spec = spec.context(resources, "Missing vSphere resource agent spec")?;
+
+        // Set up the aws credentials if they were provided.
+        if let Some(aws_secret_name) = spec.secrets.get(AWS_CREDENTIALS_SECRET_NAME) {
+            setup_aws_creds(client, aws_secret_name, &resources).await?;
+        }
+        let region_provider = RegionProviderChain::first_try(Region::new("us-west-2"));
+        let shared_config = aws_config::from_env().region(region_provider).load().await;
+        let ssm_client = aws_sdk_ssm::Client::new(&shared_config);
+
+        // Get vSphere credentials to authenticate to vCenter via govmomi
+        let secret_name = spec
+            .secrets
+            .get(VSPHERE_CREDENTIALS_SECRET_NAME)
+            .context(resources, "Unable to fetch vSphere credentials")?;
+        vsphere_credentials(client, secret_name, &resources).await?;
+
+        // Set up environment variables for govc cli
+        set_govc_env_vars(&spec.configuration);
+
+        // Get the list of VMs to destroy
+        for vm in &memo.vms {
+            info!("Destroying VM '{}'...", &vm.name);
+            let vm_destroy_output = Command::new("govc")
+                .arg("vm.destroy")
+                .arg(format!("-vm.ip={}", vm.ip_address))
+                .arg(&vm.name)
+                .output()
+                .context(&resources, "Failed to start govc")?;
+            if !vm_destroy_output.status.success() {
+                return Err(ProviderError::new_with_context(
+                    resources,
+                    format!(
+                        "Failed to destroy '{}': {}",
+                        &vm.name,
+                        String::from_utf8_lossy(&vm_destroy_output.stderr)
+                    ),
+                ));
+            }
+
+            // Deregister managed instances
+            ssm_client
+                .deregister_managed_instance()
+                .instance_id(&vm.instance_id)
+                .send()
+                .await
+                .context(
+                    resources,
+                    format!("Failed deregister managed instance '{}'", &vm.instance_id),
+                )?;
+        }
+
+        // Delete the VM template
+        let vm_destroy_output = Command::new("govc")
+            .arg("vm.destroy")
+            .arg(&memo.vm_template)
+            .output()
+            .context(resources, "Failed to start govc")?;
+        if !vm_destroy_output.status.success() {
+            return Err(ProviderError::new_with_context(
+                resources,
+                format!(
+                    "Failed to VM template '{}': {}",
+                    &memo.vm_template,
+                    String::from_utf8_lossy(&vm_destroy_output.stderr)
+                ),
+            ));
+        }
+
+        // Delete the SSM activation
+        ssm_client
+            .delete_activation()
+            .activation_id(&memo.ssm_activation_id)
+            .send()
+            .await
+            .context(
+                resources,
+                format!("Failed delete SSM activation '{}'", &memo.ssm_activation_id),
+            )?;
+
+        memo.vms.clear();
+        memo.current_status = "VM(s) deleted".into();
+        client.send_info(memo.clone()).await.map_err(|e| {
+            ProviderError::new_with_source_and_context(
+                Resources::Clear,
+                "Error sending final destruction message",
+                e,
+            )
+        })?;
+
+        Ok(())
+    }
+}
+
+// TODO This is almost the same as the setup_env functions in ec2-resource and eks-resource agent. Maybe dedup.
+async fn setup_aws_creds<I>(
+    client: &I,
+    aws_secret_name: &SecretName,
+    resource: &Resources,
+) -> ProviderResult<()>
+where
+    I: InfoClient,
+{
+    let aws_secret = client.get_secret(aws_secret_name).await.context(
+        resource,
+        format!("Error getting secret '{}'", aws_secret_name),
+    )?;
+
+    let access_key_id = String::from_utf8(
+        aws_secret
+            .get("access-key-id")
+            .context(
+                resource,
+                format!("access-key-id missing from secret '{}'", aws_secret_name),
+            )?
+            .to_owned(),
+    )
+    .context(resource, "Could not convert access-key-id to String")?;
+    let secret_access_key = String::from_utf8(
+        aws_secret
+            .get("secret-access-key")
+            .context(
+                resource,
+                format!(
+                    "secret-access-key missing from secret '{}'",
+                    aws_secret_name
+                ),
+            )?
+            .to_owned(),
+    )
+    .context(resource, "Could not convert secret-access-key to String")?;
+
+    env::set_var("AWS_ACCESS_KEY_ID", access_key_id);
+    env::set_var("AWS_SECRET_ACCESS_KEY", secret_access_key);
+
+    Ok(())
+}
+
+// Helper for getting the vsphere credentials and setting up GOVC_USERNAME and GOVC_PASSWORD env vars
+async fn vsphere_credentials<I>(
+    client: &I,
+    vsphere_secret_name: &SecretName,
+    resource: &Resources,
+) -> ProviderResult<()>
+where
+    I: InfoClient,
+{
+    let vsphere_secret = client.get_secret(vsphere_secret_name).await.context(
+        Resources::Clear,
+        format!("Error getting secret '{}'", vsphere_secret_name),
+    )?;
+
+    let username = String::from_utf8(
+        vsphere_secret
+            .get("username")
+            .context(
+                resource,
+                format!(
+                    "vsphere username missing from secret '{}'",
+                    vsphere_secret_name
+                ),
+            )?
+            .to_owned(),
+    )
+    .context(resource, "Could not convert vsphere username to String")?;
+    let password = String::from_utf8(
+        vsphere_secret
+            .get("password")
+            .context(
+                resource,
+                format!(
+                    "vsphere password missing from secret '{}'",
+                    vsphere_secret_name
+                ),
+            )?
+            .to_owned(),
+    )
+    .context(resource, "Could not convert secret-access-key to String")?;
+    env::set_var("GOVC_USERNAME", username);
+    env::set_var("GOVC_PASSWORD", password);
+    Ok(())
+}
+
+fn set_govc_env_vars(config: &VSphereVmConfig) {
+    env::set_var("GOVC_URL", &config.vcenter_host_url);
+    env::set_var("GOVC_DATACENTER", &config.vcenter_datacenter);
+    env::set_var("GOVC_DATASTORE", &config.vcenter_datastore);
+    env::set_var("GOVC_NETWORK", &config.vcenter_network);
+    env::set_var("GOVC_RESOURCE_POOL", &config.vcenter_resource_pool);
+    env::set_var("GOVC_FOLDER", &config.vcenter_workload_folder);
+}

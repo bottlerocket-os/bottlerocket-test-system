@@ -13,6 +13,7 @@ use std::{env, fs};
 use test_agent::Runner;
 
 pub const AWS_CREDENTIALS_SECRET_NAME: &str = "awsCredentials";
+pub const VSPHERE_CREDENTIALS_SECRET_NAME: &str = "vsphereCredentials";
 pub const TEST_CLUSTER_KUBECONFIG_PATH: &str = "/local/test-cluster.kubeconfig";
 pub const DEFAULT_AGENT_LEVEL_FILTER: LevelFilter = LevelFilter::Info;
 
@@ -29,6 +30,14 @@ pub struct ClusterInfo {
     pub controlplane_sg: Vec<String>,
     pub clustershared_sg: Vec<String>,
     pub iam_instance_profile_arn: String,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct VSphereClusterInfo {
+    pub name: String,
+    pub control_plane_endpoint_ip: String,
+    pub kubeconfig_base64: String,
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]

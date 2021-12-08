@@ -38,6 +38,7 @@ jobs:
          - "example-test-agent"
          - "sonobuoy-test-agent"
          - "migration-test-agent"
+         - "vsphere-vm-resource-agent"
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
