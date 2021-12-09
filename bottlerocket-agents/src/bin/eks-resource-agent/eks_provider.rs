@@ -31,7 +31,8 @@ pub struct ClusterConfig {
     /// The availablility zones. (e.g. us-west-2a,us-west-2b)
     zones: Option<Vec<String>>,
 
-    /// The eks version of the the cluster.
+    /// The eks version of the the cluster (e.g. "1.14", "1.15", "1.16"). Make sure this is
+    /// quoted so that it is interpreted as a JSON/YAML string (not a number).
     version: Option<String>,
 }
 
