@@ -1,3 +1,5 @@
+#![allow(unused)]
+
 use std::path::PathBuf;
 
 pub fn integ_test_dependent_path() -> PathBuf {

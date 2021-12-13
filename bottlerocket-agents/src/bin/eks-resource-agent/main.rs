@@ -1,6 +1,7 @@
 mod eks_provider;
 
 use crate::eks_provider::{EksCreator, EksDestroyer};
+use bottlerocket_agents::init_agent_logger;
 use resource_agent::clients::{DefaultAgentClient, DefaultInfoClient};
 use resource_agent::error::AgentResult;
 use resource_agent::{Agent, BootstrapData, Types};
@@ -8,6 +9,7 @@ use std::marker::PhantomData;
 
 #[tokio::main]
 async fn main() {
+    init_agent_logger();
     let data = match BootstrapData::from_env() {
         Ok(ok) => ok,
         Err(e) => {
