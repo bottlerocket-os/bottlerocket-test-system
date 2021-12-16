@@ -28,6 +28,13 @@ pub struct ResourceSpec {
     pub depends_on: Option<Vec<String>>,
     /// Information about the resource agent.
     pub agent: Agent,
+    /// Whether/when the resource controller will destroy the resource (`OnDeletion` is the
+    /// default).
+    #[serde(deserialize_with = "crate::schema_utils::null_to_default")]
+    #[serde(default)]
+    #[schemars(schema_with = "crate::schema_utils::nullable_enum::<DestructionPolicy>")]
+    // #[schemars(nullable_enum)]
+    pub destruction_policy: DestructionPolicy,
 }
 
 impl Resource {
@@ -194,5 +201,23 @@ impl Display for ResourceError {
             self.error_resources.description(),
             self.error
         )
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug, Eq, PartialEq, Clone, Copy, JsonSchema)]
+#[serde(rename_all = "camelCase")]
+pub enum DestructionPolicy {
+    /// The controller will delete this resource when the Kubernetes object is marked for deletion.
+    OnDeletion,
+    /// The controller will not delete this resource even when the Kubernetes object is deleted.
+    Never,
+    // TODO - support additional destruction policies such as...
+    // OnTestSuccess,
+    // OnTestCompletion,
+}
+
+impl Default for DestructionPolicy {
+    fn default() -> Self {
+        Self::OnDeletion
     }
 }

@@ -19,7 +19,8 @@ pub use configuration::Configuration;
 pub use crd_ext::CrdExt;
 pub use error::{Error, Result};
 pub use resource::{
-    ErrorResources, Resource, ResourceAction, ResourceError, ResourceSpec, ResourceStatus,
+    DestructionPolicy, ErrorResources, Resource, ResourceAction, ResourceError, ResourceSpec,
+    ResourceStatus,
 };
 pub use test::{
     AgentStatus, ControllerStatus, Outcome, Test, TestResults, TestSpec, TestStatus, TestUserState,
@@ -32,5 +33,6 @@ pub mod constants;
 mod crd_ext;
 mod error;
 mod resource;
+mod schema_utils;
 pub mod system;
 mod test;

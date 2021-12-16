@@ -229,6 +229,15 @@ spec:
                     type: string
                   nullable: true
                   type: array
+                destructionPolicy:
+                  default: onDeletion
+                  description: "Whether/when the resource controller will destroy the resource (`OnDeletion` is the default)."
+                  enum:
+                    - onDeletion
+                    - never
+                    - "null"
+                  nullable: true
+                  type: string
               required:
                 - agent
               type: object
