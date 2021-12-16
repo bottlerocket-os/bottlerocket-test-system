@@ -18,3 +18,9 @@ pub fn integ_test_depended_on_path() -> PathBuf {
     path.pop();
     path.join("testsys/tests/data/integ-test-depended-on.yaml")
 }
+
+pub fn integ_test_resource_destruction_never_path() -> PathBuf {
+    let mut path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    path.pop();
+    path.join("testsys/tests/data/resource-destruction-never.yaml")
+}

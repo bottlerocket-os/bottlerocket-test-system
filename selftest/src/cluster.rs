@@ -3,12 +3,13 @@ use anyhow::{format_err, Context, Result};
 use k8s_openapi::api::core::v1::Pod;
 use k8s_openapi::serde::de::DeserializeOwned;
 use kube::{
-    api::ListParams,
+    api::{DeleteParams, ListParams},
     config::{KubeConfigOptions, Kubeconfig},
     Api, Client, Config,
 };
 use model::clients::{HttpStatusCode, StatusCode};
 use model::constants::{LABEL_COMPONENT, LABEL_PROVIDER_NAME, NAMESPACE};
+use model::{Resource, Test};
 use std::fmt::Debug;
 use std::{convert::TryInto, fs::File};
 use std::{
@@ -92,7 +93,8 @@ impl Cluster {
             .output()?;
         if !output.status.success() {
             return Err(format_err!(
-                "'kind load docker-image failed' with exit status '{}'\n\n{}\n\n{}",
+                "'kind load docker-image failed' for '{}' with exit status '{}': {} {}",
+                image_name,
                 output.status.code().unwrap_or(1),
                 String::from_utf8_lossy(&output.stdout),
                 String::from_utf8_lossy(&output.stderr),
@@ -163,6 +165,59 @@ impl Cluster {
             .context("Timeout waiting for object '{}' to exist in the cluster")?
     }
 
+    /// Waits for a 404. If GET returns successfully, continues to loop. If a 404 is received, returns Ok(()). Any error
+    /// aside from a 404 is returned. Returns an error if a 404 has not been seen after `duration` has elapsed.
+    pub async fn wait_for_deletion<T>(
+        &self,
+        name: &str,
+        namespace: Option<&str>,
+        duration: Duration,
+    ) -> Result<()>
+    where
+        T: kube::Resource + Clone + DeserializeOwned + Debug,
+        <T as kube::Resource>::DynamicType: Default,
+    {
+        tokio::time::timeout(duration, self.wait_for_404_loop::<T>(name, namespace))
+            .await
+            .context("Timeout waiting for object '{}' to be removed from the cluster")?
+    }
+
+    /// Rapidly check for the destruction pod for resource named `name` and return if it is seen.
+    pub async fn wait_for_resource_destruction_pod(
+        &self,
+        name: &str,
+        duration: Duration,
+    ) -> Result<()> {
+        tokio::time::timeout(duration, self.wait_for_resource_destruction_pod_loop(name))
+            .await
+            .context(
+                "Timeout waiting for the destruction for resource pod '{}' to exist in the cluster",
+            )?
+    }
+
+    /// Returns `true` for a `2XX`, `false` for a `404`, and returns the received error for anything
+    /// else.
+    pub async fn object_exists<T>(&self, name: &str, namespace: Option<&str>) -> Result<bool>
+    where
+        T: kube::Resource + Clone + DeserializeOwned + Debug,
+        <T as kube::Resource>::DynamicType: Default,
+    {
+        let k8s_client = self.k8s_client().await?;
+        let api = match namespace {
+            None => Api::all(k8s_client),
+            Some(namespace) => Api::<T>::namespaced(k8s_client, namespace),
+        };
+        let get_result = api.get(name.as_ref()).await;
+        if get_result.is_status_code(StatusCode::NOT_FOUND) {
+            return Ok(false);
+        } else if get_result.is_ok() {
+            return Ok(true);
+        }
+        let _ = get_result?;
+        // Should be unreachable
+        Ok(false)
+    }
+
     async fn wait_for_controller_loop(&self) -> Result<()> {
         loop {
             if self.is_controller_running().await? {
@@ -193,6 +248,34 @@ impl Cluster {
                 return Ok(());
             }
             tokio::time::sleep(Duration::from_millis(750)).await;
+        }
+    }
+
+    /// Waits for a 404. If GET returns successfully, continues to loop. If a 404 is received, returns Ok(()). Any error
+    /// aside from a 404 is returned.
+    async fn wait_for_404_loop<T>(&self, name: &str, namespace: Option<&str>) -> Result<()>
+    where
+        T: kube::Resource + Clone + DeserializeOwned + Debug,
+        <T as kube::Resource>::DynamicType: Default,
+    {
+        loop {
+            if !self.object_exists::<T>(name, namespace).await? {
+                return Ok(());
+            }
+            tokio::time::sleep(Duration::from_millis(250)).await;
+        }
+    }
+
+    /// Very rapidly check for the destruction pod for resource named `name`. If it is seen, return,
+    /// otherwise continue checking.
+    async fn wait_for_resource_destruction_pod_loop(&self, name: &str) -> Result<()> {
+        loop {
+            if self.does_resource_destruction_pod_exist(name).await? {
+                return Ok(());
+            }
+            // We do this very quickly to make sure we don't miss the pod if it happens to finish
+            // and get removed too fast.
+            tokio::time::sleep(Duration::from_millis(1)).await;
         }
     }
 
@@ -245,6 +328,53 @@ impl Cluster {
             }
         }
         Ok(false)
+    }
+
+    /// Return `true` if the destruction pod is found for resource named `name`.
+    pub async fn does_resource_destruction_pod_exist(&self, name: &str) -> Result<bool> {
+        let client = self.k8s_client().await?;
+        let pod_api = Api::<Pod>::namespaced(client, NAMESPACE);
+        let pods = pod_api.list(&ListParams::default()).await?.items;
+        for pod in pods {
+            if pod
+                .metadata
+                .name
+                .unwrap_or_default()
+                .starts_with(&format!("{}-destruction", name))
+            {
+                return Ok(true);
+            }
+        }
+        Ok(false)
+    }
+
+    /// Deletes a TestSys `Resource`. Does not wait for deletion to complete.
+    pub async fn delete_resource<S>(&self, name: S) -> Result<()>
+    where
+        S: AsRef<str>,
+    {
+        self.delete_object::<Resource, S>(name).await
+    }
+
+    /// Deletes a TestSys `Test`. Does not wait for deletion to complete.
+    pub async fn delete_test<S>(&self, name: S) -> Result<()>
+    where
+        S: AsRef<str>,
+    {
+        self.delete_object::<Test, S>(name).await
+    }
+
+    /// Deletes a k8s object. Does not wait for deletion to complete.
+    async fn delete_object<T, S>(&self, name: S) -> Result<()>
+    where
+        T: kube::Resource + Clone + DeserializeOwned + Debug,
+        <T as kube::Resource>::DynamicType: Default,
+        S: AsRef<str>,
+    {
+        let client = self.k8s_client().await?;
+        let api = Api::<T>::namespaced(client, NAMESPACE);
+        let _ = api.delete(name.as_ref(), &DeleteParams::default()).await?;
+        Ok(())
     }
 
     fn create_kind_cluster(name: &str, kubeconfig: &Path) -> Result<()> {
