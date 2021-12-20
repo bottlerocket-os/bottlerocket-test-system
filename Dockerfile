@@ -70,6 +70,25 @@ COPY --from=build /src/bottlerocket-agents/bin/eks-resource-agent ./
 ENTRYPOINT ["./eks-resource-agent"]
 
 # =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^=
+# Builds the ECS resource agent image
+FROM scratch as ecs-resource-agent
+# Copy CA certificates store
+COPY --from=build /etc/ssl /etc/ssl
+COPY --from=build /etc/pki /etc/pki
+# Copy binary
+COPY --from=build /src/bottlerocket-agents/bin/ecs-resource-agent ./
+
+ENTRYPOINT ["./ecs-resource-agent"]
+
+# =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^=
+# Builds the ECS test agent image
+FROM public.ecr.aws/amazonlinux/amazonlinux:2 as ecs-test-agent
+# Copy binary
+COPY --from=build /src/bottlerocket-agents/bin/ecs-test-agent ./
+
+ENTRYPOINT ["./ecs-test-agent"]
+
+# =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^=
 # Builds the Sonobuoy test agent image
 FROM public.ecr.aws/amazonlinux/amazonlinux:2 AS sonobuoy-test-agent
 ARG GOARCH
