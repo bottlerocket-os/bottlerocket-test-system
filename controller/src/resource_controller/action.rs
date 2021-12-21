@@ -2,10 +2,10 @@ use crate::error::Result;
 use crate::job::{JobState, TEST_START_TIME_LIMIT};
 use crate::resource_controller::context::ResourceInterface;
 use kube::ResourceExt;
-use log::trace;
+use log::{debug, trace};
 use model::clients::CrdClient;
 use model::constants::{FINALIZER_CREATION_JOB, FINALIZER_MAIN, FINALIZER_RESOURCE};
-use model::{CrdExt, ResourceAction, TaskState};
+use model::{CrdExt, DestructionPolicy, ResourceAction, TaskState};
 use parse_duration::parse;
 
 /// The action that the controller needs to take in order to reconcile the [`Resource`].
@@ -175,6 +175,20 @@ async fn creation_cleanup_action(r: &ResourceInterface) -> Result<Option<Destruc
 }
 
 async fn destruction_action_with_resources(r: &ResourceInterface) -> Result<DestructionAction> {
+    let destruction_policy = r.resource().spec.destruction_policy;
+    match destruction_policy {
+        DestructionPolicy::OnDeletion => { /* Ok, we are in the right place, continue */ }
+        DestructionPolicy::Never => {
+            // We will not be running a destruction job so remove the resource finalizer to proceed
+            // with object deletion.
+            debug!(
+                "Resource '{}' will not be deleted due to destruction policy '{:?}'",
+                r.name(),
+                destruction_policy
+            );
+            return Ok(DestructionAction::RemoveResourceFinalizer);
+        }
+    }
     match r.resource().destruction_task_state() {
         TaskState::Unknown => destruction_not_done_action(r, false).await,
         TaskState::Running => destruction_not_done_action(r, true).await,
