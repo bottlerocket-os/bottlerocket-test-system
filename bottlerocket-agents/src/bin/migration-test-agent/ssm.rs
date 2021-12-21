@@ -2,6 +2,7 @@ use aws_sdk_ec2::SdkError;
 use aws_sdk_ssm::error::DescribeDocumentErrorKind;
 use aws_sdk_ssm::model::{
     CommandInvocation, CommandInvocationStatus, DocumentFormat, DocumentType,
+    InstanceInformationStringFilter,
 };
 use bottlerocket_agents::error;
 use log::{debug, info};
@@ -13,6 +14,37 @@ use std::fs;
 use std::path::Path;
 use std::thread::sleep;
 use std::time::Duration;
+
+/// Waits for the SSM agent to become ready on the instances
+pub(crate) async fn wait_for_ssm_ready(
+    ssm_client: &aws_sdk_ssm::Client,
+    instance_ids: &HashSet<String>,
+) -> Result<(), error::Error> {
+    let mut num_ready = 0;
+    let sec_between_checks = Duration::from_secs(6);
+    while num_ready != instance_ids.len() {
+        let instance_info = ssm_client
+            .describe_instance_information()
+            .filters(
+                InstanceInformationStringFilter::builder()
+                    .key("InstanceIds")
+                    .set_values(Some(
+                        instance_ids.to_owned().into_iter().collect::<Vec<_>>(),
+                    ))
+                    .build(),
+            )
+            .send()
+            .await
+            .context(error::SsmDescribeInstanceInfo)?;
+        num_ready = instance_info
+            .instance_information_list()
+            .map(|list| list.len())
+            .context(error::SsmInstanceInfo)?;
+        sleep(sec_between_checks);
+    }
+
+    Ok(())
+}
 
 /// Creates an SSM document if it doesn't already exist with the given name; if
 /// it does but doesn't match the SSM document at given file path, updates it.

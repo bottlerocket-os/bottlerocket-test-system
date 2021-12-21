@@ -1,9 +1,11 @@
 use aws_sdk_ssm::error::{
-    CreateDocumentError, ListCommandInvocationsError, SendCommandError, UpdateDocumentError,
+    CreateDocumentError, DescribeInstanceInformationError, ListCommandInvocationsError,
+    SendCommandError, UpdateDocumentError,
 };
 use aws_sdk_ssm::SdkError;
 use snafu::Snafu;
 use std::string::FromUtf8Error;
+use tokio::time::error::Elapsed;
 
 #[derive(Debug, Snafu)]
 #[snafu(visibility = "pub")]
@@ -70,11 +72,22 @@ pub enum Error {
     #[snafu(display("Timed-out waiting for commands to finish running"))]
     SsmWaitCommandTimeout,
 
+    #[snafu(display("Timed-out waiting for SSM agents to become ready: {}", source))]
+    SsmWaitInstanceReadyTimeout { source: Elapsed },
+
     #[snafu(display("Failed to run '{}' in '{:?}'", document_name, instance_ids))]
     SsmRunCommand {
         document_name: String,
         instance_ids: Vec<String>,
     },
+
+    #[snafu(display("SSM Describe Instance Information failed: {}", source))]
+    SsmDescribeInstanceInfo {
+        source: SdkError<DescribeInstanceInformationError>,
+    },
+
+    #[snafu(display("Missing instance information from describe-instance-info output"))]
+    SsmInstanceInfo,
 
     #[snafu(display(
         "The following Bottlerocket hosts failed to update to '{}': {:?}",

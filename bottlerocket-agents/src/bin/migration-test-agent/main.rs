@@ -38,10 +38,13 @@ spec:
 
 mod ssm;
 
-use crate::ssm::{create_or_update_ssm_document, ssm_run_command, wait_for_os_version_change};
+use crate::ssm::{
+    create_or_update_ssm_document, ssm_run_command, wait_for_os_version_change, wait_for_ssm_ready,
+};
 use async_trait::async_trait;
 use aws_config::meta::region::RegionProviderChain;
 use aws_sdk_ssm::Region;
+use bottlerocket_agents::error;
 use bottlerocket_agents::error::Error;
 use bottlerocket_agents::{
     init_agent_logger, setup_env, MigrationConfig, AWS_CREDENTIALS_SECRET_NAME,
@@ -49,7 +52,9 @@ use bottlerocket_agents::{
 use log::{error, info};
 use maplit::hashmap;
 use model::{Outcome, SecretName, TestResults};
+use snafu::ResultExt;
 use std::path::Path;
+use std::time::Duration;
 use test_agent::{BootstrapData, ClientError, DefaultClient, Spec, TestAgent};
 
 const BR_CHANGE_UPDATE_REPO_DOCUMENT_NAME: &str = "BR-ChangeUpdateRepo";
@@ -84,6 +89,14 @@ impl test_agent::Runner for MigrationTestRunner {
             RegionProviderChain::first_try(Region::new(self.config.aws_region.clone()));
         let shared_config = aws_config::from_env().region(region_provider).load().await;
         let ssm_client = aws_sdk_ssm::Client::new(&shared_config);
+
+        // Ensure the SSM agents on the instances are ready, wait up to 5 minutes
+        tokio::time::timeout(
+            Duration::from_secs(300),
+            wait_for_ssm_ready(&ssm_client, &self.config.instance_ids),
+        )
+        .await
+        .context(error::SsmWaitInstanceReadyTimeout)??;
 
         // Optional step to change the update repository before proceeding to update
         if let Some(tuf_repo) = &self.config.tuf_repo {
