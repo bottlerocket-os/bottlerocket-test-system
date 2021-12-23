@@ -3,7 +3,7 @@ use aws_sdk_ec2::model::{Filter, SecurityGroup, Subnet};
 use aws_sdk_ec2::{Region, SdkError};
 use aws_sdk_eks::error::{DescribeClusterError, DescribeClusterErrorKind};
 use aws_sdk_eks::output::DescribeClusterOutput;
-use bottlerocket_agents::{ClusterInfo, AWS_CREDENTIALS_SECRET_NAME};
+use bottlerocket_agents::{ClusterInfo, EksUserData, UserData, AWS_CREDENTIALS_SECRET_NAME};
 use log::info;
 use model::{Configuration, SecretName};
 use resource_agent::clients::InfoClient;
@@ -87,8 +87,11 @@ pub struct CreatedCluster {
     /// The name of the cluster we created.
     pub cluster: ClusterInfo,
 
-    // Base64 encoded kubeconfig
+    // Base64 encoded kubeconfig.
     pub encoded_kubeconfig: String,
+
+    // The necessary information to create user data.
+    pub user_data: UserData,
 }
 
 impl Configuration for CreatedCluster {}
@@ -181,6 +184,7 @@ impl Create for EksCreator {
         let created_cluster = CreatedCluster {
             cluster: cluster_info(&spec.configuration.cluster_name, &region, &aws_clients).await?,
             encoded_kubeconfig,
+            user_data: user_data(&aws_clients.eks_client, &spec.configuration.cluster_name).await?,
         };
 
         memo.current_status = "Cluster ready".into();
@@ -254,7 +258,7 @@ async fn is_cluster_creation_required(
     creation_policy: CreationPolicy,
     aws_clients: &AwsClients,
 ) -> ProviderResult<(bool, String)> {
-    let cluster_exists: bool = does_cluster_exist(&cluster_name, aws_clients).await?;
+    let cluster_exists: bool = does_cluster_exist(cluster_name, aws_clients).await?;
     match creation_policy {
         CreationPolicy::Create if cluster_exists =>
             Err(
@@ -400,8 +404,6 @@ async fn cluster_info(
     aws_clients: &AwsClients,
 ) -> ProviderResult<ClusterInfo> {
     let eks_subnet_ids = eks_subnet_ids(&aws_clients.eks_client, cluster_name).await?;
-    let endpoint = endpoint(&aws_clients.eks_client, cluster_name).await?;
-    let certificate = certificate(&aws_clients.eks_client, cluster_name).await?;
 
     let public_subnet_ids = subnet_ids(
         &aws_clients.ec2_client,
@@ -425,7 +427,7 @@ async fn cluster_info(
     .filter_map(|subnet| subnet.subnet_id)
     .collect();
 
-    let nodegroup_sg = security_group(
+    let nodegroup_sg: Vec<String> = security_group(
         &aws_clients.ec2_client,
         cluster_name,
         SecurityGroupType::NodeGroup,
@@ -435,17 +437,7 @@ async fn cluster_info(
     .filter_map(|security_group| security_group.group_id)
     .collect();
 
-    let controlplane_sg = security_group(
-        &aws_clients.ec2_client,
-        cluster_name,
-        SecurityGroupType::ControlPlane,
-    )
-    .await?
-    .into_iter()
-    .filter_map(|security_group| security_group.group_id)
-    .collect();
-
-    let clustershared_sg = security_group(
+    let clustershared_sg: Vec<String> = security_group(
         &aws_clients.ec2_client,
         cluster_name,
         SecurityGroupType::ClusterShared,
@@ -454,6 +446,9 @@ async fn cluster_info(
     .into_iter()
     .filter_map(|security_group| security_group.group_id)
     .collect();
+    let mut security_groups: Vec<String> = vec![];
+    security_groups.append(&mut nodegroup_sg.clone());
+    security_groups.append(&mut clustershared_sg.clone());
     let node_instance_role = cluster_iam_identity_mapping(cluster_name, region)?;
     let iam_instance_profile_arn =
         instance_profile(&aws_clients.iam_client, cluster_name, &node_instance_role).await?;
@@ -461,15 +456,21 @@ async fn cluster_info(
     Ok(ClusterInfo {
         name: cluster_name.to_string(),
         region: region.to_string(),
-        endpoint,
-        certificate,
         public_subnet_ids,
         private_subnet_ids,
-        nodegroup_sg,
-        controlplane_sg,
-        clustershared_sg,
+        security_groups,
         iam_instance_profile_arn,
     })
+}
+
+async fn user_data(
+    eks_client: &aws_sdk_eks::Client,
+    cluster_name: &str,
+) -> ProviderResult<UserData> {
+    Ok(UserData::Eks(EksUserData {
+        endpoint: endpoint(eks_client, cluster_name).await?,
+        certificate: certificate(eks_client, cluster_name).await?,
+    }))
 }
 
 async fn eks_subnet_ids(

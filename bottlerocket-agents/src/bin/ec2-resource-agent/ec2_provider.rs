@@ -4,7 +4,7 @@ use aws_sdk_ec2::model::{
     TagSpecification,
 };
 use aws_sdk_ec2::Region;
-use bottlerocket_agents::{ClusterInfo, AWS_CREDENTIALS_SECRET_NAME};
+use bottlerocket_agents::{ClusterInfo, UserData, AWS_CREDENTIALS_SECRET_NAME};
 use model::{Configuration, SecretName};
 use resource_agent::clients::InfoClient;
 use resource_agent::provider::{
@@ -57,11 +57,31 @@ pub struct Ec2Config {
     /// recommended for arm64. If no value is provided the recommended type will be used.
     instance_type: Option<String>,
 
+    /// The type of subnet that will be used for the ec2 instances. If no type is provided the first
+    /// private subnet will be used.
+    #[serde(default)]
+    subnet_type: SubnetType,
+
     /// All of the cluster based information needed to run instances.
     cluster: ClusterInfo,
+
+    /// Uses the `UserData` enum to determine what user data should be applied to the instances.
+    user_data: UserData,
 }
 
 impl Configuration for Ec2Config {}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+enum SubnetType {
+    Public,
+    Private,
+}
+
+impl Default for SubnetType {
+    fn default() -> Self {
+        Self::Private
+    }
+}
 
 /// Once we have fulfilled the `Create` request, we return information about the batch of ec2 instances we
 /// created.
@@ -117,10 +137,6 @@ impl Create for Ec2Creator {
         let shared_config = aws_config::from_env().region(region_provider).load().await;
         let ec2_client = aws_sdk_ec2::Client::new(&shared_config);
 
-        let mut security_groups = vec![];
-        security_groups.append(&mut cluster.nodegroup_sg.clone());
-        security_groups.append(&mut cluster.clustershared_sg.clone());
-
         // Determine the instance type to use. If provided use that one. Otherwise, for `x86_64` use `m5.large`
         // and for `aarch64` use `m6g.large`
         let instance_type = if let Some(instance_type) = spec.configuration.instance_type {
@@ -128,6 +144,14 @@ impl Create for Ec2Creator {
         } else {
             instance_type(&ec2_client, &spec.configuration.node_ami, &memo).await?
         };
+
+        let subnet_id = first_subnet_id(
+            match spec.configuration.subnet_type {
+                SubnetType::Public => &spec.configuration.cluster.public_subnet_ids,
+                SubnetType::Private => &spec.configuration.cluster.private_subnet_ids,
+            },
+            &memo,
+        )?;
 
         // Run the ec2 instances
         let instance_count = spec
@@ -138,16 +162,12 @@ impl Create for Ec2Creator {
             .run_instances()
             .min_count(instance_count)
             .max_count(instance_count)
-            .subnet_id(first_subnet_id(&cluster.private_subnet_ids, &memo)?)
-            .set_security_group_ids(Some(security_groups))
+            .subnet_id(subnet_id)
+            .set_security_group_ids(Some(cluster.security_groups.clone()))
             .image_id(spec.configuration.node_ami)
             .instance_type(InstanceType::from(instance_type.as_str()))
             .tag_specifications(tag_specifications(&cluster.name, &instance_uuid))
-            .user_data(userdata(
-                &cluster.endpoint,
-                &cluster.name,
-                &cluster.certificate,
-            ))
+            .user_data(&spec.configuration.user_data.user_data(&cluster.name))
             .iam_instance_profile(
                 IamInstanceProfileSpecification::builder()
                     .arn(&cluster.iam_instance_profile_arn)
@@ -299,19 +319,6 @@ fn first_subnet_id(subnet_ids: &[String], memo: &ProductionMemo) -> ProviderResu
         .get(0)
         .map(|id| id.to_string())
         .context(memo, "There are no private subnet ids")
-}
-
-fn userdata(endpoint: &str, cluster_name: &str, certificate: &str) -> String {
-    base64::encode(format!(
-        r#"[settings.updates]
-ignore-waves = true
-    
-[settings.kubernetes]
-api-server = "{}"
-cluster-name = "{}"
-cluster-certificate = "{}""#,
-        endpoint, cluster_name, certificate
-    ))
 }
 
 #[derive(Debug)]

@@ -22,14 +22,69 @@ pub const DEFAULT_AGENT_LEVEL_FILTER: LevelFilter = LevelFilter::Info;
 pub struct ClusterInfo {
     pub name: String,
     pub region: String,
-    pub endpoint: String,
-    pub certificate: String,
-    pub public_subnet_ids: Vec<String>,
-    pub private_subnet_ids: Vec<String>,
-    pub nodegroup_sg: Vec<String>,
-    pub controlplane_sg: Vec<String>,
-    pub clustershared_sg: Vec<String>,
     pub iam_instance_profile_arn: String,
+    #[serde(default)]
+    pub public_subnet_ids: Vec<String>,
+    #[serde(default)]
+    pub private_subnet_ids: Vec<String>,
+    #[serde(default)]
+    pub security_groups: Vec<String>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[serde(untagged, rename_all = "camelCase")]
+pub enum UserData {
+    Eks(EksUserData),
+    Ecs(EcsUserData),
+}
+
+impl Default for UserData {
+    fn default() -> Self {
+        Self::Ecs(Default::default())
+    }
+}
+
+impl UserData {
+    pub fn user_data(&self, cluster_name: &str) -> String {
+        match self {
+            Self::Eks(eks) => eks.user_data(cluster_name),
+            Self::Ecs(ecs) => ecs.user_data(cluster_name),
+        }
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, Default)]
+pub struct EksUserData {
+    pub certificate: String,
+    pub endpoint: String,
+}
+
+impl EksUserData {
+    pub fn user_data(&self, cluster_name: &str) -> String {
+        base64::encode(format!(
+            r#"[settings.updates]
+ignore-waves = true
+    
+[settings.kubernetes]
+api-server = "{}"
+cluster-name = "{}"
+cluster-certificate = "{}""#,
+            self.endpoint, cluster_name, self.certificate
+        ))
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, Default)]
+pub struct EcsUserData {}
+
+impl EcsUserData {
+    pub fn user_data(&self, cluster_name: &str) -> String {
+        base64::encode(format!(
+            r#"[settings.ecs]
+cluster-name = "{}""#,
+            cluster_name
+        ))
+    }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, Default)]
