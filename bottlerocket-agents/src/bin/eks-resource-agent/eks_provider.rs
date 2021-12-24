@@ -1,7 +1,10 @@
 use aws_config::meta::region::RegionProviderChain;
 use aws_sdk_ec2::model::{Filter, SecurityGroup, Subnet};
-use aws_sdk_ec2::Region;
+use aws_sdk_ec2::{Region, SdkError};
+use aws_sdk_eks::error::{DescribeClusterError, DescribeClusterErrorKind};
+use aws_sdk_eks::output::DescribeClusterOutput;
 use bottlerocket_agents::{ClusterInfo, AWS_CREDENTIALS_SECRET_NAME};
+use log::info;
 use model::{Configuration, SecretName};
 use resource_agent::clients::InfoClient;
 use resource_agent::provider::{
@@ -21,14 +24,16 @@ const DEFAULT_VERSION: &str = "1.21";
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct ClusterConfig {
-    #[serde(flatten)]
     /// The name of the eks cluster to create or an existing cluster.
-    cluster_name: Cluster,
+    cluster_name: String,
+
+    /// Whether this agent will create the cluster or not.
+    creation_policy: Option<CreationPolicy>,
 
     /// The AWS region to create the cluster. If no value is provided `us-west-2` will be used.
     region: Option<String>,
 
-    /// The availablility zones. (e.g. us-west-2a,us-west-2b)
+    /// The availability zones. (e.g. us-west-2a,us-west-2b)
     zones: Option<Vec<String>>,
 
     /// The eks version of the the cluster (e.g. "1.14", "1.15", "1.16"). Make sure this is
@@ -36,17 +41,21 @@ pub struct ClusterConfig {
     version: Option<String>,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
-pub enum Cluster {
-    #[serde(rename = "existingClusterName")]
-    Existing(String),
-    #[serde(rename = "clusterName")]
-    Create(String),
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum CreationPolicy {
+    /// Create the cluster, it is an error if the cluster already exists. This is the default
+    /// behavior when no `CreationPolicy` is provided.
+    Create,
+    /// Create the cluster if it does not already exist.
+    IfNotExists,
+    /// Never create the cluster, it is an error if it does not exist.
+    Never,
 }
 
-impl Default for Cluster {
-    fn default() -> Cluster {
-        Self::Create(Default::default())
+impl Default for CreationPolicy {
+    fn default() -> Self {
+        Self::Create
     }
 }
 
@@ -61,7 +70,10 @@ pub struct ProductionMemo {
     pub aws_secret_name: Option<SecretName>,
 
     /// The name of the cluster we created.
-    pub cluster_name: Option<Cluster>,
+    pub cluster_name: Option<String>,
+
+    /// Whether the agent was instructed to create the cluster or not.
+    pub creation_policy: Option<CreationPolicy>,
 
     // The region the cluster is in.
     pub region: Option<String>,
@@ -80,6 +92,25 @@ pub struct CreatedCluster {
 }
 
 impl Configuration for CreatedCluster {}
+
+#[derive(Debug)]
+struct AwsClients {
+    eks_client: aws_sdk_eks::Client,
+    ec2_client: aws_sdk_ec2::Client,
+    iam_client: aws_sdk_iam::Client,
+}
+
+impl AwsClients {
+    async fn new(region: String) -> Self {
+        let region_provider = RegionProviderChain::first_try(Some(Region::new(region)));
+        let shared_config = aws_config::from_env().region(region_provider).load().await;
+        Self {
+            eks_client: aws_sdk_eks::Client::new(&shared_config),
+            ec2_client: aws_sdk_ec2::Client::new(&shared_config),
+            iam_client: aws_sdk_iam::Client::new(&shared_config),
+        }
+    }
+}
 
 pub struct EksCreator {}
 
@@ -101,6 +132,7 @@ impl Create for EksCreator {
             .get_info()
             .await
             .context(Resources::Clear, "Unable to get info from client")?;
+        memo.creation_policy = Some(spec.configuration.creation_policy.unwrap_or_default());
 
         let region = spec
             .configuration
@@ -114,46 +146,44 @@ impl Create for EksCreator {
             setup_env(client, aws_secret_name, Resources::Clear).await?;
             memo.aws_secret_name = Some(aws_secret_name.clone());
         }
+        let aws_clients = AwsClients::new(region.clone()).await;
+
+        let (do_create, message) = is_cluster_creation_required(
+            &spec.configuration.cluster_name,
+            spec.configuration.creation_policy.unwrap_or_default(),
+            &aws_clients,
+        )
+        .await?;
+        memo.current_status = message;
+        info!("{}", memo.current_status);
+        client
+            .send_info(memo.clone())
+            .await
+            .context(Resources::Clear, "Error sending cluster creation message")?;
 
         let kubeconfig_dir = temp_dir().join("kubeconfig.yaml");
 
-        let cluster_name = match spec.configuration.cluster_name.clone() {
-            Cluster::Existing(cluster_name) => {
-                memo.current_status = "Writing existing cluster kubeconfig".into();
-                client
-                    .send_info(memo.clone())
-                    .await
-                    .context(Resources::Clear, "Error sending kubeconfig write message")?;
-                write_kubeconfig(&cluster_name, &region, &kubeconfig_dir)?;
-                cluster_name
-            }
-            Cluster::Create(cluster_name) => {
-                memo.current_status = "Creating Cluster".into();
-                client
-                    .send_info(memo.clone())
-                    .await
-                    .context(Resources::Clear, "Error sending cluster creation message")?;
-                create_cluster(
-                    &cluster_name,
-                    &region,
-                    &spec.configuration.zones,
-                    &spec.configuration.version,
-                    &kubeconfig_dir,
-                )?;
-                cluster_name
-            }
-        };
+        if do_create {
+            create_cluster(
+                &spec.configuration.cluster_name,
+                &region,
+                &spec.configuration.zones,
+                &spec.configuration.version,
+                &kubeconfig_dir,
+            )?;
+        }
 
+        write_kubeconfig(&spec.configuration.cluster_name, &region, &kubeconfig_dir)?;
         let kubeconfig = std::fs::read_to_string(kubeconfig_dir)
             .context(Resources::Remaining, "Unable to read kubeconfig.")?;
         let encoded_kubeconfig = base64::encode(kubeconfig);
 
-        let created_lot = CreatedCluster {
-            cluster: cluster_info(&cluster_name, &region).await?,
+        let created_cluster = CreatedCluster {
+            cluster: cluster_info(&spec.configuration.cluster_name, &region, &aws_clients).await?,
             encoded_kubeconfig,
         };
 
-        memo.current_status = "Cluster Created".into();
+        memo.current_status = "Cluster ready".into();
         memo.cluster_name = Some(spec.configuration.cluster_name);
         memo.region = Some(region);
         client.send_info(memo.clone()).await.context(
@@ -161,7 +191,7 @@ impl Create for EksCreator {
             "Error sending cluster created message",
         )?;
 
-        Ok(created_lot)
+        Ok(created_cluster)
     }
 }
 
@@ -173,6 +203,7 @@ async fn setup_env<I>(
 where
     I: InfoClient,
 {
+    info!("Setting up AWS environment");
     let aws_secret = client.get_secret(aws_secret_name).await.context(
         failure_resources,
         format!("Error getting secret '{}'", aws_secret_name),
@@ -212,6 +243,49 @@ where
     env::set_var("AWS_SECRET_ACCESS_KEY", secret_access_key);
 
     Ok(())
+}
+
+/// Returns the bool telling us whether or not we need to create the cluster, and a string that
+/// explains why that we can use for logging or memo status. Returns an error if the creation policy
+/// requires us to create a cluster when it already exists, or creation policy forbids us to create
+/// a cluster and it does not exist.
+async fn is_cluster_creation_required(
+    cluster_name: &str,
+    creation_policy: CreationPolicy,
+    aws_clients: &AwsClients,
+) -> ProviderResult<(bool, String)> {
+    let cluster_exists: bool = does_cluster_exist(&cluster_name, aws_clients).await?;
+    match creation_policy {
+        CreationPolicy::Create if cluster_exists =>
+            Err(
+                ProviderError::new_with_context(
+                    Resources::Clear, format!(
+                        "The cluster '{}' already existed and creation policy '{:?}' requires that it not exist",
+                        cluster_name,
+                        creation_policy
+                    )
+                )
+            ),
+        CreationPolicy::Never if !cluster_exists => return Err(
+            ProviderError::new_with_context(
+                Resources::Clear, format!(
+                    "The cluster '{}' does not exist and creation policy '{:?}' requires that it exist",
+                    cluster_name,
+                    creation_policy
+                )
+            )
+        ),
+        CreationPolicy::Create  =>{
+            Ok((true, format!("Creation policy is '{:?}' and cluster '{}' does not exist: creating cluster", creation_policy, cluster_name)))
+        },
+        CreationPolicy::IfNotExists if !cluster_exists => {
+            Ok((true, format!("Creation policy is '{:?}' and cluster '{}' does not exist: creating cluster", creation_policy, cluster_name)))
+        },
+        CreationPolicy::IfNotExists |
+        CreationPolicy::Never => {
+            Ok((false, format!("Creation policy is '{:?}' and cluster '{}' exists: not creating cluster", creation_policy, cluster_name)))
+        },
+    }
 }
 
 fn create_cluster(
@@ -259,6 +333,7 @@ fn create_cluster(
 }
 
 fn cluster_iam_identity_mapping(cluster_name: &str, region: &str) -> ProviderResult<String> {
+    info!("Getting cluster role ARN");
     let iam_identity_output = Command::new("eksctl")
         .args([
             "get",
@@ -290,6 +365,7 @@ fn cluster_iam_identity_mapping(cluster_name: &str, region: &str) -> ProviderRes
 }
 
 fn write_kubeconfig(cluster_name: &str, region: &str, kubeconfig_dir: &Path) -> ProviderResult<()> {
+    info!("Writing kubeconfig file");
     let status = Command::new("eksctl")
         .args([
             "utils",
@@ -300,17 +376,17 @@ fn write_kubeconfig(cluster_name: &str, region: &str, kubeconfig_dir: &Path) -> 
             &format!(
                 "--kubeconfig={}",
                 kubeconfig_dir.to_str().context(
-                    Resources::Clear,
+                    Resources::Remaining,
                     format!("Unable to convert '{:?}' to string path", kubeconfig_dir),
                 )?
             ),
         ])
         .status()
-        .context(Resources::Clear, "Failed write kubeconfig")?;
+        .context(Resources::Remaining, "Failed write kubeconfig")?;
 
     if !status.success() {
         return Err(ProviderError::new_with_context(
-            Resources::Clear,
+            Resources::Remaining,
             format!("Failed write kubeconfig with status code {}", status),
         ));
     }
@@ -318,19 +394,17 @@ fn write_kubeconfig(cluster_name: &str, region: &str, kubeconfig_dir: &Path) -> 
     Ok(())
 }
 
-async fn cluster_info(cluster_name: &str, region: &str) -> ProviderResult<ClusterInfo> {
-    let region_provider = RegionProviderChain::first_try(Some(Region::new(region.to_string())));
-    let shared_config = aws_config::from_env().region(region_provider).load().await;
-    let eks_client = aws_sdk_eks::Client::new(&shared_config);
-    let ec2_client = aws_sdk_ec2::Client::new(&shared_config);
-    let iam_client = aws_sdk_iam::Client::new(&shared_config);
-
-    let eks_subnet_ids = eks_subnet_ids(&eks_client, cluster_name).await?;
-    let endpoint = endpoint(&eks_client, cluster_name).await?;
-    let certificate = certificate(&eks_client, cluster_name).await?;
+async fn cluster_info(
+    cluster_name: &str,
+    region: &str,
+    aws_clients: &AwsClients,
+) -> ProviderResult<ClusterInfo> {
+    let eks_subnet_ids = eks_subnet_ids(&aws_clients.eks_client, cluster_name).await?;
+    let endpoint = endpoint(&aws_clients.eks_client, cluster_name).await?;
+    let certificate = certificate(&aws_clients.eks_client, cluster_name).await?;
 
     let public_subnet_ids = subnet_ids(
-        &ec2_client,
+        &aws_clients.ec2_client,
         cluster_name,
         eks_subnet_ids.clone(),
         SubnetType::Public,
@@ -341,7 +415,7 @@ async fn cluster_info(cluster_name: &str, region: &str) -> ProviderResult<Cluste
     .collect();
 
     let private_subnet_ids = subnet_ids(
-        &ec2_client,
+        &aws_clients.ec2_client,
         cluster_name,
         eks_subnet_ids.clone(),
         SubnetType::Private,
@@ -351,28 +425,38 @@ async fn cluster_info(cluster_name: &str, region: &str) -> ProviderResult<Cluste
     .filter_map(|subnet| subnet.subnet_id)
     .collect();
 
-    let nodegroup_sg = security_group(&ec2_client, cluster_name, SecurityGroupType::NodeGroup)
-        .await?
-        .into_iter()
-        .filter_map(|security_group| security_group.group_id)
-        .collect();
+    let nodegroup_sg = security_group(
+        &aws_clients.ec2_client,
+        cluster_name,
+        SecurityGroupType::NodeGroup,
+    )
+    .await?
+    .into_iter()
+    .filter_map(|security_group| security_group.group_id)
+    .collect();
 
-    let controlplane_sg =
-        security_group(&ec2_client, cluster_name, SecurityGroupType::ControlPlane)
-            .await?
-            .into_iter()
-            .filter_map(|security_group| security_group.group_id)
-            .collect();
+    let controlplane_sg = security_group(
+        &aws_clients.ec2_client,
+        cluster_name,
+        SecurityGroupType::ControlPlane,
+    )
+    .await?
+    .into_iter()
+    .filter_map(|security_group| security_group.group_id)
+    .collect();
 
-    let clustershared_sg =
-        security_group(&ec2_client, cluster_name, SecurityGroupType::ClusterShared)
-            .await?
-            .into_iter()
-            .filter_map(|security_group| security_group.group_id)
-            .collect();
+    let clustershared_sg = security_group(
+        &aws_clients.ec2_client,
+        cluster_name,
+        SecurityGroupType::ClusterShared,
+    )
+    .await?
+    .into_iter()
+    .filter_map(|security_group| security_group.group_id)
+    .collect();
     let node_instance_role = cluster_iam_identity_mapping(cluster_name, region)?;
     let iam_instance_profile_arn =
-        instance_profile(&iam_client, cluster_name, &node_instance_role).await?;
+        instance_profile(&aws_clients.iam_client, cluster_name, &node_instance_role).await?;
 
     Ok(ClusterInfo {
         name: cluster_name.to_string(),
@@ -598,6 +682,37 @@ async fn instance_profile(
         .map(|profile| profile.clone())
 }
 
+async fn does_cluster_exist(name: &str, aws_clients: &AwsClients) -> ProviderResult<bool> {
+    let describe_cluster_result = aws_clients
+        .eks_client
+        .describe_cluster()
+        .name(name)
+        .send()
+        .await;
+    if not_found(&describe_cluster_result) {
+        return Ok(false);
+    }
+    let _ = describe_cluster_result.context(
+        Resources::Clear,
+        format!("Unable to determine if cluster '{}' exists", name),
+    )?;
+    Ok(true)
+}
+
+fn not_found(
+    result: &std::result::Result<DescribeClusterOutput, SdkError<DescribeClusterError>>,
+) -> bool {
+    if let Err(SdkError::ServiceError { err, raw: _ }) = result {
+        if matches!(
+            &err.kind,
+            DescribeClusterErrorKind::ResourceNotFoundException(_)
+        ) {
+            return true;
+        }
+    }
+    false
+}
+
 pub struct EksDestroyer {}
 
 #[async_trait::async_trait]
@@ -620,27 +735,34 @@ impl Destroy for EksDestroyer {
             .await
             .context(Resources::Remaining, "Unable to get info from client")?;
 
-        if let Some(cluster_name) = &memo.cluster_name {
-            // Write aws credentials if we need them so we can run eksctl
-            if let Some(aws_secret_name) = &memo.aws_secret_name {
-                setup_env(client, aws_secret_name, Resources::Remaining).await?;
+        let cluster_name = match &memo.cluster_name {
+            Some(x) => x,
+            None => {
+                return Err(ProviderError::new_with_context(
+                    Resources::Unknown,
+                    "Unable to obtain cluster name",
+                ))
             }
-            let region = memo
-                .clone()
-                .region
-                .unwrap_or_else(|| DEFAULT_REGION.to_string());
-            if let Cluster::Create(cluster_name) = cluster_name {
-                let status = Command::new("eksctl")
-                    .args(["delete", "cluster", "--name", cluster_name, "-r", &region])
-                    .status()
-                    .context(Resources::Remaining, "Failed to run eksctl delete command")?;
-                if !status.success() {
-                    return Err(ProviderError::new_with_context(
-                        Resources::Orphaned,
-                        format!("Failed to delete cluster with status code {}", status),
-                    ));
-                }
-            }
+        };
+
+        // Write aws credentials if we need them so we can run eksctl
+        if let Some(aws_secret_name) = &memo.aws_secret_name {
+            setup_env(client, aws_secret_name, Resources::Remaining).await?;
+        }
+        let region = memo
+            .clone()
+            .region
+            .unwrap_or_else(|| DEFAULT_REGION.to_string());
+
+        let status = Command::new("eksctl")
+            .args(["delete", "cluster", "--name", cluster_name, "-r", &region])
+            .status()
+            .context(Resources::Remaining, "Failed to run eksctl delete command")?;
+        if !status.success() {
+            return Err(ProviderError::new_with_context(
+                Resources::Orphaned,
+                format!("Failed to delete cluster with status code {}", status),
+            ));
         }
 
         memo.current_status = "Cluster deleted".into();
