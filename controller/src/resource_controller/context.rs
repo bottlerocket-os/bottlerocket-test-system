@@ -4,7 +4,7 @@ use anyhow::Context as AnyhowContext;
 use kube::Api;
 use log::debug;
 use model::clients::{CrdClient, ResourceClient};
-use model::constants::{ENV_RESOURCE_ACTION, ENV_RESOURCE_NAME, RESOURCE_AGENT};
+use model::constants::{ENV_RESOURCE_ACTION, ENV_RESOURCE_NAME};
 use model::{CrdExt, Resource, ResourceAction};
 
 /// This is used by `kube-runtime` to pass any custom information we need when [`reconcile`] is
@@ -80,7 +80,6 @@ impl ResourceInterface {
             agent: &self.resource().spec.agent,
             job_name,
             job_type: JobType::ResourceAgent,
-            component: RESOURCE_AGENT,
             environment_variables: vec![
                 (ENV_RESOURCE_ACTION, op.to_string()),
                 (ENV_RESOURCE_NAME, self.name().to_owned()),

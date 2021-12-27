@@ -7,7 +7,7 @@ use anyhow::Context as AnyhowContext;
 use kube_runtime::controller::ReconcilerAction;
 use log::{debug, error, trace};
 use model::clients::CrdClient;
-use model::constants::{ENV_TEST_NAME, FINALIZER_MAIN, FINALIZER_TEST_JOB, TEST_AGENT};
+use model::constants::{ENV_TEST_NAME, FINALIZER_MAIN, FINALIZER_TEST_JOB};
 use model::Test;
 
 /// `reconcile` is called when a new `Test` object arrives, or when a `Test` object has been
@@ -102,7 +102,6 @@ pub(crate) async fn create_job(t: &mut TestInterface) -> Result<()> {
         agent: &t.test().spec.agent,
         job_name: t.name(),
         job_type: JobType::TestAgent,
-        component: TEST_AGENT,
         environment_variables: vec![(ENV_TEST_NAME, t.name().to_owned())],
     }
     .deploy(t.k8s_client())
