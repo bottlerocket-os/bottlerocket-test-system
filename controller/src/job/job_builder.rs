@@ -26,7 +26,6 @@ pub(crate) struct JobBuilder<'a> {
     pub(crate) agent: &'a Agent,
     pub(crate) job_name: &'a str,
     pub(crate) job_type: JobType,
-    pub(crate) component: &'a str,
     pub(crate) environment_variables: Vec<(&'a str, String)>,
 }
 
