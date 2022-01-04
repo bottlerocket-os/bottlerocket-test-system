@@ -4,7 +4,7 @@ use aws_sdk_ec2::model::{
     TagSpecification,
 };
 use aws_sdk_ec2::Region;
-use bottlerocket_agents::{ClusterInfo, AWS_CREDENTIALS_SECRET_NAME};
+use bottlerocket_agents::AWS_CREDENTIALS_SECRET_NAME;
 use model::{Configuration, SecretName};
 use resource_agent::clients::InfoClient;
 use resource_agent::provider::{
@@ -54,14 +54,52 @@ pub struct Ec2Config {
     instance_count: Option<i32>,
 
     /// The type of instance to spin up. m5.large is recommended for x86_64 and m6g.large is
-    /// recommended for arm64. If no value is provided the recommended type will be used.
+    /// recommended for arm64 on eks. c3.large is recommended for ecs. If no value is provided
+    /// the recommended type will be used.
     instance_type: Option<String>,
 
-    /// All of the cluster based information needed to run instances.
-    cluster: ClusterInfo,
+    /// The name of the cluster we are creating instances for.
+    cluster_name: String,
+
+    /// The region the cluster is located in.
+    region: String,
+
+    /// The instance profile that should be attached to these instances.
+    instance_profile_arn: String,
+
+    /// The subnet the instances should be launched using.
+    subnet_id: String,
+
+    /// The type of cluster we are launching instances to.
+    cluster_type: ClusterType,
+
+    // Userdata related fields.
+    /// The eks server endpoint. The endpoint is required for eks clusters.
+    endpoint: Option<String>,
+
+    /// The eks certificate. The certificate is required for eks clusters.
+    certificate: Option<String>,
+
+    // Eks specific instance information.
+    /// The security groups that should be attached to the instances.
+    #[serde(default)]
+    security_groups: Vec<String>,
 }
 
 impl Configuration for Ec2Config {}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum ClusterType {
+    Eks,
+    Ecs,
+}
+
+impl Default for ClusterType {
+    fn default() -> Self {
+        Self::Eks
+    }
+}
 
 /// Once we have fulfilled the `Create` request, we return information about the batch of ec2 instances we
 /// created.
@@ -109,17 +147,11 @@ impl Create for Ec2Creator {
             memo.aws_secret_name = Some(aws_secret_name.clone());
         }
 
-        let cluster = &spec.configuration.cluster;
-
         // Setup aws_sdk_config and clients.
         let region_provider =
-            RegionProviderChain::first_try(Some(Region::new(cluster.region.clone())));
+            RegionProviderChain::first_try(Some(Region::new(spec.configuration.region.clone())));
         let shared_config = aws_config::from_env().region(region_provider).load().await;
         let ec2_client = aws_sdk_ec2::Client::new(&shared_config);
-
-        let mut security_groups = vec![];
-        security_groups.append(&mut cluster.nodegroup_sg.clone());
-        security_groups.append(&mut cluster.clustershared_sg.clone());
 
         // Determine the instance type to use. If provided use that one. Otherwise, for `x86_64` use `m5.large`
         // and for `aarch64` use `m6g.large`
@@ -138,19 +170,24 @@ impl Create for Ec2Creator {
             .run_instances()
             .min_count(instance_count)
             .max_count(instance_count)
-            .subnet_id(first_subnet_id(&cluster.private_subnet_ids, &memo)?)
-            .set_security_group_ids(Some(security_groups))
+            .subnet_id(&spec.configuration.subnet_id)
+            .set_security_group_ids(Some(spec.configuration.security_groups.clone()))
             .image_id(spec.configuration.node_ami)
             .instance_type(InstanceType::from(instance_type.as_str()))
-            .tag_specifications(tag_specifications(&cluster.name, &instance_uuid))
-            .user_data(userdata(
-                &cluster.endpoint,
-                &cluster.name,
-                &cluster.certificate,
+            .tag_specifications(tag_specifications(
+                &spec.configuration.cluster_name,
+                &instance_uuid,
             ))
+            .user_data(userdata(
+                &spec.configuration.cluster_type,
+                &spec.configuration.cluster_name,
+                &spec.configuration.endpoint,
+                &spec.configuration.certificate,
+                &memo,
+            )?)
             .iam_instance_profile(
                 IamInstanceProfileSpecification::builder()
-                    .arn(&cluster.iam_instance_profile_arn)
+                    .arn(&spec.configuration.instance_profile_arn)
                     .build(),
             );
 
@@ -188,7 +225,7 @@ impl Create for Ec2Creator {
 
         // We are done, set our custom status to say so.
         memo.current_status = "Instance(s) Created".into();
-        memo.region = cluster.region.clone();
+        memo.region = spec.configuration.region.clone();
         memo.instance_ids = instance_ids.clone();
         client
             .send_info(memo.clone())
@@ -294,24 +331,36 @@ fn tag_specifications(cluster_name: &str, instance_uuid: &str) -> TagSpecificati
         .build()
 }
 
-fn first_subnet_id(subnet_ids: &[String], memo: &ProductionMemo) -> ProviderResult<String> {
-    subnet_ids
-        .get(0)
-        .map(|id| id.to_string())
-        .context(memo, "There are no private subnet ids")
-}
-
-fn userdata(endpoint: &str, cluster_name: &str, certificate: &str) -> String {
-    base64::encode(format!(
-        r#"[settings.updates]
+fn userdata(
+    cluster_type: &ClusterType,
+    cluster_name: &str,
+    endpoint: &Option<String>,
+    certificate: &Option<String>,
+    memo: &ProductionMemo,
+) -> ProviderResult<String> {
+    Ok(match cluster_type {
+        ClusterType::Eks => base64::encode(format!(
+            r#"[settings.updates]
 ignore-waves = true
     
 [settings.kubernetes]
 api-server = "{}"
 cluster-name = "{}"
 cluster-certificate = "{}""#,
-        endpoint, cluster_name, certificate
-    ))
+            endpoint
+                .as_ref()
+                .context(memo, "Server endpoint is required for eks clusters.")?,
+            cluster_name,
+            certificate
+                .as_ref()
+                .context(memo, "Cluster certificate is required for eks clusters.")?
+        )),
+        ClusterType::Ecs => base64::encode(format!(
+            r#"[settings.ecs]
+cluster-name = "{}""#,
+            cluster_name,
+        )),
+    })
 }
 
 #[derive(Debug)]

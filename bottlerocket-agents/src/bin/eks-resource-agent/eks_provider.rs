@@ -3,7 +3,7 @@ use aws_sdk_ec2::model::{Filter, SecurityGroup, Subnet};
 use aws_sdk_ec2::{Region, SdkError};
 use aws_sdk_eks::error::{DescribeClusterError, DescribeClusterErrorKind};
 use aws_sdk_eks::output::DescribeClusterOutput;
-use bottlerocket_agents::{ClusterInfo, AWS_CREDENTIALS_SECRET_NAME};
+use bottlerocket_agents::AWS_CREDENTIALS_SECRET_NAME;
 use log::info;
 use model::{Configuration, SecretName};
 use resource_agent::clients::InfoClient;
@@ -85,7 +85,35 @@ impl Configuration for ProductionMemo {}
 #[serde(rename_all = "camelCase")]
 pub struct CreatedCluster {
     /// The name of the cluster we created.
-    pub cluster: ClusterInfo,
+    pub cluster_name: String,
+
+    /// The regions of the cluster.
+    pub region: String,
+
+    /// The eks server endpoint.
+    pub endpoint: String,
+
+    /// The cluster certificate.
+    pub certificate: String,
+
+    /// All public subnet ids.
+    pub public_subnet_ids: Vec<String>,
+    /// A single public subnet id. Will be `None` if no public ids exist.
+    pub public_subnet_id: Option<String>,
+
+    /// All private subnet ids.
+    pub private_subnet_ids: Vec<String>,
+    /// A single private subnet id. Will be `None` if no private ids exist.
+    pub private_subnet_id: Option<String>,
+
+    /// Security groups necessary for ec2 instances
+    pub security_groups: Vec<String>,
+    pub nodegroup_sg: Vec<String>,
+    pub controlplane_sg: Vec<String>,
+    pub clustershared_sg: Vec<String>,
+
+    /// The eksctl create iam instance profile.
+    pub iam_instance_profile_arn: String,
 
     // Base64 encoded kubeconfig
     pub encoded_kubeconfig: String,
@@ -178,10 +206,13 @@ impl Create for EksCreator {
             .context(Resources::Remaining, "Unable to read kubeconfig.")?;
         let encoded_kubeconfig = base64::encode(kubeconfig);
 
-        let created_cluster = CreatedCluster {
-            cluster: cluster_info(&spec.configuration.cluster_name, &region, &aws_clients).await?,
+        let created_cluster = created_cluster(
             encoded_kubeconfig,
-        };
+            &spec.configuration.cluster_name,
+            &region,
+            &aws_clients,
+        )
+        .await?;
 
         memo.current_status = "Cluster ready".into();
         memo.cluster_name = Some(spec.configuration.cluster_name);
@@ -254,7 +285,7 @@ async fn is_cluster_creation_required(
     creation_policy: CreationPolicy,
     aws_clients: &AwsClients,
 ) -> ProviderResult<(bool, String)> {
-    let cluster_exists: bool = does_cluster_exist(&cluster_name, aws_clients).await?;
+    let cluster_exists: bool = does_cluster_exist(cluster_name, aws_clients).await?;
     match creation_policy {
         CreationPolicy::Create if cluster_exists =>
             Err(
@@ -394,16 +425,17 @@ fn write_kubeconfig(cluster_name: &str, region: &str, kubeconfig_dir: &Path) -> 
     Ok(())
 }
 
-async fn cluster_info(
+async fn created_cluster(
+    encoded_kubeconfig: String,
     cluster_name: &str,
     region: &str,
     aws_clients: &AwsClients,
-) -> ProviderResult<ClusterInfo> {
+) -> ProviderResult<CreatedCluster> {
     let eks_subnet_ids = eks_subnet_ids(&aws_clients.eks_client, cluster_name).await?;
     let endpoint = endpoint(&aws_clients.eks_client, cluster_name).await?;
     let certificate = certificate(&aws_clients.eks_client, cluster_name).await?;
 
-    let public_subnet_ids = subnet_ids(
+    let public_subnet_ids: Vec<String> = subnet_ids(
         &aws_clients.ec2_client,
         cluster_name,
         eks_subnet_ids.clone(),
@@ -414,7 +446,7 @@ async fn cluster_info(
     .filter_map(|subnet| subnet.subnet_id)
     .collect();
 
-    let private_subnet_ids = subnet_ids(
+    let private_subnet_ids: Vec<String> = subnet_ids(
         &aws_clients.ec2_client,
         cluster_name,
         eks_subnet_ids.clone(),
@@ -425,7 +457,7 @@ async fn cluster_info(
     .filter_map(|subnet| subnet.subnet_id)
     .collect();
 
-    let nodegroup_sg = security_group(
+    let nodegroup_sg: Vec<String> = security_group(
         &aws_clients.ec2_client,
         cluster_name,
         SecurityGroupType::NodeGroup,
@@ -445,7 +477,7 @@ async fn cluster_info(
     .filter_map(|security_group| security_group.group_id)
     .collect();
 
-    let clustershared_sg = security_group(
+    let clustershared_sg: Vec<String> = security_group(
         &aws_clients.ec2_client,
         cluster_name,
         SecurityGroupType::ClusterShared,
@@ -454,21 +486,30 @@ async fn cluster_info(
     .into_iter()
     .filter_map(|security_group| security_group.group_id)
     .collect();
+
+    let mut security_groups = vec![];
+    security_groups.append(&mut nodegroup_sg.clone());
+    security_groups.append(&mut clustershared_sg.clone());
+
     let node_instance_role = cluster_iam_identity_mapping(cluster_name, region)?;
     let iam_instance_profile_arn =
         instance_profile(&aws_clients.iam_client, cluster_name, &node_instance_role).await?;
 
-    Ok(ClusterInfo {
-        name: cluster_name.to_string(),
+    Ok(CreatedCluster {
+        cluster_name: cluster_name.to_string(),
         region: region.to_string(),
         endpoint,
         certificate,
+        public_subnet_id: first_subnet_id(&public_subnet_ids),
+        private_subnet_id: first_subnet_id(&private_subnet_ids),
         public_subnet_ids,
         private_subnet_ids,
         nodegroup_sg,
         controlplane_sg,
         clustershared_sg,
         iam_instance_profile_arn,
+        security_groups,
+        encoded_kubeconfig,
     })
 }
 
@@ -547,6 +588,10 @@ async fn certificate(
         .as_ref()
         .context(Resources::Remaining, "Certificate authority missing data")
         .map(|ids| ids.clone())
+}
+
+fn first_subnet_id(subnet_ids: &[String]) -> Option<String> {
+    subnet_ids.get(0).map(|id| id.to_string())
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]

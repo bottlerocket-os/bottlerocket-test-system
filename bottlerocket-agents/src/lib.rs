@@ -19,21 +19,6 @@ pub const DEFAULT_AGENT_LEVEL_FILTER: LevelFilter = LevelFilter::Info;
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, Default)]
 #[serde(rename_all = "camelCase")]
-pub struct ClusterInfo {
-    pub name: String,
-    pub region: String,
-    pub endpoint: String,
-    pub certificate: String,
-    pub public_subnet_ids: Vec<String>,
-    pub private_subnet_ids: Vec<String>,
-    pub nodegroup_sg: Vec<String>,
-    pub controlplane_sg: Vec<String>,
-    pub clustershared_sg: Vec<String>,
-    pub iam_instance_profile_arn: String,
-}
-
-#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, Default)]
-#[serde(rename_all = "camelCase")]
 pub struct VSphereClusterInfo {
     pub name: String,
     pub control_plane_endpoint_ip: String,
