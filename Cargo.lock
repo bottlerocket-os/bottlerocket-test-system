@@ -468,6 +468,7 @@ dependencies = [
  "resource-agent",
  "serde",
  "serde_json",
+ "serde_plain",
  "sha2",
  "snafu",
  "test-agent",
