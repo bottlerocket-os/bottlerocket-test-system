@@ -34,6 +34,7 @@ pub(crate) struct RunSonobuoy {
     name: String,
 
     /// Location of the sonobuoy test agent image.
+    // TODO - default to an ECR public repository image
     #[structopt(long, short)]
     image: String,
 
@@ -45,8 +46,8 @@ pub(crate) struct RunSonobuoy {
     #[structopt(long)]
     keep_running: bool,
 
-    /// The plugin used for the sonobuoy test.
-    #[structopt(long)]
+    /// The plugin used for the sonobuoy test. Normally this is `e2e` (the default).
+    #[structopt(long, default_value = "e2e")]
     plugin: String,
 
     /// The mode used for the sonobuoy test. One of `non-disruptive-conformance`,
