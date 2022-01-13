@@ -2,6 +2,7 @@ pub mod error;
 pub mod sonobuoy;
 
 use crate::error::Error;
+use crate::sonobuoy::Mode;
 use env_logger::Builder;
 use log::{info, LevelFilter};
 use model::{Configuration, SecretName};
@@ -46,7 +47,7 @@ pub struct SonobuoyConfig {
     // FIXME: need a better way of passing test cluster information
     pub kubeconfig_base64: String,
     pub plugin: String,
-    pub mode: String,
+    pub mode: Mode,
     pub kubernetes_version: Option<String>,
     pub kube_conformance_image: Option<String>,
 }
