@@ -138,3 +138,22 @@ where
 
     Ok(())
 }
+
+/// Print a value using `serde_json` `to_string_pretty` for types that implement Serialize.
+pub fn json_display<T: Serialize>(object: T) -> String {
+    serde_json::to_string_pretty(&object).unwrap_or_else(|e| format!("Serialization failed: {}", e))
+}
+
+/// Implement `Display` using `serde_json` `to_string_pretty` for types that implement Serialize.
+#[macro_export]
+macro_rules! impl_display_as_json {
+    ($i:ident) => {
+        impl std::fmt::Display for $i {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                let s = serde_json::to_string_pretty(self)
+                    .unwrap_or_else(|e| format!("Serialization failed: {}", e));
+                std::fmt::Display::fmt(&s, f)
+            }
+        }
+    };
+}
