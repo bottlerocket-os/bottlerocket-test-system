@@ -219,7 +219,7 @@ impl test_agent::Runner for MigrationTestRunner {
 
 #[tokio::main]
 async fn main() {
-    init_agent_logger();
+    init_agent_logger(env!("CARGO_CRATE_NAME"), None);
     if let Err(e) = run().await {
         error!("{}", e);
         std::process::exit(1);

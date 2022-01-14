@@ -5,6 +5,7 @@ use kube::{CustomResource, Resource as Kresource};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
+use serde_plain::{derive_display_from_serialize, derive_fromstr_from_deserialize};
 use std::fmt::{Display, Formatter};
 
 /// A resource required by a test. For example, a compute instance or cluster. The `CustomResource`
@@ -221,3 +222,6 @@ impl Default for DestructionPolicy {
         Self::OnDeletion
     }
 }
+
+derive_display_from_serialize!(DestructionPolicy);
+derive_fromstr_from_deserialize!(DestructionPolicy);

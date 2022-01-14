@@ -1,6 +1,5 @@
 use crate::error::Result;
-use crate::run_file;
-use crate::run_sonobuoy;
+use crate::{run_file, run_sonobuoy};
 use kube::Client;
 use structopt::StructOpt;
 

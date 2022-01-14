@@ -9,7 +9,7 @@ use std::marker::PhantomData;
 
 #[tokio::main]
 async fn main() {
-    init_agent_logger();
+    init_agent_logger(env!("CARGO_CRATE_NAME"), None);
     let data = match BootstrapData::from_env() {
         Ok(ok) => ok,
         Err(e) => {

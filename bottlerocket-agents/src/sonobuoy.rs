@@ -1,5 +1,5 @@
 use crate::{error, SonobuoyConfig};
-use log::info;
+use log::{info, trace};
 use model::{Outcome, TestResults};
 use serde::{Deserialize, Serialize};
 use serde_plain::{derive_display_from_serialize, derive_fromstr_from_deserialize};
@@ -67,8 +67,12 @@ pub async fn run_sonobuoy(
         .args(k8s_image_arg)
         .status()
         .context(error::SonobuoyProcess)?;
+    info!("Sonobuoy testing has completed, checking results");
+
+    // TODO - log something or check what happened?
     ensure!(status.success(), error::SonobuoyRun);
 
+    info!("Running sonobuoy retrieve");
     let status = Command::new("/usr/bin/sonobuoy")
         .current_dir(results_dir.to_str().context(error::ResultsLocation)?)
         .args(kubeconfig_arg.to_owned())
@@ -77,6 +81,7 @@ pub async fn run_sonobuoy(
         .context(error::SonobuoyProcess)?;
     ensure!(status.success(), error::SonobuoyRun);
 
+    info!("Getting Sonobuoy status");
     let run_result = Command::new("/usr/bin/sonobuoy")
         .args(kubeconfig_arg)
         .arg("status")
@@ -84,9 +89,14 @@ pub async fn run_sonobuoy(
         .output()
         .context(error::SonobuoyProcess)?;
 
+    let stdout = String::from_utf8_lossy(&run_result.stdout);
+    info!("Parsing the following sonobuoy results output:\n{}", stdout);
+
+    trace!("Parsing sonobuoy results as json");
     let run_status: serde_json::Value =
-        serde_json::from_str(&String::from_utf8_lossy(&run_result.stdout))
-            .context(error::DeserializeJson)?;
+        serde_json::from_str(&stdout).context(error::DeserializeJson)?;
+    trace!("The sonobuoy results are valid json");
+
     let e2e_status = run_status
         .get("plugins")
         .context(error::MissingSonobuoyStatusField { field: "plugins" })?
@@ -96,12 +106,13 @@ pub async fn run_sonobuoy(
         .context(error::MissingSonobuoyStatusField {
             field: format!("plugins.{}", sonobuoy_config.plugin),
         })?;
-    let progress_status =
-        e2e_status
-            .get("progress")
-            .context(error::MissingSonobuoyStatusField {
-                field: format!("plugins.{}.progress", sonobuoy_config.plugin),
-            })?;
+
+    // Sometimes a helpful log is available in the progress field, but not always.
+    let progress_status = e2e_status
+        .get("progress")
+        .map(|value| value.to_string())
+        .unwrap_or_else(|| "".to_string());
+
     let result_status = e2e_status
         .get("result-status")
         .context(error::MissingSonobuoyStatusField {
@@ -147,7 +158,7 @@ pub async fn run_sonobuoy(
         num_passed,
         num_failed,
         num_skipped,
-        other_info: Some(progress_status.to_owned().to_string()),
+        other_info: Some(progress_status),
     })
 }
 
