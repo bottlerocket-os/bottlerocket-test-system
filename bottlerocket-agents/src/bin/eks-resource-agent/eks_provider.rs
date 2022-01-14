@@ -644,8 +644,8 @@ impl SecurityGroupType {
     fn tag(&self, cluster_name: &str) -> String {
         let sg = match self {
             SecurityGroupType::NodeGroup => "nodegroup",
-            SecurityGroupType::ClusterShared => "clustershared",
-            SecurityGroupType::ControlPlane => "controlplane",
+            SecurityGroupType::ClusterShared => "cluster/ClusterSharedNodeSecurityGroup",
+            SecurityGroupType::ControlPlane => "cluster/ControlPlaneSecurityGroup",
         };
         format!("*{}-{}*", cluster_name, sg)
     }
@@ -657,12 +657,13 @@ async fn security_group(
     security_group_type: SecurityGroupType,
 ) -> ProviderResult<Vec<SecurityGroup>> {
     // Extract the security groups.
+    let filter_value = security_group_type.tag(cluster_name);
     let describe_results = ec2_client
         .describe_security_groups()
         .filters(
             Filter::builder()
                 .name("tag:Name")
-                .values(security_group_type.tag(cluster_name))
+                .values(filter_value.clone())
                 .build(),
         )
         .send()
@@ -672,10 +673,32 @@ async fn security_group(
             format!("Unable to get {:?} security group", security_group_type),
         )?;
 
-    describe_results.security_groups.context(
+    let security_groups = describe_results.security_groups.context(
         Resources::Remaining,
         "Results missing security_groups field",
-    )
+    )?;
+
+    // If we haven't found the security group (or we found too many), the user may experience hard-
+    // to-diagnose issues downstream, so we want to raise an error here.
+    if security_groups.is_empty() {
+        return Err(ProviderError::new_with_context(
+            Resources::Remaining,
+            format!(
+                "Security group not found when filtering the name tags with '{}'",
+                filter_value
+            ),
+        ));
+    } else if security_groups.len() > 1 {
+        return Err(ProviderError::new_with_context(
+            Resources::Remaining,
+            format!(
+                "More than one security group found when filtering the name tags with '{}'",
+                filter_value
+            ),
+        ));
+    }
+
+    Ok(security_groups)
 }
 
 async fn instance_profile(
