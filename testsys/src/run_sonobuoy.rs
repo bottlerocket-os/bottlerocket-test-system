@@ -1,6 +1,6 @@
 use crate::error::{self, Result};
 use bottlerocket_agents::sonobuoy::Mode;
-use bottlerocket_agents::{SonobuoyConfig, AWS_CREDENTIALS_SECRET_NAME};
+use bottlerocket_agents::{K8sVersion, SonobuoyConfig, AWS_CREDENTIALS_SECRET_NAME};
 use kube::{api::ObjectMeta, Client};
 use model::clients::CrdClient;
 use model::{
@@ -59,7 +59,7 @@ pub(crate) struct RunSonobuoy {
     /// The kubernetes conformance version used for the sonobuoy test  (with or without the v
     /// prefix). Examples: v1.21, 1.21.3, v1.20.1
     #[structopt(long)]
-    kubernetes_version: Option<String>,
+    kubernetes_version: Option<K8sVersion>,
 
     /// The kubernetes conformance image used for the sonobuoy test.
     #[structopt(long)]

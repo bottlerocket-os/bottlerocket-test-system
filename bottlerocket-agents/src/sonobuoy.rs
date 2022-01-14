@@ -41,10 +41,11 @@ pub async fn run_sonobuoy(
     results_dir: &PathBuf,
 ) -> Result<TestResults, error::Error> {
     let kubeconfig_arg = vec!["--kubeconfig", kubeconfig_path];
-    let k8s_image_arg = match (
-        &sonobuoy_config.kube_conformance_image,
-        &sonobuoy_config.kubernetes_version,
-    ) {
+    let version = sonobuoy_config
+        .kubernetes_version
+        .as_ref()
+        .map(|version| version.full_version_with_v());
+    let k8s_image_arg = match (&sonobuoy_config.kube_conformance_image, &version) {
         (Some(image), None) | (Some(image), Some(_)) => {
             vec!["--kube-conformance-image", image]
         }
