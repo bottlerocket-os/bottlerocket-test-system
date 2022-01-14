@@ -4,7 +4,7 @@ use aws_sdk_ec2::model::{
     TagSpecification,
 };
 use aws_sdk_ec2::Region;
-use bottlerocket_agents::{json_display, AWS_CREDENTIALS_SECRET_NAME};
+use bottlerocket_agents::{json_display, ClusterType, Ec2Config, AWS_CREDENTIALS_SECRET_NAME};
 use log::{debug, info, trace};
 use model::{Configuration, SecretName};
 use resource_agent::clients::InfoClient;
@@ -44,63 +44,6 @@ pub struct ProductionMemo {
 }
 
 impl Configuration for ProductionMemo {}
-
-#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, Default)]
-#[serde(rename_all = "camelCase")]
-pub struct Ec2Config {
-    /// The AMI ID of the AMI to use for the worker nodes.
-    node_ami: String,
-
-    /// The number of instances to create. If no value is provided 2 instances will be created.
-    instance_count: Option<i32>,
-
-    /// The type of instance to spin up. m5.large is recommended for x86_64 and m6g.large is
-    /// recommended for arm64 on eks. c3.large is recommended for ecs. If no value is provided
-    /// the recommended type will be used.
-    instance_type: Option<String>,
-
-    /// The name of the cluster we are creating instances for.
-    cluster_name: String,
-
-    /// The region the cluster is located in.
-    region: String,
-
-    /// The instance profile that should be attached to these instances.
-    instance_profile_arn: String,
-
-    /// The subnet the instances should be launched using.
-    subnet_id: String,
-
-    /// The type of cluster we are launching instances to.
-    cluster_type: ClusterType,
-
-    // Userdata related fields.
-    /// The eks server endpoint. The endpoint is required for eks clusters.
-    endpoint: Option<String>,
-
-    /// The eks certificate. The certificate is required for eks clusters.
-    certificate: Option<String>,
-
-    // Eks specific instance information.
-    /// The security groups that should be attached to the instances.
-    #[serde(default)]
-    security_groups: Vec<String>,
-}
-
-impl Configuration for Ec2Config {}
-
-#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub enum ClusterType {
-    Eks,
-    Ecs,
-}
-
-impl Default for ClusterType {
-    fn default() -> Self {
-        Self::Eks
-    }
-}
 
 /// Once we have fulfilled the `Create` request, we return information about the batch of ec2 instances we
 /// created.
