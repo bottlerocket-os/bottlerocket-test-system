@@ -3,8 +3,8 @@ use aws_sdk_ec2::model::{Filter, SecurityGroup, Subnet};
 use aws_sdk_ec2::{Region, SdkError};
 use aws_sdk_eks::error::{DescribeClusterError, DescribeClusterErrorKind};
 use aws_sdk_eks::output::DescribeClusterOutput;
-use bottlerocket_agents::AWS_CREDENTIALS_SECRET_NAME;
-use log::info;
+use bottlerocket_agents::{impl_display_as_json, json_display, AWS_CREDENTIALS_SECRET_NAME};
+use log::{debug, info, trace};
 use model::{Configuration, SecretName};
 use resource_agent::clients::InfoClient;
 use resource_agent::provider::{
@@ -80,6 +80,7 @@ pub struct ProductionMemo {
 }
 
 impl Configuration for ProductionMemo {}
+impl_display_as_json!(ProductionMemo);
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, Default)]
 #[serde(rename_all = "camelCase")]
@@ -120,6 +121,7 @@ pub struct CreatedCluster {
 }
 
 impl Configuration for CreatedCluster {}
+impl_display_as_json!(CreatedCluster);
 
 #[derive(Debug)]
 struct AwsClients {
@@ -156,11 +158,16 @@ impl Create for EksCreator {
     where
         I: InfoClient,
     {
+        debug!("Create starting with spec: \n{}", json_display(&spec));
         let mut memo: ProductionMemo = client
             .get_info()
             .await
             .context(Resources::Clear, "Unable to get info from client")?;
         memo.creation_policy = Some(spec.configuration.creation_policy.unwrap_or_default());
+        info!(
+            "Beginning creation of EKS cluster '{}' with creation policy '{:?}'",
+            spec.configuration.cluster_name, memo.creation_policy
+        );
 
         let region = spec
             .configuration
@@ -192,6 +199,7 @@ impl Create for EksCreator {
         let kubeconfig_dir = temp_dir().join("kubeconfig.yaml");
 
         if do_create {
+            info!("Creating cluster with eksctl");
             create_cluster(
                 &spec.configuration.cluster_name,
                 &region,
@@ -199,6 +207,7 @@ impl Create for EksCreator {
                 &spec.configuration.version,
                 &kubeconfig_dir,
             )?;
+            info!("Done creating cluster with eksctl");
         }
 
         write_kubeconfig(&spec.configuration.cluster_name, &region, &kubeconfig_dir)?;
@@ -206,6 +215,7 @@ impl Create for EksCreator {
             .context(Resources::Remaining, "Unable to read kubeconfig.")?;
         let encoded_kubeconfig = base64::encode(kubeconfig);
 
+        info!("Gathering information about the cluster");
         let created_cluster = created_cluster(
             encoded_kubeconfig,
             &spec.configuration.cluster_name,
@@ -217,11 +227,14 @@ impl Create for EksCreator {
         memo.current_status = "Cluster ready".into();
         memo.cluster_name = Some(spec.configuration.cluster_name);
         memo.region = Some(region);
+        debug!("Sending memo:\n{}", &memo);
         client.send_info(memo.clone()).await.context(
             Resources::Remaining,
             "Error sending cluster created message",
         )?;
 
+        info!("Done");
+        debug!("CreatedCluster: \n{}", created_cluster);
         Ok(created_cluster)
     }
 }
@@ -326,6 +339,7 @@ fn create_cluster(
     version: &Option<String>,
     kubeconfig_dir: &Path,
 ) -> ProviderResult<()> {
+    trace!("Calling eksctl create cluster");
     let status = Command::new("eksctl")
         .args([
             "create",
@@ -352,6 +366,7 @@ fn create_cluster(
         ])
         .status()
         .context(Resources::Clear, "Failed create cluster")?;
+    trace!("eksctl create cluster has completed");
 
     if !status.success() {
         return Err(ProviderError::new_with_context(
@@ -435,6 +450,7 @@ async fn created_cluster(
     let endpoint = endpoint(&aws_clients.eks_client, cluster_name).await?;
     let certificate = certificate(&aws_clients.eks_client, cluster_name).await?;
 
+    info!("Getting public subnet ids");
     let public_subnet_ids: Vec<String> = subnet_ids(
         &aws_clients.ec2_client,
         cluster_name,
@@ -445,7 +461,9 @@ async fn created_cluster(
     .into_iter()
     .filter_map(|subnet| subnet.subnet_id)
     .collect();
+    debug!("Public subnet ids: {:?}", public_subnet_ids);
 
+    info!("Getting private subnet ids");
     let private_subnet_ids: Vec<String> = subnet_ids(
         &aws_clients.ec2_client,
         cluster_name,
@@ -456,7 +474,9 @@ async fn created_cluster(
     .into_iter()
     .filter_map(|subnet| subnet.subnet_id)
     .collect();
+    debug!("Private subnet ids: {:?}", private_subnet_ids);
 
+    info!("Getting the nodegroup security group");
     let nodegroup_sg: Vec<String> = security_group(
         &aws_clients.ec2_client,
         cluster_name,
@@ -466,7 +486,9 @@ async fn created_cluster(
     .into_iter()
     .filter_map(|security_group| security_group.group_id)
     .collect();
+    debug!("nodegroup_sg: {:?}", nodegroup_sg);
 
+    info!("Getting the controlplane security group");
     let controlplane_sg = security_group(
         &aws_clients.ec2_client,
         cluster_name,
@@ -476,7 +498,9 @@ async fn created_cluster(
     .into_iter()
     .filter_map(|security_group| security_group.group_id)
     .collect();
+    debug!("controlplane_sg: {:?}", controlplane_sg);
 
+    info!("Getting the cluster shared security group");
     let clustershared_sg: Vec<String> = security_group(
         &aws_clients.ec2_client,
         cluster_name,
@@ -486,10 +510,12 @@ async fn created_cluster(
     .into_iter()
     .filter_map(|security_group| security_group.group_id)
     .collect();
+    debug!("clustershared_sg: {:?}", clustershared_sg);
 
     let mut security_groups = vec![];
     security_groups.append(&mut nodegroup_sg.clone());
     security_groups.append(&mut clustershared_sg.clone());
+    debug!("security_groups: {:?}", security_groups);
 
     let node_instance_role = cluster_iam_identity_mapping(cluster_name, region)?;
     let iam_instance_profile_arn =
@@ -658,6 +684,7 @@ async fn security_group(
 ) -> ProviderResult<Vec<SecurityGroup>> {
     // Extract the security groups.
     let filter_value = security_group_type.tag(cluster_name);
+    trace!("Filtering for tag:Name={}", filter_value);
     let describe_results = ec2_client
         .describe_security_groups()
         .filters(

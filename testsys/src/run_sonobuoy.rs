@@ -56,7 +56,8 @@ pub(crate) struct RunSonobuoy {
     #[structopt(long, default_value = "quick")]
     mode: Mode,
 
-    /// The kubernetes version used for the sonobuoy test.
+    /// The kubernetes conformance version used for the sonobuoy test  (with or without the v
+    /// prefix). Examples: v1.21, 1.21.3, v1.20.1
     #[structopt(long)]
     kubernetes_version: Option<String>,
 
