@@ -37,7 +37,7 @@ use async_trait::async_trait;
 use bottlerocket_agents::error::Error;
 use bottlerocket_agents::sonobuoy::{delete_sonobuoy, run_sonobuoy};
 use bottlerocket_agents::{
-    decode_write_kubeconfig, init_agent_logger, setup_env, SonobuoyConfig,
+    decode_write_kubeconfig, init_agent_logger, setup_test_env, SonobuoyConfig,
     AWS_CREDENTIALS_SECRET_NAME, TEST_CLUSTER_KUBECONFIG_PATH,
 };
 use log::info;
@@ -68,7 +68,7 @@ impl test_agent::Runner for SonobuoyTestRunner {
     async fn run(&mut self) -> Result<TestResults, Self::E> {
         // Set up the aws credentials if they were provided.
         if let Some(aws_secret_name) = &self.aws_secret_name {
-            setup_env(self, aws_secret_name).await?;
+            setup_test_env(self, aws_secret_name).await?;
         }
 
         decode_write_kubeconfig(&self.config.kubeconfig_base64, TEST_CLUSTER_KUBECONFIG_PATH)

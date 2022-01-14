@@ -3,8 +3,8 @@ use crate::tuf::download_target;
 use aws_config::meta::region::RegionProviderChain;
 use aws_sdk_ssm::Region;
 use bottlerocket_agents::{
-    decode_write_kubeconfig, TufRepoConfig, VSphereClusterInfo, AWS_CREDENTIALS_SECRET_NAME,
-    TEST_CLUSTER_KUBECONFIG_PATH, VSPHERE_CREDENTIALS_SECRET_NAME,
+    decode_write_kubeconfig, setup_resource_env, TufRepoConfig, VSphereClusterInfo,
+    AWS_CREDENTIALS_SECRET_NAME, TEST_CLUSTER_KUBECONFIG_PATH, VSPHERE_CREDENTIALS_SECRET_NAME,
 };
 use k8s_openapi::api::core::v1::Service;
 use kube::api::ListParams;
@@ -140,7 +140,7 @@ impl Create for VMCreator {
 
         // Set up the aws credentials if they were provided.
         if let Some(aws_secret_name) = spec.secrets.get(AWS_CREDENTIALS_SECRET_NAME) {
-            setup_aws_creds(client, aws_secret_name, &resources).await?;
+            setup_resource_env(client, aws_secret_name, resources).await?;
             memo.aws_secret_name = Some(aws_secret_name.clone());
         }
         let region_provider = RegionProviderChain::first_try(Region::new("us-west-2"));
@@ -513,7 +513,7 @@ impl Destroy for VMDestroyer {
 
         // Set up the aws credentials if they were provided.
         if let Some(aws_secret_name) = spec.secrets.get(AWS_CREDENTIALS_SECRET_NAME) {
-            setup_aws_creds(client, aws_secret_name, &resources).await?;
+            setup_resource_env(client, aws_secret_name, resources).await?;
         }
         let region_provider = RegionProviderChain::first_try(Region::new("us-west-2"));
         let shared_config = aws_config::from_env().region(region_provider).load().await;
@@ -601,50 +601,6 @@ impl Destroy for VMDestroyer {
 
         Ok(())
     }
-}
-
-// TODO This is almost the same as the setup_env functions in ec2-resource and eks-resource agent. Maybe dedup.
-async fn setup_aws_creds<I>(
-    client: &I,
-    aws_secret_name: &SecretName,
-    resource: &Resources,
-) -> ProviderResult<()>
-where
-    I: InfoClient,
-{
-    let aws_secret = client.get_secret(aws_secret_name).await.context(
-        resource,
-        format!("Error getting secret '{}'", aws_secret_name),
-    )?;
-
-    let access_key_id = String::from_utf8(
-        aws_secret
-            .get("access-key-id")
-            .context(
-                resource,
-                format!("access-key-id missing from secret '{}'", aws_secret_name),
-            )?
-            .to_owned(),
-    )
-    .context(resource, "Could not convert access-key-id to String")?;
-    let secret_access_key = String::from_utf8(
-        aws_secret
-            .get("secret-access-key")
-            .context(
-                resource,
-                format!(
-                    "secret-access-key missing from secret '{}'",
-                    aws_secret_name
-                ),
-            )?
-            .to_owned(),
-    )
-    .context(resource, "Could not convert secret-access-key to String")?;
-
-    env::set_var("AWS_ACCESS_KEY_ID", access_key_id);
-    env::set_var("AWS_SECRET_ACCESS_KEY", secret_access_key);
-
-    Ok(())
 }
 
 // Helper for getting the vsphere credentials and setting up GOVC_USERNAME and GOVC_PASSWORD env vars
