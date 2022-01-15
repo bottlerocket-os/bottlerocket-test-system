@@ -53,8 +53,9 @@ where
     let url = metadata_base_url.join(ROOT_FILE_NAME).context(
         resources,
         format!(
-            "Could not parse url '{}'",
-            format!("{}/{}", metadata_base_url.as_str(), ROOT_FILE_NAME),
+            "Could not parse url '{}/{}'",
+            metadata_base_url.as_str(),
+            ROOT_FILE_NAME
         ),
     )?;
 

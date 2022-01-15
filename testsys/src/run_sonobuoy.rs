@@ -106,7 +106,7 @@ impl RunSonobuoy {
                         SonobuoyConfig {
                             kubeconfig_base64: kubeconfig_string,
                             plugin: self.plugin.clone(),
-                            mode: self.mode.clone(),
+                            mode: self.mode,
                             kubernetes_version: self.kubernetes_version.clone(),
                             kube_conformance_image: self.kubernetes_conformance_image.clone(),
                         }

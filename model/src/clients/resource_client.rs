@@ -190,10 +190,7 @@ impl ResourceClient {
     async fn resolve_input(&self, input: Value) -> Result<Value> {
         match input {
             Value::String(input_string) => self.resolve_input_string(input_string).await,
-            Value::Object(map) => self
-                .resolve_templated_config(map)
-                .await
-                .map(|map| Value::Object(map)),
+            Value::Object(map) => self.resolve_templated_config(map).await.map(Value::Object),
             non_string_input => Ok(non_string_input),
         }
     }
@@ -217,7 +214,7 @@ impl ResourceClient {
 }
 
 fn resource_name_and_field_name(input: &str) -> Result<Option<(String, String)>> {
-    let captures = match REGEX.captures(&input) {
+    let captures = match REGEX.captures(input) {
         None => return Ok(None),
         Some(some) => some,
     };

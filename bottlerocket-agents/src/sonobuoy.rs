@@ -4,7 +4,7 @@ use model::{Outcome, TestResults};
 use serde::{Deserialize, Serialize};
 use serde_plain::{derive_display_from_serialize, derive_fromstr_from_deserialize};
 use snafu::{ensure, OptionExt, ResultExt};
-use std::path::PathBuf;
+use std::path::Path;
 use std::process::Command;
 
 /// What mode to run the e2e plugin in. Valid modes are `non-disruptive-conformance`,
@@ -38,7 +38,7 @@ derive_fromstr_from_deserialize!(Mode);
 pub async fn run_sonobuoy(
     kubeconfig_path: &str,
     sonobuoy_config: &SonobuoyConfig,
-    results_dir: &PathBuf,
+    results_dir: &Path,
 ) -> Result<TestResults, error::Error> {
     let kubeconfig_arg = vec!["--kubeconfig", kubeconfig_path];
     let k8s_image_arg = match (
