@@ -98,7 +98,7 @@ async fn dependency_wait_action(r: &ResourceInterface) -> Result<Option<Creation
         let needed_resource = r.resource_client().get(needed).await?;
         if needed_resource.created_resource().is_none() {
             return Ok(Some(CreationAction::WaitForDependency(
-                needed_resource.name().to_owned(),
+                needed_resource.name(),
             )));
         }
     }

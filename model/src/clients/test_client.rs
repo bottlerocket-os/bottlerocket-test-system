@@ -43,12 +43,7 @@ impl TestClient {
     where
         S: AsRef<str> + Send,
     {
-        Ok(self
-            .get(name)
-            .await?
-            .status
-            .unwrap_or_else(Default::default)
-            .agent)
+        Ok(self.get(name).await?.status.unwrap_or_default().agent)
     }
 
     pub async fn send_resource_error(&self, test_name: &str, error: &str) -> Result<Test> {

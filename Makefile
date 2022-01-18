@@ -27,7 +27,7 @@ images: fetch controller sonobuoy-test-agent ec2-resource-agent eks-resource-age
 # Builds, Lints and Tests the Rust workspace
 build: fetch
 	cargo fmt -- --check
-	cargo clippy --locked
+	cargo clippy --locked -- -D warnings
 	cargo build --locked
 	cargo test --locked
 	cargo test --features integ --no-run
