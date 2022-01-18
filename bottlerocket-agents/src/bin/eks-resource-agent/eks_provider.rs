@@ -3,7 +3,9 @@ use aws_sdk_ec2::model::{Filter, SecurityGroup, Subnet};
 use aws_sdk_ec2::{Region, SdkError};
 use aws_sdk_eks::error::{DescribeClusterError, DescribeClusterErrorKind};
 use aws_sdk_eks::output::DescribeClusterOutput;
-use bottlerocket_agents::{impl_display_as_json, json_display, AWS_CREDENTIALS_SECRET_NAME};
+use bottlerocket_agents::{
+    impl_display_as_json, json_display, K8sVersion, AWS_CREDENTIALS_SECRET_NAME,
+};
 use log::{debug, info, trace};
 use model::{Configuration, SecretName};
 use resource_agent::clients::InfoClient;
@@ -38,7 +40,7 @@ pub struct ClusterConfig {
 
     /// The eks version of the the cluster (e.g. "1.14", "1.15", "1.16"). Make sure this is
     /// quoted so that it is interpreted as a JSON/YAML string (not a number).
-    version: Option<String>,
+    version: Option<K8sVersion>,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
@@ -336,9 +338,14 @@ fn create_cluster(
     cluster_name: &str,
     region: &str,
     zones: &Option<Vec<String>>,
-    version: &Option<String>,
+    version: &Option<K8sVersion>,
     kubeconfig_dir: &Path,
 ) -> ProviderResult<()> {
+    let version_arg = version
+        .as_ref()
+        .map(|version| version.major_minor_without_v())
+        .unwrap_or_else(|| DEFAULT_VERSION.to_string());
+
     trace!("Calling eksctl create cluster");
     let status = Command::new("eksctl")
         .args([
@@ -349,10 +356,7 @@ fn create_cluster(
             "--zones",
             &zones.clone().unwrap_or_default().join(","),
             "--version",
-            version
-                .as_ref()
-                .map(|version| version.as_str())
-                .unwrap_or(DEFAULT_VERSION),
+            &version_arg,
             "--kubeconfig",
             kubeconfig_dir.to_str().context(
                 Resources::Clear,

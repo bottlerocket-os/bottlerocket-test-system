@@ -7,9 +7,12 @@ use env_logger::Builder;
 use log::{info, LevelFilter};
 use model::{Configuration, SecretName};
 use serde::{Deserialize, Serialize};
+use serde_plain::{derive_deserialize_from_fromstr, derive_serialize_from_display};
 use snafu::{OptionExt, ResultExt};
 use std::collections::HashSet;
+use std::fmt::{Display, Formatter};
 use std::path::Path;
+use std::str::FromStr;
 use std::{env, fs};
 use test_agent::Runner;
 
@@ -33,7 +36,7 @@ pub struct SonobuoyConfig {
     pub kubeconfig_base64: String,
     pub plugin: String,
     pub mode: Mode,
-    pub kubernetes_version: Option<String>,
+    pub kubernetes_version: Option<K8sVersion>,
     pub kube_conformance_image: Option<String>,
 }
 
@@ -56,6 +59,126 @@ pub struct MigrationConfig {
 }
 
 impl Configuration for MigrationConfig {}
+
+/// Represents a parsed Kubernetes version. Examples of valid values when parsing:
+/// - `v1.21`
+/// - `1.21`
+/// - `v1.21.1`
+/// - `1.21.1`
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+pub struct K8sVersion {
+    major: u8,
+    minor: u8,
+    patch: Option<u8>,
+}
+
+impl K8sVersion {
+    pub const fn new(major: u8, minor: u8, patch: Option<u8>) -> Self {
+        Self {
+            major,
+            minor,
+            patch,
+        }
+    }
+
+    /// Returns a string representation of the Kubernetes version with a v prefix, and only includes
+    /// the major and minor versions (event if a patch value is present). Example: `v1.21`.
+    pub fn major_minor_with_v(&self) -> String {
+        format!("v{}.{}", self.major, self.minor)
+    }
+
+    /// Returns a string representation of the Kubernetes version without a v prefix, and only
+    /// includes the major and minor versions (event if a patch value is present). Example: `1.21`.
+    pub fn major_minor_without_v(&self) -> String {
+        format!("{}.{}", self.major, self.minor)
+    }
+
+    /// Returns a string representation of the Kubernetes version with a v prefix. Includes the
+    /// patch value if it exists. Examples: `v1.21.1` when a patch value exists, or `v1.21` if the
+    /// patch value is `None`.
+    pub fn full_version_with_v(&self) -> String {
+        if let Some(patch) = self.patch {
+            format!("v{}.{}.{}", self.major, self.minor, patch)
+        } else {
+            self.major_minor_with_v()
+        }
+    }
+
+    /// Returns a string representation of the Kubernetes version without a v prefix. Includes the
+    /// patch value if it exists. Examples: `1.21.1` when a patch value exists, or `1.21` if the
+    /// patch value is `None`.
+    pub fn full_version_without_v(&self) -> String {
+        if let Some(patch) = self.patch {
+            format!("{}.{}.{}", self.major, self.minor, patch)
+        } else {
+            self.major_minor_without_v()
+        }
+    }
+
+    pub fn parse<S: AsRef<str>>(s: S) -> std::result::Result<Self, String> {
+        let original = s.as_ref();
+        // skip the 'v' if present
+        let no_v = if let Some(stripped) = original.strip_prefix('v') {
+            stripped
+        } else {
+            original
+        };
+        let mut iter = no_v.split('.');
+        let major = iter
+            .next()
+            .ok_or_else(|| {
+                format!(
+                    "Unable to find the major version number when parsing '{}' as a k8s version",
+                    original
+                )
+            })?
+            .parse::<u8>()
+            .map_err(|e| {
+                format!(
+                    "Error when parsing the major version number of a k8s version: {}",
+                    e
+                )
+            })?;
+        let minor = iter
+            .next()
+            .ok_or_else(|| {
+                format!(
+                    "Unable to find the minor version number when parsing '{}' as a k8s version",
+                    original
+                )
+            })?
+            .parse::<u8>()
+            .map_err(|e| {
+                format!(
+                    "Error when parsing the minor version number of a k8s version: {}",
+                    e
+                )
+            })?;
+        let patch = iter.next().and_then(|s| s.parse::<u8>().ok());
+        Ok(Self {
+            major,
+            minor,
+            patch,
+        })
+    }
+}
+
+impl Display for K8sVersion {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        Display::fmt(&self.full_version_with_v(), f)
+    }
+}
+
+impl FromStr for K8sVersion {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        K8sVersion::parse(s)
+    }
+}
+
+derive_serialize_from_display!(K8sVersion);
+derive_deserialize_from_fromstr!(K8sVersion, "k8s version such as v1.21 or 1.21.1");
 
 /// Decode and write out the kubeconfig file for a test cluster to a specified path
 pub async fn decode_write_kubeconfig(
@@ -156,4 +279,20 @@ macro_rules! impl_display_as_json {
             }
         }
     };
+}
+
+#[test]
+fn k8s_version_invalid() {
+    let input = "1.foo";
+    assert!(K8sVersion::parse(input).is_err())
+}
+
+#[test]
+fn k8s_version_valid() {
+    let input = "v1.21.3";
+    let k8s_version = K8sVersion::from_str(input).unwrap();
+    assert_eq!("v1.21", k8s_version.major_minor_with_v());
+    assert_eq!("1.21", k8s_version.major_minor_without_v());
+    assert_eq!("v1.21.3", k8s_version.full_version_with_v());
+    assert_eq!("1.21.3", k8s_version.full_version_without_v());
 }
