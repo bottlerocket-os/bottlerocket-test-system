@@ -1,16 +1,22 @@
 use aws_config::meta::region::RegionProviderChain;
 use aws_sdk_ec2::model::Filter;
+use aws_sdk_ec2::SdkError;
 use aws_sdk_ecs::Region;
-use bottlerocket_agents::{setup_resource_env, AWS_CREDENTIALS_SECRET_NAME};
+use aws_sdk_iam::error::{GetInstanceProfileError, GetInstanceProfileErrorKind};
+use aws_sdk_iam::output::GetInstanceProfileOutput;
+use bottlerocket_agents::{setup_resource_env, CreationPolicy, AWS_CREDENTIALS_SECRET_NAME};
 use model::{Configuration, SecretName};
 use resource_agent::clients::InfoClient;
 use resource_agent::provider::{
-    Create, Destroy, IntoProviderError, ProviderResult, Resources, Spec,
+    Create, Destroy, IntoProviderError, ProviderError, ProviderResult, Resources, Spec,
 };
 use serde::{Deserialize, Serialize};
+use std::time::Duration;
 
 /// The default region for the cluster.
 const DEFAULT_REGION: &str = "us-west-2";
+/// The ecs instance profile name.
+const IAM_INSTANCE_PROFILE_NAME: &str = "testsys-bottlerocket-aws-ecsInstanceRole";
 
 /// The configuration information for a Ecs instance provider.
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, Default)]
@@ -24,6 +30,10 @@ pub struct ClusterConfig {
 
     /// The vpc to use for this clusters subnet ids. If no value is provided the default vpc will be used.
     vpc: Option<String>,
+
+    /// Determines if an ecs instance role should be created. If no creation policy is present, no instance role
+    /// will be created.
+    iam_instance_creation_policy: Option<CreationPolicy>,
 }
 
 impl Configuration for ClusterConfig {}
@@ -39,8 +49,11 @@ pub struct Memo {
     /// The name of the cluster we created.
     pub cluster_name: Option<String>,
 
-    // The region the cluster is in.
+    /// The region the cluster is in.
     pub region: Option<String>,
+
+    /// The `CreationPolicy` for the iam instance profile.
+    pub iam_instance_creation_policy: Option<CreationPolicy>,
 }
 
 impl Configuration for Memo {}
@@ -59,6 +72,9 @@ pub struct CreatedCluster {
 
     /// A private subnet id for this cluster.
     pub private_subnet_id: Option<String>,
+
+    /// The iam instance role that was created for ecs
+    pub iam_instance_profile_arn: Option<String>,
 }
 
 impl Configuration for CreatedCluster {}
@@ -100,6 +116,7 @@ impl Create for EcsCreator {
         let region_provider = RegionProviderChain::first_try(Some(Region::new(region.to_string())));
         let config = aws_config::from_env().region(region_provider).load().await;
         let ecs_client = aws_sdk_ecs::Client::new(&config);
+        let iam_client = aws_sdk_iam::Client::new(&config);
 
         ecs_client
             .create_cluster()
@@ -108,16 +125,25 @@ impl Create for EcsCreator {
             .await
             .context(Resources::Clear, "The cluster could not be created.")?;
 
+        let iam_arn = match spec.configuration.iam_instance_creation_policy {
+            Some(creation_policy) => {
+                Some(create_iam_instance_profile(&iam_client, creation_policy).await?)
+            }
+            None => None,
+        };
+
         let created_cluster = created_cluster(
             &spec.configuration.cluster_name,
             region.clone(),
             spec.configuration.vpc,
+            iam_arn,
         )
         .await?;
 
         memo.current_status = "Cluster Created".into();
         memo.cluster_name = Some(spec.configuration.cluster_name);
         memo.region = Some(region);
+        memo.iam_instance_creation_policy = spec.configuration.iam_instance_creation_policy;
         client.send_info(memo.clone()).await.context(
             Resources::Remaining,
             "Error sending cluster created message",
@@ -127,10 +153,110 @@ impl Create for EcsCreator {
     }
 }
 
+async fn create_iam_instance_profile(
+    iam_client: &aws_sdk_iam::Client,
+    creation_policy: CreationPolicy,
+) -> ProviderResult<String> {
+    let get_instance_profile_result = iam_client
+        .get_instance_profile()
+        .instance_profile_name(IAM_INSTANCE_PROFILE_NAME)
+        .send()
+        .await;
+    match (creation_policy, exists(get_instance_profile_result)) {
+        (CreationPolicy::Never, false) => Err(ProviderError::new_with_context(
+            Resources::Remaining,
+            "Instance profile creation policy is `Never`, but profile doesn't exist.",
+        )),
+        (CreationPolicy::Create, true) => Err(ProviderError::new_with_context(
+            Resources::Remaining,
+            "Instance profile creation policy is `Create`, but profile already exists.",
+        )),
+        (CreationPolicy::Create, false) | (CreationPolicy::IfNotExists, false) => {
+            iam_client
+                .create_role()
+                .role_name(IAM_INSTANCE_PROFILE_NAME)
+                .assume_role_policy_document(ecs_role_policy_document())
+                .send()
+                .await
+                .context(Resources::Remaining, "Unable to create new role.")?;
+            iam_client
+                .attach_role_policy()
+                .role_name(IAM_INSTANCE_PROFILE_NAME)
+                .policy_arn("arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore")
+                .send()
+                .await
+                .context(Resources::Remaining, "Unable to attach AmasonSSM policy")?;
+            iam_client
+                .attach_role_policy()
+                .role_name(IAM_INSTANCE_PROFILE_NAME)
+                .policy_arn(
+                    "arn:aws:iam::aws:policy/service-role/AmazonEC2ContainerServiceforEC2Role",
+                )
+                .send()
+                .await
+                .context(
+                    Resources::Remaining,
+                    "Unable to attach AmazonEC2ContainerServiceforEC2Role policy",
+                )?;
+            iam_client
+                .create_instance_profile()
+                .instance_profile_name(IAM_INSTANCE_PROFILE_NAME)
+                .send()
+                .await
+                .context(Resources::Remaining, "Unable to create instance profile")?;
+            iam_client
+                .add_role_to_instance_profile()
+                .instance_profile_name(IAM_INSTANCE_PROFILE_NAME)
+                .role_name(IAM_INSTANCE_PROFILE_NAME)
+                .send()
+                .await
+                .context(
+                    Resources::Remaining,
+                    "Unable to add role to instance profile",
+                )?;
+            // TODO: find a better way to allow propogation than a sleep.
+            tokio::time::sleep(Duration::from_secs(60)).await;
+            instance_profile_arn(iam_client).await
+        }
+        (CreationPolicy::Never, true) | (CreationPolicy::IfNotExists, true) => {
+            instance_profile_arn(iam_client).await
+        }
+    }
+}
+
+fn exists(result: Result<GetInstanceProfileOutput, SdkError<GetInstanceProfileError>>) -> bool {
+    if let Err(SdkError::ServiceError { err, raw: _ }) = result {
+        if matches!(
+            &err.kind,
+            GetInstanceProfileErrorKind::NoSuchEntityException(_)
+        ) {
+            return false;
+        }
+    }
+    true
+}
+
+async fn instance_profile_arn(iam_client: &aws_sdk_iam::Client) -> ProviderResult<String> {
+    iam_client
+        .get_instance_profile()
+        .instance_profile_name(IAM_INSTANCE_PROFILE_NAME)
+        .send()
+        .await
+        .context(Resources::Remaining, "Unable to get instance profile.")?
+        .instance_profile()
+        .and_then(|instance_profile| instance_profile.arn())
+        .context(
+            Resources::Remaining,
+            "Instance profile does not contain an arn.",
+        )
+        .map(|arn| arn.to_string())
+}
+
 async fn created_cluster(
     cluster_name: &str,
     region: String,
     vpc: Option<String>,
+    iam_instance_profile_arn: Option<String>,
 ) -> ProviderResult<CreatedCluster> {
     let region_provider = RegionProviderChain::first_try(Some(Region::new(region.clone())));
     let shared_config = aws_config::from_env().region(region_provider).load().await;
@@ -149,6 +275,7 @@ async fn created_cluster(
         region,
         public_subnet_id: first_subnet_id(&public_subnet_ids),
         private_subnet_id: first_subnet_id(&private_subnet_ids),
+        iam_instance_profile_arn,
     })
 }
 
@@ -221,21 +348,68 @@ impl Destroy for EcsDestroyer {
             .await
             .context(Resources::Remaining, "Unable to get info from client")?;
 
+        // Write aws credentials if we need them
+        if let Some(aws_secret_name) = &memo.aws_secret_name {
+            setup_resource_env(client, aws_secret_name, Resources::Remaining).await?;
+        }
+        let region = memo
+            .clone()
+            .region
+            .unwrap_or_else(|| DEFAULT_REGION.to_string());
+
+        let region_provider = RegionProviderChain::first_try(Some(Region::new(region.to_string())));
+        let config = aws_config::from_env().region(region_provider).load().await;
+        let ecs_client = aws_sdk_ecs::Client::new(&config);
+        let iam_client = aws_sdk_iam::Client::new(&config);
+
+        if memo.iam_instance_creation_policy == Some(CreationPolicy::Create) {
+            iam_client
+                .remove_role_from_instance_profile()
+                .instance_profile_name(IAM_INSTANCE_PROFILE_NAME)
+                .role_name(IAM_INSTANCE_PROFILE_NAME)
+                .send()
+                .await
+                .context(
+                    Resources::Remaining,
+                    "Unable to remove role from instance profile.",
+                )?;
+            iam_client
+                .delete_instance_profile()
+                .instance_profile_name(IAM_INSTANCE_PROFILE_NAME)
+                .send()
+                .await
+                .context(Resources::Remaining, "Unable to delete instance profile.")?;
+            iam_client
+                .detach_role_policy()
+                .role_name(IAM_INSTANCE_PROFILE_NAME)
+                .policy_arn(
+                    "arn:aws:iam::aws:policy/service-role/AmazonEC2ContainerServiceforEC2Role",
+                )
+                .send()
+                .await
+                .context(
+                    Resources::Remaining,
+                    "Unable to detach AmazonEC2ContainerServiceforEC2Role",
+                )?;
+            iam_client
+                .detach_role_policy()
+                .role_name(IAM_INSTANCE_PROFILE_NAME)
+                .policy_arn("arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore")
+                .send()
+                .await
+                .context(
+                    Resources::Remaining,
+                    "Unable to detach AmazonSSMManagedInstanceCore",
+                )?;
+            iam_client
+                .delete_role()
+                .role_name(IAM_INSTANCE_PROFILE_NAME)
+                .send()
+                .await
+                .context(Resources::Remaining, "Unable to delete iam role.")?;
+        }
+
         if let Some(cluster_name) = &memo.cluster_name {
-            // Write aws credentials if we need them so we can run Ecsctl
-            if let Some(aws_secret_name) = &memo.aws_secret_name {
-                setup_resource_env(client, aws_secret_name, Resources::Remaining).await?;
-            }
-            let region = memo
-                .clone()
-                .region
-                .unwrap_or_else(|| DEFAULT_REGION.to_string());
-
-            let region_provider =
-                RegionProviderChain::first_try(Some(Region::new(region.to_string())));
-            let config = aws_config::from_env().region(region_provider).load().await;
-            let ecs_client = aws_sdk_ecs::Client::new(&config);
-
             ecs_client
                 .delete_cluster()
                 .cluster(cluster_name)
@@ -254,4 +428,21 @@ impl Destroy for EcsDestroyer {
 
         Ok(())
     }
+}
+
+fn ecs_role_policy_document() -> String {
+    r#"{
+    "Version": "2008-10-17",
+    "Statement": [
+        {
+        "Sid": "",
+        "Effect": "Allow",
+        "Principal": {
+            "Service": "ec2.amazonaws.com"
+        },
+        "Action": "sts:AssumeRole"
+        }
+    ]
+}"#
+    .to_string()
 }

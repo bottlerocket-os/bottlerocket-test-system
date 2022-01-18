@@ -4,7 +4,8 @@ use aws_sdk_ec2::{Region, SdkError};
 use aws_sdk_eks::error::{DescribeClusterError, DescribeClusterErrorKind};
 use aws_sdk_eks::output::DescribeClusterOutput;
 use bottlerocket_agents::{
-    impl_display_as_json, json_display, setup_resource_env, K8sVersion, AWS_CREDENTIALS_SECRET_NAME,
+    impl_display_as_json, json_display, setup_resource_env, CreationPolicy, K8sVersion,
+    AWS_CREDENTIALS_SECRET_NAME,
 };
 use log::{debug, info, trace};
 use model::{Configuration, SecretName};
@@ -41,24 +42,6 @@ pub struct ClusterConfig {
     /// The eks version of the the cluster (e.g. "1.14", "1.15", "1.16"). Make sure this is
     /// quoted so that it is interpreted as a JSON/YAML string (not a number).
     version: Option<K8sVersion>,
-}
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub enum CreationPolicy {
-    /// Create the cluster, it is an error if the cluster already exists. This is the default
-    /// behavior when no `CreationPolicy` is provided.
-    Create,
-    /// Create the cluster if it does not already exist.
-    IfNotExists,
-    /// Never create the cluster, it is an error if it does not exist.
-    Never,
-}
-
-impl Default for CreationPolicy {
-    fn default() -> Self {
-        Self::Create
-    }
 }
 
 impl Configuration for ClusterConfig {}

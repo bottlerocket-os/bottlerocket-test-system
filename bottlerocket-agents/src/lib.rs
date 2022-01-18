@@ -91,12 +91,12 @@ impl Configuration for ClusterConfig {}
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub enum CreationPolicy {
-    /// Create the cluster, it is an error if the cluster already exists. This is the default
+    /// Create the item, it is an error if the item already exists. This is the default
     /// behavior when no `CreationPolicy` is provided.
     Create,
-    /// Create the cluster if it does not already exist.
+    /// Create the item if it does not already exist.
     IfNotExists,
-    /// Never create the cluster, it is an error if it does not exist.
+    /// Never create the item, it is an error if it does not exist.
     Never,
 }
 
