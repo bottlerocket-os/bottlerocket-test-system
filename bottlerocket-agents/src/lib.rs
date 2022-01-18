@@ -73,7 +73,7 @@ pub async fn decode_write_kubeconfig(
 
 /// Extract the value of `RUST_LOG` if it exists, otherwise log this application at
 /// `DEFAULT_AGENT_LEVEL_FILTER`.
-pub fn init_agent_logger() {
+pub fn init_agent_logger(bin_crate: &str, log_level: Option<LevelFilter>) {
     match env::var(env_logger::DEFAULT_FILTER_ENV).ok() {
         Some(_) => {
             // RUST_LOG exists; env_logger will use it.
@@ -81,10 +81,17 @@ pub fn init_agent_logger() {
         }
         None => {
             // RUST_LOG does not exist; use default log level except AWS SDK.
+            let log_level = log_level.unwrap_or(DEFAULT_AGENT_LEVEL_FILTER);
             Builder::new()
-                .filter_level(DEFAULT_AGENT_LEVEL_FILTER)
-                .filter(Some("aws_"), LevelFilter::Error)
-                .filter(Some("tracing"), LevelFilter::Error)
+                // Set log level to Error for crates other than our own.
+                .filter_level(LevelFilter::Error)
+                // Set all of our crates to the desired level.
+                .filter(Some(bin_crate), log_level)
+                .filter(Some("agent-common"), log_level)
+                .filter(Some("bottlerocket-agents"), log_level)
+                .filter(Some("model"), log_level)
+                .filter(Some("resource-agent"), log_level)
+                .filter(Some("test-agent"), log_level)
                 .init();
         }
     }
@@ -130,4 +137,23 @@ where
     env::set_var("AWS_SECRET_ACCESS_KEY", secret_access_key);
 
     Ok(())
+}
+
+/// Print a value using `serde_json` `to_string_pretty` for types that implement Serialize.
+pub fn json_display<T: Serialize>(object: T) -> String {
+    serde_json::to_string_pretty(&object).unwrap_or_else(|e| format!("Serialization failed: {}", e))
+}
+
+/// Implement `Display` using `serde_json` `to_string_pretty` for types that implement Serialize.
+#[macro_export]
+macro_rules! impl_display_as_json {
+    ($i:ident) => {
+        impl std::fmt::Display for $i {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                let s = serde_json::to_string_pretty(self)
+                    .unwrap_or_else(|e| format!("Serialization failed: {}", e));
+                std::fmt::Display::fmt(&s, f)
+            }
+        }
+    };
 }

@@ -4,7 +4,8 @@ use aws_sdk_ec2::model::{
     TagSpecification,
 };
 use aws_sdk_ec2::Region;
-use bottlerocket_agents::AWS_CREDENTIALS_SECRET_NAME;
+use bottlerocket_agents::{json_display, AWS_CREDENTIALS_SECRET_NAME};
+use log::{debug, info, trace};
 use model::{Configuration, SecretName};
 use resource_agent::clients::InfoClient;
 use resource_agent::provider::{
@@ -128,6 +129,10 @@ impl Create for Ec2Creator {
     where
         I: InfoClient,
     {
+        debug!(
+            "create is starting with the following spec:\n{}",
+            json_display(&spec)
+        );
         let mut memo: ProductionMemo = client
             .get_info()
             .await
@@ -135,6 +140,10 @@ impl Create for Ec2Creator {
 
         // Set the uuid before we do anything so we know it is stored.
         let instance_uuid = Uuid::new_v4().to_string();
+        info!(
+            "Beginning instance creation with instance UUID: {}",
+            instance_uuid
+        );
         memo.uuid_tag = Some(instance_uuid.to_string());
         client
             .send_info(memo.clone())
@@ -160,12 +169,15 @@ impl Create for Ec2Creator {
         } else {
             instance_type(&ec2_client, &spec.configuration.node_ami, &memo).await?
         };
+        info!("Using instance type '{}'", instance_type);
 
         // Run the ec2 instances
         let instance_count = spec
             .configuration
             .instance_count
             .unwrap_or(DEFAULT_INSTANCE_COUNT);
+        info!("Creating {} instance(s)", instance_count);
+
         let run_instances = ec2_client
             .run_instances()
             .min_count(instance_count)
@@ -191,6 +203,7 @@ impl Create for Ec2Creator {
                     .build(),
             );
 
+        info!("Starting instances");
         let instances = run_instances
             .send()
             .await
@@ -198,6 +211,8 @@ impl Create for Ec2Creator {
             .instances
             .context(Resources::Remaining, "Results missing instances field")?;
         let mut instance_ids = HashSet::default();
+
+        info!("Checking instance IDs");
         for instance in instances {
             instance_ids.insert(instance.instance_id.clone().ok_or_else(|| {
                 ProviderError::new_with_context(
@@ -208,6 +223,7 @@ impl Create for Ec2Creator {
         }
 
         // Ensure the instances reach a running state.
+        info!("Waiting for instances to reach the running state");
         tokio::time::timeout(
             Duration::from_secs(60),
             wait_for_conforming_instances(
@@ -230,8 +246,9 @@ impl Create for Ec2Creator {
         client
             .send_info(memo.clone())
             .await
-            .context(memo, "Error sending final creation message")?;
+            .context(&memo, "Error sending final creation message")?;
 
+        info!("Done: instances {:?} are running", memo.instance_ids);
         // Return the ids for the created instances.
         Ok(CreatedEc2Instances { ids: instance_ids })
     }
@@ -245,6 +262,7 @@ async fn setup_env<I>(
 where
     I: InfoClient,
 {
+    info!("Setting up AWS credentials");
     let aws_secret = client
         .get_secret(aws_secret_name)
         .await
@@ -411,10 +429,17 @@ async fn non_conforming_instances(
         .as_mut()
         .context(memo, "No instance statuses were provided.")?;
 
-    Ok(non_conforming_instances
+    let non_conforming_instances = non_conforming_instances
         .iter_mut()
         .filter_map(|instance_status| instance_status.instance_id.clone())
-        .collect())
+        .collect();
+
+    trace!(
+        "The following instances are not in the desired state '{:?}': {:?}",
+        desired_instance_state,
+        non_conforming_instances
+    );
+    Ok(non_conforming_instances)
 }
 
 async fn wait_for_conforming_instances(
@@ -428,6 +453,7 @@ async fn wait_for_conforming_instances(
             .await?
             .is_empty()
         {
+            trace!("Some instances are not ready, sleeping and trying again");
             tokio::time::sleep(Duration::from_millis(1000)).await;
             continue;
         }
