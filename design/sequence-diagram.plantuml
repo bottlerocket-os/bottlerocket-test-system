@@ -7,247 +7,116 @@ title TestSys Sequence Diagram
 participant "TestSys CLI"                  as cli
 database    "Kubernetes"                   as k8s
 control     "Controller"                   as ctl
-participant "Resource Provider A"          as raa
-participant "Resource Provider B"          as rab
-participant "Test Agent Pod"               as ta
+participant "Resource Pod A"               as raa
+participant "Resource Pod B"               as rab
+participant "Test Pod"                     as ta
 
 cli -> k8s: \
-Create an instance of the Test CRD
+Create CRDs for resources A, B and test
 
 ''''''''''''''''''''''''''''''''''''''''''''''''''
 
 ctl -> k8s: \
-Update Test Status
-
-note over ctl:\
-Status:\n\
-  Test: **Acknowledged**\n\
-  TestAgent: NotStarted\n\
-  Resources:\n\
-    A: NotCreated\n\
-    B: NotCreated
+Update test status
 
 ''''''''''''''''''''''''''''''''''''''''''''''''''
 ' Resource Provider A
 ''''''''''''''''''''''''''''''''''''''''''''''''''
 
 ctl -> k8s: \
-Run Resource Provider A
-
-note over ctl:\
-Status:\n\
-  Test: **CreatingResources**\n\
-  TestAgent: NotStarted\n\
-  Resources:\n\
-    A: **ProviderPodCreated**\n\
-    B: NotCreated
+Run resource provider A
 
 ''''''''''''''''''''''''''''''''''''''''''''''''''
 
 raa -> k8s: \
 Update Status
-
-note over ctl:\
-Status:\n\
-  Test: CreatingResources\n\
-  TestAgent: NotStarted\n\
-  Resources:\n\
-    A: **Running**\n\
-    B: NotCreated
 
 raa -> raa: \
-Create Resources `A`
+Create A resources
 
 ''''''''''''''''''''''''''''''''''''''''''''''''''
 
 raa -> k8s: \
-Update Status
-
-note over ctl:\
-Status:\n\
-  Test: CreatingResources\n\
-  TestAgent: NotStarted\n\
-  Resources:\n\
-    A: **Created, metadata {...}**\n\
-    B: NotCreated
+Update status
 
 ''''''''''''''''''''''''''''''''''''''''''''''''''
 ' Resource Provider B
 ''''''''''''''''''''''''''''''''''''''''''''''''''
 
 ctl -> k8s: \
-Run Resource Provider B
-
-note over ctl:\
-Status:\n\
-  Test: CreatingResources\n\
-  TestAgent: NotStarted\n\
-  Resources:\n\
-    A: Created, metadata {...}\n\
-    B: **ProviderPodCreated**
+Run resource provider B
 
 ''''''''''''''''''''''''''''''''''''''''''''''''''
 
 rab -> k8s: \
-Update Status
-
-note over ctl:\
-Status:\n\
-  Test: CreatingResources\n\
-  TestAgent: NotStarted\n\
-  Resources:\n\
-    A: Created, metadata {...}\n\
-    B: **Running**
+Update status
 
 rab -> rab: \
-Create Resources `B`
+Create B resources
 
 ''''''''''''''''''''''''''''''''''''''''''''''''''
 
 rab -> k8s: \
-Update Status
-
-note over ctl:\
-Status:\n\
-  Test: **ResourcesCreated**\n\
-  TestAgent: NotStarted\n\
-  Resources:\n\
-    A: Created, metadata {...}\n\
-    B: **Created, metadata {...}**
+Update status
 
 ''''''''''''''''''''''''''''''''''''''''''''''''''
 ' Run the Test
 ''''''''''''''''''''''''''''''''''''''''''''''''''
 
 ctl -> k8s: \
-Run Test Pod
-
-note over ctl:\
-Status:\n\
-  Test: **TestPodCreated**\n\
-  TestAgent: NotStarted\n\
-  Resources:\n\
-    A: Created, metadata {...}\n\
-    B: Created, metadata {...}
+Run test pod
 
 ''''''''''''''''''''''''''''''''''''''''''''''''''
 
 ta -> k8s: \
-Update Status
-
-note over ctl:\
-Status:\n\
-  Test: **TestPodRunning**\n\
-  TestAgent: **Running**\n\
-  Resources:\n\
-    A: Created, metadata {...}\n\
-    B: Created, metadata {...}
+Update status
 
 ta -> ta: \
-Run Test
+Run test
 
 ''''''''''''''''''''''''''''''''''''''''''''''''''
 
 ta -> k8s: \
-Update Status
-
-note over ctl:\
-Status:\n\
-  Test: **TestPodDone**\n\
-  TestAgent: **Pass**\n\
-  Resources:\n\
-    A: Created, metadata {...}\n\
-    B: Created, metadata {...}
+Update status
 
 ''''''''''''''''''''''''''''''''''''''''''''''''''
 ' Cleanup
 ''''''''''''''''''''''''''''''''''''''''''''''''''
-' newpage ?? not working/usable?
 
-cli -> k8s: Get any Desired Data from Test Pod
-k8s -> ta: Get Data
-k8s -> cli: Give Data
-cli -> k8s: Delete test CRD instance
-
-''''''''''''''''''''''''''''''''''''''''''''''''''
-' Delete Resource A
-''''''''''''''''''''''''''''''''''''''''''''''''''
-
-ctl -> k8s: \
-Run Resource Cleanup Pod `A`
-
-note over ctl:\
-Status:\n\
-  Test: **CleaningUpResources**\n\
-  TestAgent: Pass\n\
-  Resources:\n\
-    A: **CleanupPodCreated, metadata {...}**\n\
-    B: Created, metadata {...}
-
-raa -> k8s: \
-Update Status
-
-note over ctl:\
-Status:\n\
-  Test: CleaningUpResources\n\
-  TestAgent: Pass\n\
-  Resources:\n\
-    A: **CleanupPodRunning, metadata {...}**\n\
-    B: Created, metadata {...}
-
-raa -> raa: Delete `A` resources
-
-raa -> k8s: \
-Update Status
-
-note over ctl:\
-Status:\n\
-  Test: CleaningUpResources\n\
-  TestAgent: Pass\n\
-  Resources:\n\
-    A: **ResourcesDeleted**\n\
-    B: Created, metadata {...}
+cli -> k8s: Get info about tests or resources
+cli -> k8s: Delete test and resource CRD instances
 
 ''''''''''''''''''''''''''''''''''''''''''''''''''
 ' Delete Resource B
 ''''''''''''''''''''''''''''''''''''''''''''''''''
 
 ctl -> k8s: \
-Run Resource Cleanup Pod `B`
-
-note over ctl:\
-Status:\n\
-  Test: CleaningUpResources\n\
-  TestAgent: Pass\n\
-  Resources:\n\
-    A: ResourcesDeleted\n\
-    B: **CleanupPodCreated, metadata {...}**
+Run destruction pod `B`
 
 rab -> k8s: \
 Update Status
-
-note over ctl:\
-Status:\n\
-  Test: CleaningUpResources\n\
-  TestAgent: Pass\n\
-  Resources:\n\
-    A: ResourcesDeleted\n\
-    B: **CleanupPodRunning, metadata {...}**
 
 rab -> rab: Delete `B` resources
 
 rab -> k8s: \
 Update Status
 
-note over ctl:\
-Status:\n\
-  Test: **Done**\n\
-  TestAgent: Pass\n\
-  Resources:\n\
-    A: ResourcesDeleted\n\
-    B: **ResourcesDeleted**
+''''''''''''''''''''''''''''''''''''''''''''''''''
+' Delete Resource A
+''''''''''''''''''''''''''''''''''''''''''''''''''
+
+ctl -> k8s: \
+Run destruction pod `A`
+
+raa -> k8s: \
+Update status
+
+raa -> raa: Destroy `A` resources
+
+raa -> k8s: \
+Update status
 
 ctl -> k8s: Delete test pod
-ctl -> k8s: Delete test CRD instance
+ctl -> k8s: Delete CRD instances
 
 @enduml

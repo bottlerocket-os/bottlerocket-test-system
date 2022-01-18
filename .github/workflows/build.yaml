@@ -3,9 +3,11 @@ on:
   pull_request:
     paths-ignore:
       - '**.md'
+      - 'design/**'
   push:
     paths-ignore:
       - '**.md'
+      - 'design/**'
     branches: [develop]
 jobs:
   build:
