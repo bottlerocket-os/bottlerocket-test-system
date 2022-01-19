@@ -7,7 +7,10 @@ use env_logger::Builder;
 use log::{info, LevelFilter};
 use model::{Configuration, SecretName};
 use serde::{Deserialize, Serialize};
-use serde_plain::{derive_deserialize_from_fromstr, derive_serialize_from_display};
+use serde_plain::{
+    derive_deserialize_from_fromstr, derive_display_from_serialize,
+    derive_fromstr_from_deserialize, derive_serialize_from_display,
+};
 use snafu::{OptionExt, ResultExt};
 use std::collections::HashSet;
 use std::fmt::{Display, Formatter};
@@ -19,7 +22,7 @@ use test_agent::Runner;
 pub const AWS_CREDENTIALS_SECRET_NAME: &str = "awsCredentials";
 pub const VSPHERE_CREDENTIALS_SECRET_NAME: &str = "vsphereCredentials";
 pub const TEST_CLUSTER_KUBECONFIG_PATH: &str = "/local/test-cluster.kubeconfig";
-pub const DEFAULT_AGENT_LEVEL_FILTER: LevelFilter = LevelFilter::Info;
+pub const DEFAULT_AGENT_LEVEL_FILTER: LevelFilter = LevelFilter::Trace;
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, Default)]
 #[serde(rename_all = "camelCase")]
@@ -59,6 +62,107 @@ pub struct MigrationConfig {
 }
 
 impl Configuration for MigrationConfig {}
+
+/// The configuration information for a eks instance provider.
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct ClusterConfig {
+    /// The name of the eks cluster to create or an existing cluster.
+    pub cluster_name: String,
+
+    /// Whether this agent will create the cluster or not.
+    pub creation_policy: Option<CreationPolicy>,
+
+    /// The AWS region to create the cluster. If no value is provided `us-west-2` will be used.
+    pub region: Option<String>,
+
+    /// The availability zones. (e.g. us-west-2a,us-west-2b)
+    pub zones: Option<Vec<String>>,
+
+    /// The eks version of the the cluster (e.g. "1.14", "1.15", "1.16"). Make sure this is
+    /// quoted so that it is interpreted as a JSON/YAML string (not a number).
+    pub version: Option<K8sVersion>,
+}
+
+impl Configuration for ClusterConfig {}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum CreationPolicy {
+    /// Create the cluster, it is an error if the cluster already exists. This is the default
+    /// behavior when no `CreationPolicy` is provided.
+    Create,
+    /// Create the cluster if it does not already exist.
+    IfNotExists,
+    /// Never create the cluster, it is an error if it does not exist.
+    Never,
+}
+
+impl Default for CreationPolicy {
+    fn default() -> Self {
+        Self::Create
+    }
+}
+
+derive_display_from_serialize!(CreationPolicy);
+derive_fromstr_from_deserialize!(CreationPolicy);
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct Ec2Config {
+    /// The AMI ID of the AMI to use for the worker nodes.
+    pub node_ami: String,
+
+    /// The number of instances to create. If no value is provided 2 instances will be created.
+    pub instance_count: Option<i32>,
+
+    /// The type of instance to spin up. m5.large is recommended for x86_64 and m6g.large is
+    /// recommended for arm64 on eks. c3.large is recommended for ecs. If no value is provided
+    /// the recommended type will be used.
+    pub instance_type: Option<String>,
+
+    /// The name of the cluster we are creating instances for.
+    pub cluster_name: String,
+
+    /// The region the cluster is located in.
+    pub region: String,
+
+    /// The instance profile that should be attached to these instances.
+    pub instance_profile_arn: String,
+
+    /// The subnet the instances should be launched using.
+    pub subnet_id: String,
+
+    /// The type of cluster we are launching instances to.
+    pub cluster_type: ClusterType,
+
+    // Userdata related fields.
+    /// The eks server endpoint. The endpoint is required for eks clusters.
+    pub endpoint: Option<String>,
+
+    /// The eks certificate. The certificate is required for eks clusters.
+    pub certificate: Option<String>,
+
+    // Eks specific instance information.
+    /// The security groups that should be attached to the instances.
+    #[serde(default)]
+    pub security_groups: Vec<String>,
+}
+
+impl Configuration for Ec2Config {}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum ClusterType {
+    Eks,
+    Ecs,
+}
+
+impl Default for ClusterType {
+    fn default() -> Self {
+        Self::Eks
+    }
+}
 
 /// Represents a parsed Kubernetes version. Examples of valid values when parsing:
 /// - `v1.21`
