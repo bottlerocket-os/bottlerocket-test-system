@@ -1,6 +1,7 @@
 use aws_sdk_ecs::error::{
-    DeleteServiceError, DeregisterTaskDefinitionError, DescribeClustersError, DescribeTasksError,
-    RegisterTaskDefinitionError, RunTaskError, UpdateServiceError,
+    DeleteServiceError, DeregisterTaskDefinitionError, DescribeClustersError,
+    DescribeTaskDefinitionError, DescribeTasksError, RegisterTaskDefinitionError, RunTaskError,
+    UpdateServiceError,
 };
 use aws_sdk_ssm::error::{
     CreateDocumentError, DescribeInstanceInformationError, ListCommandInvocationsError,
@@ -117,6 +118,11 @@ pub enum Error {
         source: SdkError<RegisterTaskDefinitionError>,
     },
 
+    #[snafu(display("Unable to describe task definition: {}", source))]
+    TaskDefinitionDescribe {
+        source: SdkError<DescribeTaskDefinitionError>,
+    },
+
     #[snafu(display("Unable to run task: {}", source))]
     TaskRunCreation { source: SdkError<RunTaskError> },
 
@@ -153,4 +159,10 @@ pub enum Error {
 
     #[snafu(display("Registered container instances did not start in time: {}", source))]
     InstanceTimeout { source: tokio::time::error::Elapsed },
+
+    #[snafu(display("The default task does not exist"))]
+    TaskExist,
+
+    #[snafu(display("The task definition is missing"))]
+    TaskDefinitionMissing,
 }
