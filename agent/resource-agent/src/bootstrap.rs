@@ -40,13 +40,13 @@ pub struct BootstrapData {
 
 impl BootstrapData {
     pub fn from_env() -> Result<BootstrapData, BootstrapError> {
-        let action_str = std::env::var(ENV_RESOURCE_ACTION).context(EnvRead {
+        let action_str = std::env::var(ENV_RESOURCE_ACTION).context(EnvReadSnafu {
             key: ENV_RESOURCE_ACTION,
         })?;
         let action = ResourceAction::from_str(&action_str)
-            .context(ResourceActionParse { value: action_str })?;
+            .context(ResourceActionParseSnafu { value: action_str })?;
         Ok(BootstrapData {
-            resource_name: std::env::var(ENV_RESOURCE_NAME).context(EnvRead {
+            resource_name: std::env::var(ENV_RESOURCE_NAME).context(EnvReadSnafu {
                 key: ENV_RESOURCE_NAME,
             })?,
             action,
