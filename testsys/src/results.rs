@@ -31,7 +31,7 @@ impl Results {
                 ..Default::default()
             })
             .await
-            .context(error::GetPod {
+            .context(error::GetPodSnafu {
                 test_name: self.test_name.clone(),
             })?
             .iter()
@@ -45,7 +45,7 @@ impl Results {
         let mut cat = pods
             .exec(&pod_name, vec!["cat", TESTSYS_RESULTS_FILE], &ap)
             .await
-            .context(error::Creation {
+            .context(error::CreationSnafu {
                 what: "sonobuoy results file",
             })?;
         let mut cat_out =
@@ -54,16 +54,16 @@ impl Results {
         let mut out_file =
             tokio::fs::File::create(&self.destination)
                 .await
-                .context(error::File {
+                .context(error::FileSnafu {
                     path: &self.destination,
                 })?;
         while let Some(data) = cat_out.next().await {
             out_file
-                .write(&data.context(error::Read)?)
+                .write(&data.context(error::ReadSnafu)?)
                 .await
-                .context(error::Write)?;
+                .context(error::WriteSnafu)?;
         }
-        out_file.flush().await.context(error::Write)?;
+        out_file.flush().await.context(error::WriteSnafu)?;
 
         Ok(())
     }

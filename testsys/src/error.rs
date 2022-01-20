@@ -6,7 +6,7 @@ pub(crate) type Result<T> = std::result::Result<T, Error>;
 
 /// The crate-wide error type.
 #[derive(Debug, Snafu)]
-#[snafu(visibility = "pub(crate)")]
+#[snafu(visibility(pub(crate)))]
 pub(crate) enum Error {
     #[snafu(display(
         "Unable to parse argument '{}' as key value pair, expected key=value syntax",

@@ -75,7 +75,7 @@ impl RunSonobuoy {
     pub(crate) async fn run(&self, k8s_client: Client) -> Result<()> {
         let kubeconfig_string = match (&self.target_cluster_kubeconfig_path, &self.target_cluster_kubeconfig) {
             (Some(kubeconfig_path), None) => base64::encode(
-                read_to_string(kubeconfig_path).context(error::File {
+                read_to_string(kubeconfig_path).context(error::FileSnafu {
                     path: kubeconfig_path,
                 })?,
             ),
@@ -107,7 +107,7 @@ impl RunSonobuoy {
                             kube_conformance_image: self.kubernetes_conformance_image.clone(),
                         }
                         .into_map()
-                        .context(error::ConfigMap)?,
+                        .context(error::ConfigMapSnafu)?,
                     ),
                     secrets: self.aws_secret.as_ref().map(|secret_name| {
                         let mut secrets_map = BTreeMap::new();
@@ -122,7 +122,7 @@ impl RunSonobuoy {
 
         let tests = TestClient::new_from_k8s_client(k8s_client);
 
-        tests.create(test).await.context(error::CreateTest)?;
+        tests.create(test).await.context(error::CreateTestSnafu)?;
 
         Ok(())
     }

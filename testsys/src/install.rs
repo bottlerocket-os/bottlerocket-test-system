@@ -108,7 +108,7 @@ async fn create_namespace(client: &Client) -> Result<()> {
 
     api.get(NAMESPACE)
         .await
-        .context(error::Creation { what: "namespace" })?;
+        .context(error::CreationSnafu { what: "namespace" })?;
 
     Ok(())
 }
@@ -202,7 +202,7 @@ async fn create_secret(
     // Create secret for controller image pull.
     let sec_str =
         serde_json::to_string_pretty(&DockerConfigJson::new(username, password, registry_url))
-            .context(error::JsonSerialize)?;
+            .context(error::JsonSerializeSnafu)?;
     let mut secret_tree = BTreeMap::new();
     secret_tree.insert(".dockerconfigjson".to_string(), sec_str);
 

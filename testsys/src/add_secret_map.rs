@@ -51,9 +51,9 @@ fn parse_key_val(s: &str) -> Result<(String, String)> {
     let mut iter = s.splitn(2, '=');
     let key = iter
         .next()
-        .context(error::ArgumentMissing { arg: s.to_string() })?;
+        .context(error::ArgumentMissingSnafu { arg: s.to_string() })?;
     let value = iter
         .next()
-        .context(error::ArgumentMissing { arg: s.to_string() })?;
+        .context(error::ArgumentMissingSnafu { arg: s.to_string() })?;
     Ok((key.to_string(), value.to_string()))
 }

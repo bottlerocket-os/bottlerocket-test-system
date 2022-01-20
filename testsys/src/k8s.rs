@@ -16,13 +16,15 @@ use std::path::PathBuf;
 /// (e.g. `KUBECONFIG`).
 pub(crate) async fn k8s_client(kubeconfig: &Option<PathBuf>) -> Result<Client> {
     match kubeconfig {
-        None => Ok(Client::try_default().await.context(error::ClientCreate)?),
+        None => Ok(Client::try_default()
+            .await
+            .context(error::ClientCreateSnafu)?),
         Some(config_path) => {
-            let kubeconfig = Kubeconfig::read_from(config_path).context(error::ConfigRead)?;
+            let kubeconfig = Kubeconfig::read_from(config_path).context(error::ConfigReadSnafu)?;
             let config = Config::from_custom_kubeconfig(kubeconfig, &KubeConfigOptions::default())
                 .await
-                .context(error::ClientCreateKubeconfig)?;
-            Ok(config.try_into().context(error::ClientCreate)?)
+                .context(error::ClientCreateKubeconfigSnafu)?;
+            Ok(config.try_into().context(error::ClientCreateSnafu)?)
         }
     }
 }
@@ -66,7 +68,7 @@ where
         }
         Err(_err) => api.create(&PostParams::default(), &data).await,
     }
-    .context(error::Creation { what })?;
+    .context(error::CreationSnafu { what })?;
 
     Ok(())
 }

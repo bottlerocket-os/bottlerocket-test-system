@@ -86,7 +86,7 @@ impl Status {
         if self.json {
             println!(
                 "{}",
-                serde_json::to_string(&status_results).context(error::JsonSerialize)?
+                serde_json::to_string(&status_results).context(error::JsonSerializeSnafu)?
             )
         }
         if !failures.is_empty() {
@@ -105,11 +105,11 @@ impl Status {
             test_client
                 .get_all()
                 .await
-                .context(error::Get { what: "all_tests" })
+                .context(error::GetSnafu { what: "all_tests" })
         } else {
             stream::iter(test_names)
                 .then(|test_name| async move {
-                    test_client.get(&test_name).await.context(error::Get {
+                    test_client.get(&test_name).await.context(error::GetSnafu {
                         what: test_name.clone(),
                     })
                 })
@@ -126,7 +126,7 @@ impl Status {
             None => return Ok(Vec::new()),
         };
         if resource_names.is_empty() {
-            resource_client.get_all().await.context(error::Get {
+            resource_client.get_all().await.context(error::GetSnafu {
                 what: "all_resources",
             })
         } else {
@@ -135,7 +135,7 @@ impl Status {
                     resource_client
                         .get(&resource_name)
                         .await
-                        .context(error::Get {
+                        .context(error::GetSnafu {
                             what: resource_name.clone(),
                         })
                 })
@@ -154,7 +154,7 @@ async fn is_controller_running(pod_api: &Api<Pod>) -> Result<bool> {
             ..Default::default()
         })
         .await
-        .context(error::GetPod {
+        .context(error::GetPodSnafu {
             test_name: "controller",
         })?
         .items;
