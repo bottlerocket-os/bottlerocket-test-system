@@ -538,7 +538,7 @@ dependencies = [
  "serde_json",
  "serde_plain",
  "sha2",
- "snafu 0.6.10",
+ "snafu 0.7.0",
  "test-agent",
  "tokio",
  "tough",

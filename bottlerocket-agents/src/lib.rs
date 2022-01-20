@@ -310,9 +310,9 @@ pub async fn decode_write_kubeconfig(
     let kubeconfig_path = Path::new(kubeconfig_path);
     info!("Decoding kubeconfig for test cluster");
     let decoded_bytes =
-        base64::decode(kubeconfig_base64.as_bytes()).context(error::Base64Decode)?;
+        base64::decode(kubeconfig_base64.as_bytes()).context(error::Base64DecodeSnafu)?;
     info!("Storing kubeconfig in {}", kubeconfig_path.display());
-    fs::write(kubeconfig_path, decoded_bytes).context(error::KubeconfigWrite)?;
+    fs::write(kubeconfig_path, decoded_bytes).context(error::KubeconfigWriteSnafu)?;
     Ok(())
 }
 
@@ -350,23 +350,23 @@ where
 {
     let aws_secret = runner
         .get_secret(aws_secret_name)
-        .context(error::SecretMissing)?;
+        .context(error::SecretMissingSnafu)?;
 
     let access_key_id = String::from_utf8(
         aws_secret
             .get("access-key-id")
-            .context(error::EnvSetup {
+            .context(error::EnvSetupSnafu {
                 what: format!("access-key-id missing from secret '{}'", aws_secret_name),
             })?
             .to_owned(),
     )
-    .context(error::Conversion {
+    .context(error::ConversionSnafu {
         what: "access-key-id",
     })?;
     let secret_access_key = String::from_utf8(
         aws_secret
             .get("secret-access-key")
-            .context(error::EnvSetup {
+            .context(error::EnvSetupSnafu {
                 what: format!(
                     "secret-access-key missing from secret '{}'",
                     aws_secret_name
@@ -374,7 +374,7 @@ where
             })?
             .to_owned(),
     )
-    .context(error::Conversion {
+    .context(error::ConversionSnafu {
         what: "access-key-id",
     })?;
 

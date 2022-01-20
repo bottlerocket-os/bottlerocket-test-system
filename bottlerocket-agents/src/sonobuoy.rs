@@ -67,20 +67,20 @@ pub async fn run_sonobuoy(
         .arg(&sonobuoy_config.mode.to_string())
         .args(k8s_image_arg)
         .status()
-        .context(error::SonobuoyProcess)?;
+        .context(error::SonobuoyProcessSnafu)?;
     info!("Sonobuoy testing has completed, checking results");
 
     // TODO - log something or check what happened?
-    ensure!(status.success(), error::SonobuoyRun);
+    ensure!(status.success(), error::SonobuoyRunSnafu);
 
     info!("Running sonobuoy retrieve");
     let status = Command::new("/usr/bin/sonobuoy")
-        .current_dir(results_dir.to_str().context(error::ResultsLocation)?)
+        .current_dir(results_dir.to_str().context(error::ResultsLocationSnafu)?)
         .args(kubeconfig_arg.to_owned())
         .arg("retrieve")
         .status()
-        .context(error::SonobuoyProcess)?;
-    ensure!(status.success(), error::SonobuoyRun);
+        .context(error::SonobuoyProcessSnafu)?;
+    ensure!(status.success(), error::SonobuoyRunSnafu);
 
     info!("Getting Sonobuoy status");
     let run_result = Command::new("/usr/bin/sonobuoy")
@@ -88,23 +88,23 @@ pub async fn run_sonobuoy(
         .arg("status")
         .arg("--json")
         .output()
-        .context(error::SonobuoyProcess)?;
+        .context(error::SonobuoyProcessSnafu)?;
 
     let stdout = String::from_utf8_lossy(&run_result.stdout);
     info!("Parsing the following sonobuoy results output:\n{}", stdout);
 
     trace!("Parsing sonobuoy results as json");
     let run_status: serde_json::Value =
-        serde_json::from_str(&stdout).context(error::DeserializeJson)?;
+        serde_json::from_str(&stdout).context(error::DeserializeJsonSnafu)?;
     trace!("The sonobuoy results are valid json");
 
     let e2e_status = run_status
         .get("plugins")
-        .context(error::MissingSonobuoyStatusField { field: "plugins" })?
+        .context(error::MissingSonobuoyStatusFieldSnafu { field: "plugins" })?
         .as_array()
-        .context(error::MissingSonobuoyStatusField { field: "plugins" })?
+        .context(error::MissingSonobuoyStatusFieldSnafu { field: "plugins" })?
         .first()
-        .context(error::MissingSonobuoyStatusField {
+        .context(error::MissingSonobuoyStatusFieldSnafu {
             field: format!("plugins.{}", sonobuoy_config.plugin),
         })?;
 
@@ -116,24 +116,24 @@ pub async fn run_sonobuoy(
 
     let result_status = e2e_status
         .get("result-status")
-        .context(error::MissingSonobuoyStatusField {
+        .context(error::MissingSonobuoyStatusFieldSnafu {
             field: format!("plugins.{}.result-status", sonobuoy_config.plugin),
         })?
         .as_str()
-        .context(error::MissingSonobuoyStatusField {
+        .context(error::MissingSonobuoyStatusFieldSnafu {
             field: format!("plugins.{}.result-status", sonobuoy_config.plugin),
         })?;
     let result_counts = run_status
         .get("plugins")
-        .context(error::MissingSonobuoyStatusField { field: "plugins" })?
+        .context(error::MissingSonobuoyStatusFieldSnafu { field: "plugins" })?
         .as_array()
-        .context(error::MissingSonobuoyStatusField { field: "plugins" })?
+        .context(error::MissingSonobuoyStatusFieldSnafu { field: "plugins" })?
         .first()
-        .context(error::MissingSonobuoyStatusField {
+        .context(error::MissingSonobuoyStatusFieldSnafu {
             field: format!("plugins.{}", sonobuoy_config.plugin),
         })?
         .get("result-counts")
-        .context(error::MissingSonobuoyStatusField {
+        .context(error::MissingSonobuoyStatusFieldSnafu {
             field: format!("plugins.{}.result-counts", sonobuoy_config.plugin),
         })?;
     let num_passed = result_counts
@@ -172,8 +172,8 @@ pub async fn delete_sonobuoy(kubeconfig_path: &str) -> Result<(), error::Error> 
         .arg("delete")
         .arg("--wait")
         .status()
-        .context(error::SonobuoyProcess)?;
-    ensure!(status.success(), error::SonobuoyDelete);
+        .context(error::SonobuoyProcessSnafu)?;
+    ensure!(status.success(), error::SonobuoyDeleteSnafu);
 
     Ok(())
 }

@@ -12,7 +12,7 @@ use std::string::FromUtf8Error;
 use tokio::time::error::Elapsed;
 
 #[derive(Debug, Snafu)]
-#[snafu(visibility = "pub")]
+#[snafu(visibility(pub))]
 pub enum Error {
     #[snafu(display("Failed to base64-decode kubeconfig for test cluster: {}", source))]
     Base64Decode { source: base64::DecodeError },
