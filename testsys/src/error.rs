@@ -69,6 +69,12 @@ pub(crate) enum Error {
     #[snafu(display("Could not extract registry url from '{}'", uri))]
     MissingRegistry { uri: String },
 
+    #[snafu(display("{}: {}", message, source))]
+    ModelClient {
+        message: String,
+        source: model::clients::Error,
+    },
+
     #[snafu(display("No stdout from request"))]
     NoOut,
 
