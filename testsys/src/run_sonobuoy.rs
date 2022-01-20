@@ -3,11 +3,8 @@ use bottlerocket_agents::sonobuoy::Mode;
 use bottlerocket_agents::{K8sVersion, SonobuoyConfig, AWS_CREDENTIALS_SECRET_NAME};
 use kube::{api::ObjectMeta, Client};
 use model::clients::CrdClient;
-use model::{
-    clients::TestClient,
-    constants::{API_VERSION, NAMESPACE},
-    Agent, Configuration, SecretName, Test, TestSpec,
-};
+use model::constants::NAMESPACE;
+use model::{clients::TestClient, Agent, Configuration, SecretName, Test, TestSpec};
 use snafu::ResultExt;
 use std::{collections::BTreeMap, fs::read_to_string, path::PathBuf};
 use structopt::StructOpt;
@@ -87,8 +84,6 @@ impl RunSonobuoy {
         };
 
         let test = Test {
-            api_version: API_VERSION.into(),
-            kind: "Test".to_string(),
             metadata: ObjectMeta {
                 name: Some(self.name.clone()),
                 namespace: Some(NAMESPACE.into()),

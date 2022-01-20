@@ -7,7 +7,7 @@ use bottlerocket_agents::{
 use kube::{api::ObjectMeta, Client};
 use maplit::btreemap;
 use model::clients::{CrdClient, ResourceClient, TestClient};
-use model::constants::{API_VERSION, NAMESPACE};
+use model::constants::NAMESPACE;
 use model::{
     Agent, Configuration, DestructionPolicy, Resource, ResourceSpec, SecretName, Test, TestSpec,
 };
@@ -133,8 +133,6 @@ impl RunAwsK8s {
         });
 
         let eks_resource = Resource {
-            api_version: API_VERSION.into(),
-            kind: "Resource".to_string(),
             metadata: ObjectMeta {
                 name: Some(cluster_resource_name.clone()),
                 namespace: Some(NAMESPACE.into()),
@@ -193,8 +191,6 @@ impl RunAwsK8s {
         }
 
         let ec2_resource = Resource {
-            api_version: API_VERSION.into(),
-            kind: "Resource".to_string(),
             metadata: ObjectMeta {
                 name: Some(ec2_resource_name.clone()),
                 namespace: Some(NAMESPACE.into()),
@@ -217,8 +213,6 @@ impl RunAwsK8s {
         };
 
         let test = Test {
-            api_version: API_VERSION.into(),
-            kind: "Test".to_string(),
             metadata: ObjectMeta {
                 name: Some(self.name.clone()),
                 namespace: Some(NAMESPACE.into()),
