@@ -31,7 +31,7 @@ pub(crate) enum InnerError {
 impl BootstrapData {
     pub fn from_env() -> Result<BootstrapData, BootstrapError> {
         Ok(BootstrapData {
-            test_name: std::env::var(ENV_TEST_NAME).context(EnvRead { key: ENV_TEST_NAME })?,
+            test_name: std::env::var(ENV_TEST_NAME).context(EnvReadSnafu { key: ENV_TEST_NAME })?,
         })
     }
 }

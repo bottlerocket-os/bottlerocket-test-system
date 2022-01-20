@@ -2506,7 +2506,7 @@ dependencies = [
  "model",
  "serde",
  "serde_json",
- "snafu 0.6.10",
+ "snafu 0.7.0",
  "tar",
  "tempfile",
  "tokio",
