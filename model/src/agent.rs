@@ -129,7 +129,7 @@ impl SecretName {
         let s = value.into();
         ensure!(
             REGEX.is_match(&s),
-            error::SecretNameValidation {
+            error::SecretNameValidationSnafu {
                 secret_name: s.as_str(),
                 regex: Self::PATTERN_REGEX
             }

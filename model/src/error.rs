@@ -5,7 +5,7 @@ pub struct Error(OpaqueError);
 pub type Result<T> = std::result::Result<T, Error>;
 
 #[derive(Debug, Snafu)]
-#[snafu(visibility = "pub(crate)")]
+#[snafu(visibility(pub(crate)))]
 pub(crate) enum OpaqueError {
     #[snafu(display("Error deserializing configuration: {}", source))]
     ConfigDeserialization { source: serde_json::Error },

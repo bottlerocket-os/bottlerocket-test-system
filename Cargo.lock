@@ -1502,7 +1502,7 @@ dependencies = [
  "serde",
  "serde_json",
  "serde_plain",
- "snafu 0.6.10",
+ "snafu 0.7.0",
  "tokio",
 ]
 

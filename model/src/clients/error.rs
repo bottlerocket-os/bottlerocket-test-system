@@ -11,7 +11,7 @@ pub struct Error(InnerError);
 
 /// The private error type returned by `clients`.
 #[derive(Debug, Snafu)]
-#[snafu(visibility = "pub(super)")]
+#[snafu(visibility(pub(super)))]
 pub(crate) enum InnerError {
     #[snafu(display("{}", source))]
     ConfigSerde { source: ModelError },

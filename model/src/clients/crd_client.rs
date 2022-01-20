@@ -34,7 +34,7 @@ pub trait CrdClient: Sized {
     async fn new() -> Result<Self> {
         let k8s_client = kube::Client::try_default()
             .await
-            .context(error::Initialization)?;
+            .context(error::InitializationSnafu)?;
         Ok(Self::new_from_k8s_client(k8s_client))
     }
 
@@ -51,10 +51,14 @@ pub trait CrdClient: Sized {
         S: AsRef<str> + Send,
     {
         let name: &str = name.as_ref();
-        Ok(self.api().get(name).await.context(error::KubeApiCall {
-            method: "get",
-            what: self.kind(),
-        })?)
+        Ok(self
+            .api()
+            .get(name)
+            .await
+            .context(error::KubeApiCallSnafu {
+                method: "get",
+                what: self.kind(),
+            })?)
     }
 
     async fn get_all(&self) -> Result<Vec<Self::Crd>> {
@@ -62,7 +66,7 @@ pub trait CrdClient: Sized {
             .api()
             .list(&ListParams::default())
             .await
-            .context(error::KubeApiCallFor {
+            .context(error::KubeApiCallForSnafu {
                 operation: "get all",
                 name: format!("{}s", self.kind()),
             })?
@@ -74,7 +78,7 @@ pub trait CrdClient: Sized {
             .api()
             .create(&PostParams::default(), &crd)
             .await
-            .context(error::KubeApiCall {
+            .context(error::KubeApiCallSnafu {
                 method: "create",
                 what: self.kind(),
             })?)
@@ -116,7 +120,7 @@ pub trait CrdClient: Sized {
         } else {
             ensure!(
                 !crd.has_finalizer(finalizer),
-                error::DuplicateFinalizer { finalizer }
+                error::DuplicateFinalizerSnafu { finalizer }
             );
             self.patch(
                 crd.object_name(),
@@ -140,7 +144,7 @@ pub trait CrdClient: Sized {
 
         let finalizer_idx = crd
             .finalizer_position(finalizer)
-            .context(error::DeleteMissingFinalizer { finalizer })?;
+            .context(error::DeleteMissingFinalizerSnafu { finalizer })?;
 
         self.patch(
             crd.object_name(),
@@ -178,7 +182,7 @@ pub trait CrdClient: Sized {
                 &Patch::<Self::Crd>::Json(patch),
             )
             .await
-            .context(error::KubeApiCallFor {
+            .context(error::KubeApiCallForSnafu {
                 operation: description,
                 name,
             })?)
@@ -211,7 +215,7 @@ pub trait CrdClient: Sized {
                 &Patch::<Self::Crd>::Json(patch),
             )
             .await
-            .context(error::KubeApiCallFor {
+            .context(error::KubeApiCallForSnafu {
                 operation: description,
                 name,
             })?)

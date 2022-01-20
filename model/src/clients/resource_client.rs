@@ -47,7 +47,7 @@ impl ResourceClient {
             None => return Ok(C::default()),
             Some(some) => some,
         };
-        Ok(C::from_map(info).context(error::ConfigSerde)?)
+        Ok(C::from_map(info).context(error::ConfigSerdeSnafu)?)
     }
 
     pub async fn send_agent_info<C>(&self, name: &str, info: C) -> Result<Resource>
@@ -75,7 +75,7 @@ impl ResourceClient {
         // Add test results here.
         let map = self.resolve_templated_config(map).await?;
 
-        Ok(R::from_map(map).context(error::ConfigSerde)?)
+        Ok(R::from_map(map).context(error::ConfigSerdeSnafu)?)
     }
 
     /// This function resolves an agents config by populating it's templated fields.
@@ -123,7 +123,7 @@ impl ResourceClient {
             None => return Ok(None),
             Some(some) => some,
         };
-        Ok(Some(R::from_map(map).context(error::ConfigSerde)?))
+        Ok(Some(R::from_map(map).context(error::ConfigSerdeSnafu)?))
     }
 
     pub async fn send_error(
@@ -200,12 +200,14 @@ impl ResourceClient {
             let resource = self.get(resource_name).await?;
             let results = resource
                 .created_resource()
-                .context(error::ConfigResolution {
+                .context(error::ConfigResolutionSnafu {
                     what: "Created resource missing from resource.".to_string(),
                 })?;
-            let updated_value = results.get(&field_name).context(error::ConfigResolution {
-                what: format!("No field '{}' in created resource", field_name),
-            })?;
+            let updated_value = results
+                .get(&field_name)
+                .context(error::ConfigResolutionSnafu {
+                    what: format!("No field '{}' in created resource", field_name),
+                })?;
             Ok(updated_value.to_owned())
         } else {
             Ok(Value::String(input))
@@ -220,13 +222,13 @@ fn resource_name_and_field_name(input: &str) -> Result<Option<(String, String)>>
     };
     let resource_name = captures
         .get(1)
-        .context(error::ConfigResolution {
+        .context(error::ConfigResolutionSnafu {
             what: "Resource name could not be extracted from capture.".to_string(),
         })?
         .as_str();
     let field_name = captures
         .get(2)
-        .context(error::ConfigResolution {
+        .context(error::ConfigResolutionSnafu {
             what: "Resource value could not be extracted from capture.".to_string(),
         })?
         .as_str();

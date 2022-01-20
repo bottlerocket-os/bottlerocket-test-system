@@ -26,13 +26,13 @@ pub trait Configuration:
     fn into_map(self) -> Result<Map<String, Value>> {
         match self.into_value()? {
             Value::Object(map) => Ok(map),
-            _ => Err(error::ConfigWrongValueType {}.build().into()),
+            _ => Err(error::ConfigWrongValueTypeSnafu {}.build().into()),
         }
     }
 
     /// Convert the `Configuration` object to a serde `Value`.
     fn into_value(self) -> Result<Value> {
-        Ok(serde_json::to_value(self).context(error::ConfigSerialization)?)
+        Ok(serde_json::to_value(self).context(error::ConfigSerializationSnafu)?)
     }
 
     /// Deserialize the `Configuration` object from a serde `Map`.
@@ -42,6 +42,6 @@ pub trait Configuration:
 
     /// Deserialize the `Configuration` object from a serde `Value`.
     fn from_value(value: Value) -> Result<Self> {
-        Ok(serde_json::from_value(value).context(error::ConfigDeserialization)?)
+        Ok(serde_json::from_value(value).context(error::ConfigDeserializationSnafu)?)
     }
 }
