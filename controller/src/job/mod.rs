@@ -76,7 +76,7 @@ fn parse_job_state(job: &Job) -> JobResult<JobState> {
     // There should be exactly one container.
     ensure!(
         running + succeeded + failed == 1,
-        error::TooManyJobContainers {
+        error::TooManyJobContainersSnafu {
             job_name: job
                 .metadata
                 .name

@@ -5,7 +5,7 @@ use snafu::Snafu;
 pub(crate) type JobResult<T> = std::result::Result<T, JobError>;
 
 #[derive(Debug, Snafu)]
-#[snafu(visibility = "pub(super)")]
+#[snafu(visibility(pub(super)))]
 pub(crate) enum JobError {
     #[snafu(display("Job already exists: {}", source))]
     AlreadyExists { source: kube::Error },
