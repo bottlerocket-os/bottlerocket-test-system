@@ -1,3 +1,11 @@
+/*!
+
+The `test-agent` library allows you do design custom tests for TestSys to run. You do this by
+implementing the [`Runner`] trait, then handing these to an [`Agent`] object, which you then package
+as a binary in a container to run in the cluster.
+
+!*/
+
 mod agent;
 mod bootstrap;
 pub mod error;

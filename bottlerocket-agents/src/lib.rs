@@ -1,3 +1,11 @@
+/*!
+
+`bottlerocket-agents` is a collection of test agent and resource agent implementations used to test
+Bottlerocket instances.
+This `lib.rs` provides code that is used by multiple agent binaries orused by the `testsys` CLI.
+
+!*/
+
 pub mod error;
 pub mod sonobuoy;
 

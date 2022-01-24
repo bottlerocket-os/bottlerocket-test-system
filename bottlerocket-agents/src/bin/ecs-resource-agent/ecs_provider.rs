@@ -107,7 +107,7 @@ impl Create for EcsCreator {
             .unwrap_or(&DEFAULT_REGION.to_string())
             .to_string();
 
-        // Write aws credentials if we need them so we can run Ecsctl
+        // Write aws credentials if we have them so we can use AWS APIs.
         if let Some(aws_secret_name) = spec.secrets.get(AWS_CREDENTIALS_SECRET_NAME) {
             setup_resource_env(client, aws_secret_name, Resources::Clear).await?;
             memo.aws_secret_name = Some(aws_secret_name.clone());
@@ -185,7 +185,7 @@ async fn create_iam_instance_profile(
                 .policy_arn("arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore")
                 .send()
                 .await
-                .context(Resources::Remaining, "Unable to attach AmasonSSM policy")?;
+                .context(Resources::Remaining, "Unable to attach AmazonSSM policy")?;
             iam_client
                 .attach_role_policy()
                 .role_name(IAM_INSTANCE_PROFILE_NAME)
@@ -214,7 +214,7 @@ async fn create_iam_instance_profile(
                     Resources::Remaining,
                     "Unable to add role to instance profile",
                 )?;
-            // TODO: find a better way to allow propogation than a sleep.
+            // TODO: find a better way to allow propagation than a sleep.
             tokio::time::sleep(Duration::from_secs(60)).await;
             instance_profile_arn(iam_client).await
         }

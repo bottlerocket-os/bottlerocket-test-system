@@ -1,16 +1,16 @@
 /*!
 
-This is a test-agent for upgrade/downgrading a set of Bottlerocket instances to a target version and
-ensure the instances successfully migrate to the target version.
-It needs to run in a pod in a K8s cluster containing all the testsys-related CRDs.
-(See yamlgen/deploy/testsys.yaml)
+This is a test-agent for upgrading/downgrading a set of Bottlerocket instances to a target version
+and ensuring the instances successfully migrate to the target version.
+It expects to be run in a pod launched by the TestSys controller.
 
 See `MigrateConfig` for different configuration values.
 
 To build the container for the migration test agent, run `make migration-test-agent` from the
 root directory of this repository.
 
-Here is an example manifest for deploying the test definition for the migration test agent to a K8s cluster:
+Here is an example manifest for deploying the test definition for the migration test agent to a K8s
+cluster. This can also be done without YAML using the `testsys` command line interface:
 
 
 ```yaml

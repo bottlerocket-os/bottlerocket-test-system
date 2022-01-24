@@ -1,3 +1,9 @@
+/*!
+
+Provides (or queries) an ECS cluster for use in Bottlerocket testing.
+
+!*/
+
 mod ecs_provider;
 
 use crate::ecs_provider::{EcsCreator, EcsDestroyer};

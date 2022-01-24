@@ -1,4 +1,8 @@
-// TODO - rename this module https://github.com/bottlerocket-os/bottlerocket-test-system/issues/91
+/*!
+
+This module provides clients that the resource agent uses to talk to Kubernetes.
+
+!*/
 
 mod agent_client;
 mod error;

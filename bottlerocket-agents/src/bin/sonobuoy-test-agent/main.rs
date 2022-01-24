@@ -1,8 +1,7 @@
 /*!
 
 This is a test-agent for running sonobuoy Kubernetes tests.
-It needs to run in a pod in a K8s cluster containing all the testsys-related CRDs.
-(See yamlgen/deploy/testsys.yaml)
+It expects to be run in a pod launched by the TestSys controller.
 
 You can configure sonobuoy to run different types of plugins and tests.
 See `SonobuoyConfig` for the different configuration values.

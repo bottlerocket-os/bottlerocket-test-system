@@ -94,7 +94,6 @@ async fn dependency_wait_action(r: &ResourceInterface) -> Result<Option<Creation
     // Make sure each resource in depends_on is ready.
     // TODO - error if cyclical dependencies https://github.com/bottlerocket-os/bottlerocket-test-system/issues/156
     for needed in depends_on {
-        // TODO - error if 404/not-found https://github.com/bottlerocket-os/bottlerocket-test-system/issues/157
         let needed_resource = r.resource_client().get(needed).await?;
         if needed_resource.created_resource().is_none() {
             return Ok(Some(CreationAction::WaitForDependency(
