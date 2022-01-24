@@ -2,8 +2,8 @@
 # This Dockfile contains separate targets for each testsys agent
 # =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^=
 # Shared build stage used to build the testsys agent binary
-ARG ARCH
-FROM public.ecr.aws/bottlerocket/bottlerocket-sdk-${ARCH}:v0.23.0 as build
+ARG BUILDER_IMAGE
+FROM ${BUILDER_IMAGE} as build
 
 ARG ARCH
 USER root

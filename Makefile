@@ -9,6 +9,11 @@ TESTSYS_BUILD_HOST_UNAME_ARCH=$(shell uname -m)
 TESTSYS_BUILD_HOST_GOARCH ?= $(lastword $(subst :, ,$(filter $(TESTSYS_BUILD_HOST_UNAME_ARCH):%,x86_64:amd64 aarch64:arm64)))
 TESTSYS_BUILD_HOST_PLATFORM=$(shell uname | tr '[:upper:]' '[:lower:]')
 
+BOTTLEROCKET_SDK_VERSION = v0.23.0
+BOTTLEROCKET_SDK_ARCH = $(TESTSYS_BUILD_HOST_UNAME_ARCH)
+
+BUILDER_IMAGE = public.ecr.aws/bottlerocket/bottlerocket-sdk-$(BOTTLEROCKET_SDK_ARCH):$(BOTTLEROCKET_SDK_VERSION)
+
 export DOCKER_BUILDKIT=1
 export CARGO_HOME = $(TOP)/.cargo
 
@@ -37,6 +42,7 @@ build: fetch
 example-test-agent: show-variables fetch
 	docker build $(DOCKER_BUILD_FLAGS) \
 		--build-arg ARCH="$(TESTSYS_BUILD_HOST_UNAME_ARCH)" \
+		--build-arg BUILDER_IMAGE="$(BUILDER_IMAGE)" \
 		--tag "example-test-agent" \
 		--network none \
 		-f agent/test-agent/examples/example_test_agent/Dockerfile .
@@ -45,6 +51,7 @@ example-test-agent: show-variables fetch
 example-resource-agent: show-variables fetch
 	docker build $(DOCKER_BUILD_FLAGS) \
 		--build-arg ARCH="$(TESTSYS_BUILD_HOST_UNAME_ARCH)" \
+		--build-arg BUILDER_IMAGE="$(BUILDER_IMAGE)" \
 		--tag "example-resource-agent" \
 		--network none \
 		-f agent/resource-agent/examples/example_resource_agent/Dockerfile .
@@ -53,6 +60,7 @@ example-resource-agent: show-variables fetch
 duplicator-resource-agent: show-variables fetch
 	docker build $(DOCKER_BUILD_FLAGS) \
 		--build-arg ARCH="$(TESTSYS_BUILD_HOST_UNAME_ARCH)" \
+		--build-arg BUILDER_IMAGE="$(BUILDER_IMAGE)" \
 		--tag "duplicator-resource-agent" \
 		--network none \
 		-f agent/resource-agent/examples/duplicator_resource_agent/Dockerfile .
@@ -61,6 +69,7 @@ duplicator-resource-agent: show-variables fetch
 controller: show-variables fetch
 	docker build $(DOCKER_BUILD_FLAGS) \
 		--build-arg ARCH="$(TESTSYS_BUILD_HOST_UNAME_ARCH)" \
+		--build-arg BUILDER_IMAGE="$(BUILDER_IMAGE)" \
 		--tag "controller" \
 		-f controller/Dockerfile .
 
@@ -68,6 +77,7 @@ controller: show-variables fetch
 eks-resource-agent ec2-resource-agent ecs-resource-agent vsphere-vm-resource-agent sonobuoy-test-agent migration-test-agent ecs-test-agent: show-variables fetch
 	docker build $(DOCKER_BUILD_FLAGS) \
 		--build-arg ARCH="$(TESTSYS_BUILD_HOST_UNAME_ARCH)" \
+		--build-arg BUILDER_IMAGE="$(BUILDER_IMAGE)" \
 		--build-arg GOARCH="$(TESTSYS_BUILD_HOST_GOARCH)" \
 		--target $@ \
 		--tag $@ \
