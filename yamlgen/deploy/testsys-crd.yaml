@@ -14,7 +14,13 @@ spec:
     singular: test
   scope: Namespaced
   versions:
-    - additionalPrinterColumns: []
+    - additionalPrinterColumns:
+        - jsonPath: ".status.agent.taskState"
+          name: State
+          type: string
+        - jsonPath: ".status.agent.results.outcome"
+          name: Result
+          type: string
       name: v1
       schema:
         openAPIV3Schema:
@@ -170,7 +176,16 @@ spec:
     singular: resource
   scope: Namespaced
   versions:
-    - additionalPrinterColumns: []
+    - additionalPrinterColumns:
+        - jsonPath: ".spec.destructionPolicy"
+          name: DestructionPolicy
+          type: string
+        - jsonPath: ".status.agent.creation.taskState"
+          name: CreationState
+          type: string
+        - jsonPath: ".status.agent.destruction.taskState"
+          name: CreationState
+          type: string
       name: v1
       schema:
         openAPIV3Schema:

@@ -21,7 +21,10 @@ use std::fmt::{Display, Formatter};
     plural = "resources",
     singular = "resource",
     status = "ResourceStatus",
-    version = "v1"
+    version = "v1",
+    printcolumn = r#"{"name":"DestructionPolicy", "type":"string", "jsonPath":".spec.destructionPolicy"}"#,
+    printcolumn = r#"{"name":"CreationState", "type":"string", "jsonPath":".status.creation.taskState"}"#,
+    printcolumn = r#"{"name":"DestructionState", "type":"string", "jsonPath":".status.destruction.taskState"}"#
 )]
 #[serde(rename_all = "camelCase")]
 pub struct ResourceSpec {
@@ -34,7 +37,6 @@ pub struct ResourceSpec {
     #[serde(deserialize_with = "crate::schema_utils::null_to_default")]
     #[serde(default)]
     #[schemars(schema_with = "crate::schema_utils::nullable_enum::<DestructionPolicy>")]
-    // #[schemars(nullable_enum)]
     pub destruction_policy: DestructionPolicy,
 }
 
