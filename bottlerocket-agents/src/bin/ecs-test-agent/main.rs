@@ -4,7 +4,7 @@ use aws_sdk_ec2::Region;
 use aws_sdk_ecs::model::LaunchType;
 use bottlerocket_agents::error::{self, Error};
 use bottlerocket_agents::{
-    init_agent_logger, setup_env, EcsTestConfig, AWS_CREDENTIALS_SECRET_NAME,
+    init_agent_logger, setup_test_env, EcsTestConfig, AWS_CREDENTIALS_SECRET_NAME,
 };
 use log::info;
 use model::{Outcome, SecretName, TestResults};
@@ -35,7 +35,7 @@ impl Runner for EcsTestRunner {
     async fn run(&mut self) -> Result<TestResults, Self::E> {
         // Set up the aws credentials if they were provided.
         if let Some(aws_secret_name) = &self.aws_secret_name {
-            setup_env(self, aws_secret_name).await?;
+            setup_test_env(self, aws_secret_name).await?;
         }
 
         let region_provider = RegionProviderChain::first_try(Some(Region::new(

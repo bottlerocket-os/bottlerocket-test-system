@@ -6,6 +6,8 @@ use crate::sonobuoy::Mode;
 use env_logger::Builder;
 use log::{info, LevelFilter};
 use model::{Configuration, SecretName};
+use resource_agent::clients::InfoClient;
+use resource_agent::provider::{ProviderResult, Resources};
 use serde::{Deserialize, Serialize};
 use serde_plain::{
     derive_deserialize_from_fromstr, derive_display_from_serialize,
@@ -340,8 +342,8 @@ pub fn init_agent_logger(bin_crate: &str, log_level: Option<LevelFilter>) {
     }
 }
 
-/// Set up AWS credential secrets in the process's environment
-pub async fn setup_env<R>(runner: &R, aws_secret_name: &SecretName) -> Result<(), R::E>
+/// Set up AWS credential secrets in a runner's process's environment
+pub async fn setup_test_env<R>(runner: &R, aws_secret_name: &SecretName) -> Result<(), R::E>
 where
     R: Runner,
     <R as Runner>::E: From<Error>,
@@ -415,4 +417,53 @@ fn k8s_version_valid() {
     assert_eq!("1.21", k8s_version.major_minor_without_v());
     assert_eq!("v1.21.3", k8s_version.full_version_with_v());
     assert_eq!("1.21.3", k8s_version.full_version_without_v());
+}
+
+/// Set up AWS credential secrets in a resource's process's environment
+pub async fn setup_resource_env<I>(
+    client: &I,
+    aws_secret_name: &SecretName,
+    resources: Resources,
+) -> ProviderResult<()>
+where
+    I: InfoClient,
+{
+    let aws_secret = resource_agent::provider::IntoProviderError::context(
+        client.get_secret(aws_secret_name).await,
+        resources,
+        format!("Error getting secret '{}'", aws_secret_name),
+    )?;
+
+    let access_key_id = resource_agent::provider::IntoProviderError::context(
+        String::from_utf8(
+            resource_agent::provider::IntoProviderError::context(
+                aws_secret.get("access-key-id"),
+                resources,
+                format!("access-key-id missing from secret '{}'", aws_secret_name),
+            )?
+            .to_owned(),
+        ),
+        resources,
+        "Could not convert access-key-id to String",
+    )?;
+    let secret_access_key = resource_agent::provider::IntoProviderError::context(
+        String::from_utf8(
+            resource_agent::provider::IntoProviderError::context(
+                aws_secret.get("secret-access-key"),
+                resources,
+                format!(
+                    "secret-access-key missing from secret '{}'",
+                    aws_secret_name
+                ),
+            )?
+            .to_owned(),
+        ),
+        resources,
+        "Could not convert secret-access-key to String",
+    )?;
+
+    env::set_var("AWS_ACCESS_KEY_ID", access_key_id);
+    env::set_var("AWS_SECRET_ACCESS_KEY", secret_access_key);
+
+    Ok(())
 }

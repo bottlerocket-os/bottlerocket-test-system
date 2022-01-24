@@ -1,14 +1,13 @@
 use aws_config::meta::region::RegionProviderChain;
 use aws_sdk_ec2::model::Filter;
 use aws_sdk_ecs::Region;
-use bottlerocket_agents::AWS_CREDENTIALS_SECRET_NAME;
+use bottlerocket_agents::{setup_resource_env, AWS_CREDENTIALS_SECRET_NAME};
 use model::{Configuration, SecretName};
 use resource_agent::clients::InfoClient;
 use resource_agent::provider::{
     Create, Destroy, IntoProviderError, ProviderResult, Resources, Spec,
 };
 use serde::{Deserialize, Serialize};
-use std::env;
 
 /// The default region for the cluster.
 const DEFAULT_REGION: &str = "us-west-2";
@@ -94,7 +93,7 @@ impl Create for EcsCreator {
 
         // Write aws credentials if we need them so we can run Ecsctl
         if let Some(aws_secret_name) = spec.secrets.get(AWS_CREDENTIALS_SECRET_NAME) {
-            setup_env(client, aws_secret_name, Resources::Clear).await?;
+            setup_resource_env(client, aws_secret_name, Resources::Clear).await?;
             memo.aws_secret_name = Some(aws_secret_name.clone());
         }
 
@@ -155,55 +154,6 @@ async fn created_cluster(
 
 fn first_subnet_id(subnet_ids: &[String]) -> Option<String> {
     subnet_ids.get(0).map(|id| id.to_string())
-}
-
-async fn setup_env<I>(
-    client: &I,
-    aws_secret_name: &SecretName,
-    failure_resources: Resources,
-) -> ProviderResult<()>
-where
-    I: InfoClient,
-{
-    let aws_secret = client.get_secret(aws_secret_name).await.context(
-        failure_resources,
-        format!("Error getting secret '{}'", aws_secret_name),
-    )?;
-
-    let access_key_id = String::from_utf8(
-        aws_secret
-            .get("access-key-id")
-            .context(
-                failure_resources,
-                format!("access-key-id missing from secret '{}'", aws_secret_name),
-            )?
-            .to_owned(),
-    )
-    .context(
-        failure_resources,
-        "Could not convert access-key-id to String",
-    )?;
-    let secret_access_key = String::from_utf8(
-        aws_secret
-            .get("secret-access-key")
-            .context(
-                failure_resources,
-                format!(
-                    "secret-access-key missing from secret '{}'",
-                    aws_secret_name
-                ),
-            )?
-            .to_owned(),
-    )
-    .context(
-        Resources::Clear,
-        "Could not convert secret-access-key to String",
-    )?;
-
-    env::set_var("AWS_ACCESS_KEY_ID", access_key_id);
-    env::set_var("AWS_SECRET_ACCESS_KEY", secret_access_key);
-
-    Ok(())
 }
 
 async fn default_vpc(ec2_client: &aws_sdk_ec2::Client) -> ProviderResult<String> {
@@ -274,7 +224,7 @@ impl Destroy for EcsDestroyer {
         if let Some(cluster_name) = &memo.cluster_name {
             // Write aws credentials if we need them so we can run Ecsctl
             if let Some(aws_secret_name) = &memo.aws_secret_name {
-                setup_env(client, aws_secret_name, Resources::Remaining).await?;
+                setup_resource_env(client, aws_secret_name, Resources::Remaining).await?;
             }
             let region = memo
                 .clone()

@@ -4,7 +4,9 @@ use aws_sdk_ec2::model::{
     TagSpecification,
 };
 use aws_sdk_ec2::Region;
-use bottlerocket_agents::{json_display, ClusterType, Ec2Config, AWS_CREDENTIALS_SECRET_NAME};
+use bottlerocket_agents::{
+    json_display, setup_resource_env, ClusterType, Ec2Config, AWS_CREDENTIALS_SECRET_NAME,
+};
 use log::{debug, info, trace};
 use model::{Configuration, SecretName};
 use resource_agent::clients::InfoClient;
@@ -13,7 +15,6 @@ use resource_agent::provider::{
 };
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
-use std::env;
 use std::fmt::Debug;
 use std::iter::FromIterator;
 use std::time::Duration;
@@ -95,7 +96,7 @@ impl Create for Ec2Creator {
 
         // Write aws credentials if we need them so we can run eksctl
         if let Some(aws_secret_name) = spec.secrets.get(AWS_CREDENTIALS_SECRET_NAME) {
-            setup_env(client, aws_secret_name, &memo).await?;
+            setup_resource_env(client, aws_secret_name, memo.as_resources()).await?;
             memo.aws_secret_name = Some(aws_secret_name.clone());
         }
 
@@ -196,50 +197,6 @@ impl Create for Ec2Creator {
         // Return the ids for the created instances.
         Ok(CreatedEc2Instances { ids: instance_ids })
     }
-}
-
-async fn setup_env<I>(
-    client: &I,
-    aws_secret_name: &SecretName,
-    memo: &ProductionMemo,
-) -> ProviderResult<()>
-where
-    I: InfoClient,
-{
-    info!("Setting up AWS credentials");
-    let aws_secret = client
-        .get_secret(aws_secret_name)
-        .await
-        .context(memo, format!("Error getting secret '{}'", aws_secret_name))?;
-
-    let access_key_id = String::from_utf8(
-        aws_secret
-            .get("access-key-id")
-            .context(
-                memo,
-                format!("access-key-id missing from secret '{}'", aws_secret_name),
-            )?
-            .to_owned(),
-    )
-    .context(memo, "Could not convert access-key-id to String")?;
-    let secret_access_key = String::from_utf8(
-        aws_secret
-            .get("secret-access-key")
-            .context(
-                memo,
-                format!(
-                    "secret-access-key missing from secret '{}'",
-                    aws_secret_name
-                ),
-            )?
-            .to_owned(),
-    )
-    .context(memo, "Could not convert secret-access-key to String")?;
-
-    env::set_var("AWS_ACCESS_KEY_ID", access_key_id);
-    env::set_var("AWS_SECRET_ACCESS_KEY", secret_access_key);
-
-    Ok(())
 }
 
 async fn instance_type(
@@ -489,7 +446,7 @@ impl Destroy for Ec2Destroyer {
 
         // Write aws credentials if we need them so we can run eksctl
         if let Some(aws_secret_name) = &memo.aws_secret_name {
-            setup_env(client, aws_secret_name, &memo).await?;
+            setup_resource_env(client, aws_secret_name, memo.as_resources()).await?;
         }
 
         let region_provider =
