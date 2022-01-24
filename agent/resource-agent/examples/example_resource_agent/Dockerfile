@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1.1.3-experimental
-ARG ARCH
-FROM public.ecr.aws/bottlerocket/bottlerocket-sdk-${ARCH}:v0.23.0 as build
+ARG BUILDER_IMAGE
+FROM ${BUILDER_IMAGE} as build
 
 ARG ARCH
 USER root
