@@ -2,7 +2,8 @@ TOP := $(dir $(firstword $(MAKEFILE_LIST)))
 
 .PHONY: build sdk-openssl example-test-agent example-resource-agent \
 	controller images sonobuoy-test-agent integ-test ec2-resource-agent \
-	eks-resource-agent show-variables migration-test-agent vsphere-vm-resource-agent
+	eks-resource-agent ecs-resource-agent show-variables migration-test-agent \
+	vsphere-vm-resource-agent ecs-test-agent
 
 TESTSYS_BUILD_HOST_UNAME_ARCH=$(shell uname -m)
 TESTSYS_BUILD_HOST_GOARCH ?= $(lastword $(subst :, ,$(filter $(TESTSYS_BUILD_HOST_UNAME_ARCH):%,x86_64:amd64 aarch64:arm64)))
@@ -21,8 +22,8 @@ show-variables:
 fetch:
 	cargo fetch --locked
 
-images: fetch controller sonobuoy-test-agent ec2-resource-agent eks-resource-agent migration-test-agent \
-	vsphere-vm-resource-agent
+images: fetch controller sonobuoy-test-agent ec2-resource-agent eks-resource-agent ecs-resource-agent \
+	migration-test-agent vsphere-vm-resource-agent
 
 # Builds, Lints and Tests the Rust workspace
 build: fetch
@@ -64,7 +65,7 @@ controller: show-variables fetch
 		-f controller/Dockerfile .
 
 # Build the container image for a testsys agent
-eks-resource-agent ec2-resource-agent vsphere-vm-resource-agent sonobuoy-test-agent migration-test-agent: show-variables fetch
+eks-resource-agent ec2-resource-agent ecs-resource-agent vsphere-vm-resource-agent sonobuoy-test-agent migration-test-agent ecs-test-agent: show-variables fetch
 	docker build $(DOCKER_BUILD_FLAGS) \
 		--build-arg ARCH="$(TESTSYS_BUILD_HOST_UNAME_ARCH)" \
 		--build-arg GOARCH="$(TESTSYS_BUILD_HOST_GOARCH)" \

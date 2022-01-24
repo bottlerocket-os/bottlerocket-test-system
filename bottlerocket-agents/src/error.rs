@@ -1,3 +1,7 @@
+use aws_sdk_ecs::error::{
+    DeleteServiceError, DeregisterTaskDefinitionError, DescribeClustersError, DescribeTasksError,
+    RegisterTaskDefinitionError, RunTaskError, UpdateServiceError,
+};
 use aws_sdk_ssm::error::{
     CreateDocumentError, DescribeInstanceInformationError, ListCommandInvocationsError,
     SendCommandError, UpdateDocumentError,
@@ -107,4 +111,46 @@ pub enum Error {
 
     #[snafu(display("Results location is invalid"))]
     ResultsLocation,
+
+    #[snafu(display("Unable to create task defininition: {}", source))]
+    TaskDefinitionCreation {
+        source: SdkError<RegisterTaskDefinitionError>,
+    },
+
+    #[snafu(display("Unable to run task: {}", source))]
+    TaskRunCreation { source: SdkError<RunTaskError> },
+
+    #[snafu(display("Unable to update the service: {}", source))]
+    TaskServiceUpdate {
+        source: SdkError<UpdateServiceError>,
+    },
+
+    #[snafu(display("Unable to delete service: {}", source))]
+    TaskServiceDelete {
+        source: SdkError<DeleteServiceError>,
+    },
+
+    #[snafu(display("Unable to get task description: {}", source))]
+    TaskDescribe {
+        source: SdkError<DescribeTasksError>,
+    },
+
+    #[snafu(display("Unable to get cluster description: {}", source))]
+    ClusterDescribe {
+        source: SdkError<DescribeClustersError>,
+    },
+
+    #[snafu(display("Unable to deregister task description: {}", source))]
+    DeregisterTask {
+        source: SdkError<DeregisterTaskDefinitionError>,
+    },
+
+    #[snafu(display("No task running tasks in cluster"))]
+    NoTask,
+
+    #[snafu(display("The task did not complete in time"))]
+    TaskTimeout,
+
+    #[snafu(display("Registered container instances did not start in time: {}", source))]
+    InstanceTimeout { source: tokio::time::error::Elapsed },
 }

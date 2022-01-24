@@ -283,6 +283,22 @@ impl FromStr for K8sVersion {
 
 derive_serialize_from_display!(K8sVersion);
 derive_deserialize_from_fromstr!(K8sVersion, "k8s version such as v1.21 or 1.21.1");
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct EcsTestConfig {
+    pub region: Option<String>,
+    pub cluster_name: String,
+    #[serde(default = "default_count")]
+    pub task_count: i32,
+    pub subnet: String,
+    pub task_definition: String,
+}
+
+fn default_count() -> i32 {
+    1
+}
+
+impl Configuration for EcsTestConfig {}
 
 /// Decode and write out the kubeconfig file for a test cluster to a specified path
 pub async fn decode_write_kubeconfig(

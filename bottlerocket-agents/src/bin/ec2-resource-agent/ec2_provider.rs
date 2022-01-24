@@ -130,6 +130,7 @@ impl Create for Ec2Creator {
             .image_id(spec.configuration.node_ami)
             .instance_type(InstanceType::from(instance_type.as_str()))
             .tag_specifications(tag_specifications(
+                &spec.configuration.cluster_type,
                 &spec.configuration.cluster_name,
                 &instance_uuid,
             ))
@@ -268,28 +269,43 @@ async fn instance_type(
     .to_string())
 }
 
-fn tag_specifications(cluster_name: &str, instance_uuid: &str) -> TagSpecification {
-    TagSpecification::builder()
-        .resource_type(ResourceType::Instance)
-        .tags(
-            Tag::builder()
-                .key("Name")
-                .value(format!("{}_node", cluster_name))
-                .build(),
-        )
-        .tags(
-            Tag::builder()
-                .key(format!("kubernetes.io/cluster/{}", cluster_name))
-                .value("owned")
-                .build(),
-        )
-        .tags(
-            Tag::builder()
-                .key(INSTANCE_UUID_TAG_NAME)
-                .value(instance_uuid)
-                .build(),
-        )
-        .build()
+fn tag_specifications(
+    cluster_type: &ClusterType,
+    cluster_name: &str,
+    instance_uuid: &str,
+) -> TagSpecification {
+    match cluster_type {
+        ClusterType::Eks => TagSpecification::builder()
+            .resource_type(ResourceType::Instance)
+            .tags(
+                Tag::builder()
+                    .key("Name")
+                    .value(format!("{}_node", cluster_name))
+                    .build(),
+            )
+            .tags(
+                Tag::builder()
+                    .key(format!("kubernetes.io/cluster/{}", cluster_name))
+                    .value("owned")
+                    .build(),
+            )
+            .tags(
+                Tag::builder()
+                    .key(INSTANCE_UUID_TAG_NAME)
+                    .value(instance_uuid)
+                    .build(),
+            )
+            .build(),
+        ClusterType::Ecs => TagSpecification::builder()
+            .resource_type(ResourceType::Instance)
+            .tags(
+                Tag::builder()
+                    .key(INSTANCE_UUID_TAG_NAME)
+                    .value(instance_uuid)
+                    .build(),
+            )
+            .build(),
+    }
 }
 
 fn userdata(
@@ -318,7 +334,7 @@ cluster-certificate = "{}""#,
         )),
         ClusterType::Ecs => base64::encode(format!(
             r#"[settings.ecs]
-cluster-name = "{}""#,
+cluster = "{}""#,
             cluster_name,
         )),
     })
