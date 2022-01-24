@@ -34,16 +34,13 @@ ENTRYPOINT ["./ec2-resource-agent"]
 # =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^=
 # Builds the vSphere VM resource agent image
 FROM public.ecr.aws/amazonlinux/amazonlinux:2 as vsphere-vm-resource-agent
-ARG ARCH
 ARG GOARCH
-ARG GOVC_VERSION=0.27.2
 ARG K8S_VERSION=1.21.6
 
 RUN yum install -y gcc tar gzip openssl-devel && yum clean all
 
-# Install GOVC
-RUN curl -L -o - "https://github.com/vmware/govmomi/releases/download/v${GOVC_VERSION}/govc_Linux_${ARCH}.tar.gz" \
-    | tar -C /usr/local/bin -xvzf - govc
+# Copy GOVC
+COPY --from=build /usr/libexec/tools/govc /usr/local/bin/govc
 
 # Install kubeadm
 RUN curl -LO "https://dl.k8s.io/release/v${K8S_VERSION}/bin/linux/${GOARCH}/kubeadm" && \
