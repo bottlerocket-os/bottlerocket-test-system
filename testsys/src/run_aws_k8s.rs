@@ -7,7 +7,7 @@ use bottlerocket_agents::{
 use kube::{api::ObjectMeta, Client};
 use maplit::btreemap;
 use model::clients::{CrdClient, ResourceClient, TestClient};
-use model::constants::{API_VERSION, NAMESPACE};
+use model::constants::NAMESPACE;
 use model::{
     Agent, Configuration, DestructionPolicy, Resource, ResourceSpec, SecretName, Test, TestSpec,
 };
@@ -133,8 +133,6 @@ impl RunAwsK8s {
         });
 
         let eks_resource = Resource {
-            api_version: API_VERSION.into(),
-            kind: "Resource".to_string(),
             metadata: ObjectMeta {
                 name: Some(cluster_resource_name.clone()),
                 namespace: Some(NAMESPACE.into()),
@@ -157,7 +155,7 @@ impl RunAwsK8s {
                             version: self.kubernetes_version,
                         }
                         .into_map()
-                        .context(error::ConfigMap)?,
+                        .context(error::ConfigMapSnafu)?,
                     ),
                     secrets: aws_secret_map.clone(),
                 },
@@ -181,7 +179,7 @@ impl RunAwsK8s {
             security_groups: vec![],
         }
         .into_map()
-        .context(error::ConfigMap)?;
+        .context(error::ConfigMapSnafu)?;
 
         // TODO - we have change the raw map to reference/template a non string field.
         let previous_value = ec2_config.insert(
@@ -193,8 +191,6 @@ impl RunAwsK8s {
         }
 
         let ec2_resource = Resource {
-            api_version: API_VERSION.into(),
-            kind: "Resource".to_string(),
             metadata: ObjectMeta {
                 name: Some(ec2_resource_name.clone()),
                 namespace: Some(NAMESPACE.into()),
@@ -217,8 +213,6 @@ impl RunAwsK8s {
         };
 
         let test = Test {
-            api_version: API_VERSION.into(),
-            kind: "Test".to_string(),
             metadata: ObjectMeta {
                 name: Some(self.name.clone()),
                 namespace: Some(NAMESPACE.into()),
@@ -245,7 +239,7 @@ impl RunAwsK8s {
                             kube_conformance_image: self.kubernetes_conformance_image.clone(),
                         }
                         .into_map()
-                        .context(error::ConfigMap)?,
+                        .context(error::ConfigMapSnafu)?,
                     ),
                     secrets: aws_secret_map,
                 },
@@ -258,7 +252,7 @@ impl RunAwsK8s {
         let _ = resource_client
             .create(eks_resource)
             .await
-            .context(error::ModelClient {
+            .context(error::ModelClientSnafu {
                 message: "Unable to create EKS cluster resource object",
             })?;
         println!("Created resource object '{}'", cluster_resource_name);
@@ -266,14 +260,17 @@ impl RunAwsK8s {
         let _ = resource_client
             .create(ec2_resource)
             .await
-            .context(error::ModelClient {
+            .context(error::ModelClientSnafu {
                 message: "Unable to create EC2 instances resource object",
             })?;
         println!("Created resource object '{}'", ec2_resource_name);
 
-        let _ = test_client.create(test).await.context(error::ModelClient {
-            message: "Unable to create test object",
-        })?;
+        let _ = test_client
+            .create(test)
+            .await
+            .context(error::ModelClientSnafu {
+                message: "Unable to create test object",
+            })?;
         println!("Created test object '{}'", self.name);
 
         Ok(())

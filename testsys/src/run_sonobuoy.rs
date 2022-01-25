@@ -3,11 +3,8 @@ use bottlerocket_agents::sonobuoy::Mode;
 use bottlerocket_agents::{K8sVersion, SonobuoyConfig, AWS_CREDENTIALS_SECRET_NAME};
 use kube::{api::ObjectMeta, Client};
 use model::clients::CrdClient;
-use model::{
-    clients::TestClient,
-    constants::{API_VERSION, NAMESPACE},
-    Agent, Configuration, SecretName, Test, TestSpec,
-};
+use model::constants::NAMESPACE;
+use model::{clients::TestClient, Agent, Configuration, SecretName, Test, TestSpec};
 use snafu::ResultExt;
 use std::{collections::BTreeMap, fs::read_to_string, path::PathBuf};
 use structopt::StructOpt;
@@ -78,7 +75,7 @@ impl RunSonobuoy {
     pub(crate) async fn run(&self, k8s_client: Client) -> Result<()> {
         let kubeconfig_string = match (&self.target_cluster_kubeconfig_path, &self.target_cluster_kubeconfig) {
             (Some(kubeconfig_path), None) => base64::encode(
-                read_to_string(kubeconfig_path).context(error::File {
+                read_to_string(kubeconfig_path).context(error::FileSnafu {
                     path: kubeconfig_path,
                 })?,
             ),
@@ -87,8 +84,6 @@ impl RunSonobuoy {
         };
 
         let test = Test {
-            api_version: API_VERSION.into(),
-            kind: "Test".to_string(),
             metadata: ObjectMeta {
                 name: Some(self.name.clone()),
                 namespace: Some(NAMESPACE.into()),
@@ -112,7 +107,7 @@ impl RunSonobuoy {
                             kube_conformance_image: self.kubernetes_conformance_image.clone(),
                         }
                         .into_map()
-                        .context(error::ConfigMap)?,
+                        .context(error::ConfigMapSnafu)?,
                     ),
                     secrets: self.aws_secret.as_ref().map(|secret_name| {
                         let mut secrets_map = BTreeMap::new();
@@ -127,7 +122,7 @@ impl RunSonobuoy {
 
         let tests = TestClient::new_from_k8s_client(k8s_client);
 
-        tests.create(test).await.context(error::CreateTest)?;
+        tests.create(test).await.context(error::CreateTestSnafu)?;
 
         Ok(())
     }

@@ -41,14 +41,14 @@ impl Client for DefaultClient {
 
     async fn new(bootstrap_data: BootstrapData) -> Result<Self, Self::E> {
         Ok(Self {
-            client: TestClient::new().await.context(K8s)?,
+            client: TestClient::new().await.context(K8sSnafu)?,
             name: bootstrap_data.test_name,
-            results_dir: TempDir::new().context(TempDirCreate)?,
+            results_dir: TempDir::new().context(TempDirCreateSnafu)?,
         })
     }
 
     async fn keep_running(&self) -> Result<bool, Self::E> {
-        let test_data = self.client.get(&self.name).await.context(K8s)?;
+        let test_data = self.client.get(&self.name).await.context(K8sSnafu)?;
         Ok(test_data.spec.agent.keep_running)
     }
 
@@ -56,21 +56,23 @@ impl Client for DefaultClient {
     where
         C: Configuration,
     {
-        let test_data = self.client.get(&self.name).await.context(K8s)?;
+        let test_data = self.client.get(&self.name).await.context(K8sSnafu)?;
 
         let raw_config = match test_data.spec.agent.configuration {
             Some(serde_map) => serde_map,
             None => Default::default(),
         };
 
-        let resource_client = ResourceClient::new().await.context(ResourceClientCreate)?;
+        let resource_client = ResourceClient::new()
+            .await
+            .context(ResourceClientCreateSnafu)?;
         let resolved_config = resource_client
             .resolve_templated_config(raw_config)
             .await
-            .context(ResolveConfig)?;
+            .context(ResolveConfigSnafu)?;
 
         let configuration =
-            serde_json::from_value(Value::Object(resolved_config)).context(Deserialization)?;
+            serde_json::from_value(Value::Object(resolved_config)).context(DeserializationSnafu)?;
 
         Ok(Spec {
             name: self.name.clone(),
@@ -84,7 +86,7 @@ impl Client for DefaultClient {
         self.client
             .send_agent_task_state(&self.name, TaskState::Running)
             .await
-            .context(K8s)?;
+            .context(K8sSnafu)?;
         Ok(())
     }
 
@@ -92,7 +94,7 @@ impl Client for DefaultClient {
         self.client
             .send_test_completed(&self.name, results)
             .await
-            .context(K8s)?;
+            .context(K8sSnafu)?;
         Ok(())
     }
 
@@ -103,7 +105,7 @@ impl Client for DefaultClient {
         self.client
             .send_agent_error(&self.name, &error.to_string())
             .await
-            .context(K8s)?;
+            .context(K8sSnafu)?;
         Ok(())
     }
 

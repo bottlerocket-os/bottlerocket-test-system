@@ -35,11 +35,11 @@ pub(crate) async fn wait_for_ssm_ready(
             )
             .send()
             .await
-            .context(error::SsmDescribeInstanceInfo)?;
+            .context(error::SsmDescribeInstanceInfoSnafu)?;
         num_ready = instance_info
             .instance_information_list()
             .map(|list| list.len())
-            .context(error::SsmInstanceInfo)?;
+            .context(error::SsmInstanceInfoSnafu)?;
         sleep(sec_between_checks);
     }
 
@@ -68,7 +68,7 @@ pub(crate) async fn create_or_update_ssm_document(
                         DescribeDocumentErrorKind::InvalidDocument(_) => {
                             // Document does not exist, we need to create it.
                             let file_doc_data =
-                                fs::read_to_string(document_path).context(error::FileRead)?;
+                                fs::read_to_string(document_path).context(error::FileReadSnafu)?;
                             ssm_client
                                 .create_document()
                                 .content(file_doc_data)
@@ -77,16 +77,16 @@ pub(crate) async fn create_or_update_ssm_document(
                                 .document_format(DocumentFormat::Yaml)
                                 .send()
                                 .await
-                                .context(error::SsmCreateDocument)?;
+                                .context(error::SsmCreateDocumentSnafu)?;
                             Ok(())
                         }
-                        _ => error::SsmDescribeDocument {
+                        _ => error::SsmDescribeDocumentSnafu {
                             message: err.to_string(),
                         }
                         .fail(),
                     }
                 }
-                _ => error::AwsSdk {
+                _ => error::AwsSdkSnafu {
                     message: sdk_err.to_string(),
                 }
                 .fail(),
@@ -95,7 +95,7 @@ pub(crate) async fn create_or_update_ssm_document(
     };
 
     if let Some(ssm_doc_hash) = ssm_doc_hash {
-        let file_doc_data = fs::read_to_string(document_path).context(error::FileRead)?;
+        let file_doc_data = fs::read_to_string(document_path).context(error::FileReadSnafu)?;
         let mut d = Sha256::new();
         d.update(&file_doc_data);
         let file_sha256_digest = hex::encode(d.finalize());
@@ -124,7 +124,7 @@ pub(crate) async fn create_or_update_ssm_document(
         .document_format(DocumentFormat::Yaml)
         .send()
         .await
-        .context(error::SsmUpdateDocument)?;
+        .context(error::SsmUpdateDocumentSnafu)?;
     Ok(())
 }
 
@@ -139,7 +139,7 @@ async fn wait_command_finish(
             .command_id(cmd_id.to_owned())
             .send()
             .await
-            .context(error::SsmListCommandInvocations)?;
+            .context(error::SsmListCommandInvocationsSnafu)?;
         if let Some(invocations) = cmd_status.command_invocations {
             if invocations.is_empty()
                 || invocations.iter().any(|i| {
@@ -175,10 +175,10 @@ pub(crate) async fn ssm_run_command(
         .timeout_seconds(30)
         .send()
         .await
-        .context(error::SsmSendCommand)?
+        .context(error::SsmSendCommandSnafu)?
         .command()
         .and_then(|c| c.command_id().map(|s| s.to_string()))
-        .context(error::SsmCommandId)?;
+        .context(error::SsmCommandIdSnafu)?;
 
     debug!("############## Sent command, command ID: {}", cmd_id);
     // Wait for the command to finish
@@ -207,7 +207,7 @@ pub(crate) async fn ssm_run_command(
             .filter(|i| i.status != Some(CommandInvocationStatus::Success))
             .collect();
         if !failed_invocations.is_empty() {
-            return error::SsmRunCommand {
+            return error::SsmRunCommandSnafu {
                 document_name,
                 instance_ids: failed_invocations
                     .iter()
@@ -219,7 +219,7 @@ pub(crate) async fn ssm_run_command(
         Ok(invocations)
     } else {
         // Timed-out waiting for commands to finish
-        error::SsmWaitCommandTimeout.fail()
+        error::SsmWaitCommandTimeoutSnafu.fail()
     }
 }
 
@@ -280,9 +280,9 @@ pub(crate) async fn wait_for_os_version_change(
         tries += 1;
     }
     // This should technically never happen, check just in case
-    ensure!(!unchanged_hosts.is_empty(), error::OsVersionCheck);
+    ensure!(!unchanged_hosts.is_empty(), error::OsVersionCheckSnafu);
     // One or more hosts failed to update
-    error::FailUpdates {
+    error::FailUpdatesSnafu {
         target_version,
         instance_ids: unchanged_hosts,
     }

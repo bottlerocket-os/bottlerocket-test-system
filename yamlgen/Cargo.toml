@@ -5,6 +5,6 @@ edition = "2021"
 publish = false
 
 [build-dependencies]
-kube = { version = "0.64", default-features = false }
+kube = { version = "0.67", default-features = false }
 model = { path = "../model" }
 serde_yaml = "0"

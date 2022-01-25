@@ -96,7 +96,7 @@ impl test_agent::Runner for MigrationTestRunner {
             wait_for_ssm_ready(&ssm_client, &self.config.instance_ids),
         )
         .await
-        .context(error::SsmWaitInstanceReadyTimeout)??;
+        .context(error::SsmWaitInstanceReadyTimeoutSnafu)??;
 
         // Optional step to change the update repository before proceeding to update
         if let Some(tuf_repo) = &self.config.tuf_repo {

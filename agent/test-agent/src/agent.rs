@@ -143,16 +143,16 @@ where
             .map_err(Error::Client)?;
 
         let tar = File::create(self.client.results_file().await.map_err(Error::Client)?)
-            .context(error::Archive)
+            .context(error::ArchiveSnafu)
             .map_err(|e| Error::Agent(AgentError::from(e)))?;
         let mut archive = Builder::new(tar);
         archive
             .append_dir_all("test-results", results_dir)
-            .context(error::Archive)
+            .context(error::ArchiveSnafu)
             .map_err(|e| Error::Agent(AgentError::from(e)))?;
         archive
             .into_inner()
-            .context(error::Archive)
+            .context(error::ArchiveSnafu)
             .map_err(|e| Error::Agent(AgentError::from(e)))?;
         Ok(())
     }

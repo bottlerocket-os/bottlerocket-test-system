@@ -21,22 +21,24 @@ impl RunFile {
     pub(crate) async fn run(&self, k8s_client: Client) -> Result<()> {
         // Create the resource objects from its path.
         let manifest_string =
-            std::fs::read_to_string(&self.path).context(error::File { path: &self.path })?;
+            std::fs::read_to_string(&self.path).context(error::FileSnafu { path: &self.path })?;
         let tests = TestClient::new_from_k8s_client(k8s_client.clone());
         let resources = ResourceClient::new_from_k8s_client(k8s_client);
         for crd_doc in serde_yaml::Deserializer::from_str(&manifest_string) {
             let value = serde_yaml::Value::deserialize(crd_doc)
-                .context(error::ResourceProviderFileParse { path: &self.path })?;
+                .context(error::ResourceProviderFileParseSnafu { path: &self.path })?;
             let crd: Crd = serde_yaml::from_value(value)
-                .context(error::ResourceProviderFileParse { path: &self.path })?;
+                .context(error::ResourceProviderFileParseSnafu { path: &self.path })?;
             let name = crd.name();
             match crd {
-                Crd::Test(test) => Crd::Test(tests.create(test).await.context(error::CreateTest)?),
+                Crd::Test(test) => {
+                    Crd::Test(tests.create(test).await.context(error::CreateTestSnafu)?)
+                }
                 Crd::Resource(resource) => Crd::Resource(
                     resources
                         .create(resource)
                         .await
-                        .context(error::CreateResource)?,
+                        .context(error::CreateResourceSnafu)?,
                 ),
             };
             if let Some(name) = name {

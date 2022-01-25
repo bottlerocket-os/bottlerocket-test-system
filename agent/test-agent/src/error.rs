@@ -49,7 +49,7 @@ pub struct AgentError(InnerError);
 
 /// The private error type, [`AgentError'] is opaque. `InnerError` is the underlying error type.
 #[derive(Debug, Snafu)]
-#[snafu(visibility = "pub(crate)")]
+#[snafu(visibility(pub(crate)))]
 pub(crate) enum InnerError {
     #[snafu(display("Timeout waiting more than {:?} for {}: {}", duration, op, source))]
     Timeout {

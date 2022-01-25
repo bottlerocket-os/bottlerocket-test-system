@@ -54,7 +54,7 @@ impl Runner for EcsTestRunner {
             wait_for_registered_containers(&ecs_client, &self.config.cluster_name),
         )
         .await
-        .context(error::InstanceTimeout)??;
+        .context(error::InstanceTimeoutSnafu)??;
 
         info!("Running task definition...");
 
@@ -66,7 +66,7 @@ impl Runner for EcsTestRunner {
             .launch_type(LaunchType::Ec2)
             .send()
             .await
-            .context(error::TaskRunCreation)?;
+            .context(error::TaskRunCreationSnafu)?;
         let task_arns: Vec<String> = run_task_output
             .tasks()
             .map(|tasks| {
@@ -135,10 +135,10 @@ async fn test_results(
         .set_tasks(Some(task_arns.to_vec()))
         .send()
         .await
-        .context(error::TaskDescribe)?
+        .context(error::TaskDescribeSnafu)?
         .tasks()
         .map(|tasks| tasks.to_owned())
-        .context(error::NoTask)?;
+        .context(error::NoTaskSnafu)?;
     let running_count = tasks
         .iter()
         .filter_map(|task| task.last_status())
@@ -167,11 +167,11 @@ async fn wait_for_registered_containers(
             .clusters(cluster)
             .send()
             .await
-            .context(error::ClusterDescribe)?
+            .context(error::ClusterDescribeSnafu)?
             .clusters()
-            .context(error::NoTask)?
+            .context(error::NoTaskSnafu)?
             .first()
-            .context(error::NoTask)?
+            .context(error::NoTaskSnafu)?
             .clone();
 
         if cluster.registered_container_instances_count() != 0 {

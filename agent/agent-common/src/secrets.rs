@@ -69,12 +69,12 @@ impl SecretsReader {
     pub fn get_secret(&self, secret_name: &SecretName) -> Result<SecretData> {
         let mut map = SecretData::new();
         let directory = self.dir.join(secret_name.as_str());
-        let read_dir = fs::read_dir(&directory).with_context(|| error::ListDirectory {
+        let read_dir = fs::read_dir(&directory).with_context(|_| error::ListDirectorySnafu {
             name: secret_name.to_owned(),
             directory: &directory,
         })?;
         for entry in read_dir.map(|result| {
-            result.with_context(|| error::ListDirectory {
+            result.with_context(|_| error::ListDirectorySnafu {
                 name: secret_name.to_owned(),
                 directory: &directory,
             })
@@ -84,16 +84,16 @@ impl SecretsReader {
                 let path = entry.path();
                 let key = path
                     .file_name()
-                    .with_context(|| error::MissingFilename {
+                    .with_context(|| error::MissingFilenameSnafu {
                         name: secret_name.to_owned(),
                         path: &path,
                     })?
                     .to_str()
-                    .with_context(|| error::NonUtf8Filename {
+                    .with_context(|| error::NonUtf8FilenameSnafu {
                         name: secret_name.to_owned(),
                         path: &path,
                     })?;
-                let value = fs::read(&path).with_context(|| error::ReadFile {
+                let value = fs::read(&path).with_context(|_| error::ReadFileSnafu {
                     name: secret_name.to_owned(),
                     path: &path,
                 })?;
@@ -116,7 +116,7 @@ mod error {
     use std::path::PathBuf;
 
     #[derive(Debug, Snafu)]
-    #[snafu(visibility = "pub(super)")]
+    #[snafu(visibility(pub(super)))]
     pub enum OpaqueError {
         #[snafu(display("Unable to list contents of directory '{}': {}", directory.display(), source))]
         ListDirectory {

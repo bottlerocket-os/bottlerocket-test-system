@@ -23,7 +23,7 @@ impl Set {
             tests
                 .send_keep_running(&self.name, *keep_running)
                 .await
-                .context(error::Set {
+                .context(error::SetSnafu {
                     name: self.name.clone(),
                     what: "keep_running",
                 })?;
