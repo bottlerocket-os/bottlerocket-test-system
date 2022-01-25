@@ -3,7 +3,7 @@ TOP := $(dir $(firstword $(MAKEFILE_LIST)))
 .PHONY: build sdk-openssl example-test-agent example-resource-agent \
 	controller images sonobuoy-test-agent integ-test ec2-resource-agent \
 	eks-resource-agent ecs-resource-agent show-variables migration-test-agent \
-	vsphere-vm-resource-agent ecs-test-agent
+	vsphere-vm-resource-agent ecs-test-agent cargo-deny
 
 TESTSYS_BUILD_HOST_UNAME_ARCH=$(shell uname -m)
 TESTSYS_BUILD_HOST_GOARCH ?= $(lastword $(subst :, ,$(filter $(TESTSYS_BUILD_HOST_UNAME_ARCH):%,x86_64:amd64 aarch64:arm64)))
@@ -94,3 +94,9 @@ integ-test: $(if $(TESTSYS_SELFTEST_SKIP_IMAGE_BUILDS), ,controller example-test
 	docker tag controller controller:integ
 	docker tag duplicator-resource-agent duplicator-resource-agent:integ
 	cargo test --features integ -- --test-threads=1
+
+cargo-deny:
+	# Install cargo-deny to CARGO_HOME which is set to be .cargo in this repository
+	cargo install --version 0.9.1 cargo-deny --locked
+	cargo fetch
+	cargo deny --all-features --no-default-features check --disable-fetch licenses sources
