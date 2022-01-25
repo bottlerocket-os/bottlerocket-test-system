@@ -166,7 +166,6 @@ async fn dependency_wait_action(t: &TestInterface) -> Result<Option<Action>> {
     // Make sure each resource in depends_on is ready.
     // TODO - error if cyclical dependencies https://github.com/bottlerocket-os/bottlerocket-test-system/issues/156
     for needed in depends_on {
-        // TODO - error if 404/not-found https://github.com/bottlerocket-os/bottlerocket-test-system/issues/157
         let needed_test = match t.test_client().get(needed).await {
             Ok(test) => test,
             Err(_) => return Ok(Some(Action::WaitForDependency(needed.clone()))),

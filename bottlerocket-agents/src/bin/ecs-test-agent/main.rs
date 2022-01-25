@@ -1,3 +1,9 @@
+/*!
+
+Tests whether an ECS task runs successfully.
+
+!*/
+
 use async_trait::async_trait;
 use aws_config::meta::region::RegionProviderChain;
 use aws_sdk_ec2::{Region, SdkError};

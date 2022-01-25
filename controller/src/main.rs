@@ -1,8 +1,7 @@
 /*!
 
-This is the [controller] for managing TestSys tests. It runs in a Kubernetes cluster and is
-responsible for running resource provider pods and test agent pods when a TestSys [`Test`] CRD
-instance is added to the cluster.
+This [controller] runs in a Kubernetes cluster and is responsible for running resource provider pods
+and test agent pods when TestSys [`Test`] and [`Resource`] CRD instance is added to the cluster.
 
 [controller]: https://kubernetes.io/docs/concepts/architecture/controller/
 

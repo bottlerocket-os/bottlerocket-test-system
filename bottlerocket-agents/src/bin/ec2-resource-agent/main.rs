@@ -1,3 +1,9 @@
+/*!
+
+Provides EC2 instances to be used for Bottlerocket tests.
+
+!*/
+
 mod ec2_provider;
 
 use crate::ec2_provider::{Ec2Creator, Ec2Destroyer};
