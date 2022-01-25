@@ -285,6 +285,8 @@ impl FromStr for K8sVersion {
 
 derive_serialize_from_display!(K8sVersion);
 derive_deserialize_from_fromstr!(K8sVersion, "k8s version such as v1.21 or 1.21.1");
+pub const DEFAULT_TASK_DEFINITION: &str = "testsys-bottlerocket-aws-default-ecs-smoke-test-v1";
+
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct EcsTestConfig {
@@ -293,7 +295,12 @@ pub struct EcsTestConfig {
     #[serde(default = "default_count")]
     pub task_count: i32,
     pub subnet: String,
-    pub task_definition: String,
+    /// The task definition (including the revision number) for a custom task to be run. If the task
+    /// name is `foo` and the revision is `3`, use `foo:3`. If no
+    /// `task_definition_name_and_revision` is provided, the agent will use the latest task
+    /// definition named `testsys-bottlerocket-aws-default-ecs-smoke-test-v1` or create a new task
+    /// definition by that name if it hasn't been created yet.
+    pub task_definition_name_and_revision: Option<String>,
 }
 
 fn default_count() -> i32 {

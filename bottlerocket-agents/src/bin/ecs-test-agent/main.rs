@@ -1,10 +1,13 @@
 use async_trait::async_trait;
 use aws_config::meta::region::RegionProviderChain;
-use aws_sdk_ec2::Region;
-use aws_sdk_ecs::model::LaunchType;
+use aws_sdk_ec2::{Region, SdkError};
+use aws_sdk_ecs::error::{DescribeTaskDefinitionError, DescribeTaskDefinitionErrorKind};
+use aws_sdk_ecs::model::{Compatibility, ContainerDefinition, LaunchType};
+use aws_sdk_ecs::output::DescribeTaskDefinitionOutput;
 use bottlerocket_agents::error::{self, Error};
 use bottlerocket_agents::{
     init_agent_logger, setup_test_env, EcsTestConfig, AWS_CREDENTIALS_SECRET_NAME,
+    DEFAULT_TASK_DEFINITION,
 };
 use log::info;
 use model::{Outcome, SecretName, TestResults};
@@ -56,12 +59,17 @@ impl Runner for EcsTestRunner {
         .await
         .context(error::InstanceTimeoutSnafu)??;
 
-        info!("Running task definition...");
+        let task_name = match &self.config.task_definition_name_and_revision {
+            Some(task_definition) => task_definition.clone(),
+            None => create_or_find_task_definition(&ecs_client).await?,
+        };
+
+        info!("Running task '{}'", task_name);
 
         let run_task_output = ecs_client
             .run_task()
             .cluster(&self.config.cluster_name)
-            .task_definition(&self.config.task_definition)
+            .task_definition(task_name)
             .count(self.config.task_count)
             .launch_type(LaunchType::Ec2)
             .send()
@@ -179,6 +187,80 @@ async fn wait_for_registered_containers(
         }
         tokio::time::sleep(Duration::from_secs(2)).await;
     }
+}
+
+/// Retrieves the task_definition and revision of the testsys provided task definition. If the
+/// task definition doesn't exist, it will be created.
+async fn create_or_find_task_definition(ecs_client: &aws_sdk_ecs::Client) -> Result<String, Error> {
+    let exists = exists(
+        ecs_client
+            .describe_task_definition()
+            .task_definition(DEFAULT_TASK_DEFINITION)
+            .send()
+            .await,
+    );
+    if exists {
+        latest_task_revision(ecs_client).await
+    } else {
+        create_task_definition(ecs_client).await
+    }
+}
+
+/// Creates a task definition for testsys that runs a simple echo command to ensure the system
+/// is running properly.
+async fn create_task_definition(ecs_client: &aws_sdk_ecs::Client) -> Result<String, Error> {
+    let task_info = ecs_client
+        .register_task_definition()
+        .family(DEFAULT_TASK_DEFINITION)
+        .container_definitions(
+            ContainerDefinition::builder()
+                .name("ecs-smoke-test")
+                .image("public.ecr.aws/amazonlinux/amazonlinux:2")
+                .essential(true)
+                .set_entry_point(Some(vec!["sh".to_string(), "-c".to_string()]))
+                .command("/bin/sh -c \"echo hello-world\"")
+                .build(),
+        )
+        .requires_compatibilities(Compatibility::Ec2)
+        .cpu("256")
+        .memory("512")
+        .send()
+        .await
+        .context(error::TaskDefinitionCreationSnafu)?;
+    let revision = task_info
+        .task_definition()
+        .context(error::TaskDefinitionMissingSnafu)?
+        .revision();
+    Ok(format!("{}:{}", DEFAULT_TASK_DEFINITION, revision))
+}
+
+/// Retrieve the task definition and the latest revision of the testsys provided ecs task definition.
+async fn latest_task_revision(ecs_client: &aws_sdk_ecs::Client) -> Result<String, Error> {
+    let task_info = ecs_client
+        .describe_task_definition()
+        .task_definition(DEFAULT_TASK_DEFINITION)
+        .send()
+        .await
+        .context(error::TaskDefinitionDescribeSnafu)?;
+    let revision = task_info
+        .task_definition()
+        .context(error::TaskDefinitionMissingSnafu)?
+        .revision();
+    Ok(format!("{}:{}", DEFAULT_TASK_DEFINITION, revision))
+}
+
+fn exists(
+    result: Result<DescribeTaskDefinitionOutput, SdkError<DescribeTaskDefinitionError>>,
+) -> bool {
+    if let Err(SdkError::ServiceError { err, raw: _ }) = result {
+        if matches!(
+            &err.kind,
+            DescribeTaskDefinitionErrorKind::ClientException(_)
+        ) {
+            return false;
+        }
+    }
+    true
 }
 
 #[tokio::main]
