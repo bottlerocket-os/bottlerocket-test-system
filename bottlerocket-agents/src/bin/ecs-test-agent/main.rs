@@ -8,7 +8,7 @@ use async_trait::async_trait;
 use aws_config::meta::region::RegionProviderChain;
 use aws_sdk_ec2::{Region, SdkError};
 use aws_sdk_ecs::error::{DescribeTaskDefinitionError, DescribeTaskDefinitionErrorKind};
-use aws_sdk_ecs::model::{Compatibility, ContainerDefinition, LaunchType};
+use aws_sdk_ecs::model::{Compatibility, ContainerDefinition, LaunchType, TaskStopCode};
 use aws_sdk_ecs::output::DescribeTaskDefinitionOutput;
 use bottlerocket_agents::error::{self, Error};
 use bottlerocket_agents::{
@@ -155,8 +155,16 @@ async fn test_results(
         .context(error::NoTaskSnafu)?;
     let running_count = tasks
         .iter()
-        .filter_map(|task| task.last_status())
-        .filter(|status| status == &"Running")
+        .filter(|task| task.last_status() == Some("STOPPED"))
+        .filter(|task| task.stop_code() == Some(&TaskStopCode::EssentialContainerExited))
+        .filter(|task| {
+            task.containers()
+                .unwrap_or_default()
+                .iter()
+                .filter(|container| container.exit_code() != Some(0))
+                .count()
+                == 0
+        })
         .count() as i32;
     Ok(TestResults {
         outcome: if task_count == running_count {

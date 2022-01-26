@@ -76,7 +76,7 @@ impl Configuration for MigrationConfig {}
 /// The configuration information for a eks instance provider.
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, Default)]
 #[serde(rename_all = "camelCase")]
-pub struct ClusterConfig {
+pub struct EksClusterConfig {
     /// The name of the eks cluster to create or an existing cluster.
     pub cluster_name: String,
 
@@ -94,7 +94,7 @@ pub struct ClusterConfig {
     pub version: Option<K8sVersion>,
 }
 
-impl Configuration for ClusterConfig {}
+impl Configuration for EksClusterConfig {}
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -173,6 +173,22 @@ impl Default for ClusterType {
         Self::Eks
     }
 }
+
+/// The configuration information for an ecs instance provider.
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct EcsClusterConfig {
+    /// The name of the ecs cluster to create.
+    pub cluster_name: String,
+
+    /// The AWS region to create the cluster. If no value is provided `us-west-2` will be used.
+    pub region: Option<String>,
+
+    /// The vpc to use for this clusters subnet ids. If no value is provided the default vpc will be used.
+    pub vpc: Option<String>,
+}
+
+impl Configuration for EcsClusterConfig {}
 
 /// Represents a parsed Kubernetes version. Examples of valid values when parsing:
 /// - `v1.21`

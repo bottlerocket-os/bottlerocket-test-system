@@ -4,7 +4,7 @@ use aws_sdk_ec2::{Region, SdkError};
 use aws_sdk_eks::error::{DescribeClusterError, DescribeClusterErrorKind};
 use aws_sdk_eks::output::DescribeClusterOutput;
 use bottlerocket_agents::{
-    impl_display_as_json, json_display, setup_resource_env, ClusterConfig, CreationPolicy,
+    impl_display_as_json, json_display, setup_resource_env, CreationPolicy, EksClusterConfig,
     K8sVersion, AWS_CREDENTIALS_SECRET_NAME,
 };
 use log::{debug, info, trace};
@@ -104,7 +104,7 @@ pub struct EksCreator {}
 
 #[async_trait::async_trait]
 impl Create for EksCreator {
-    type Config = ClusterConfig;
+    type Config = EksClusterConfig;
     type Info = ProductionMemo;
     type Resource = CreatedCluster;
 
@@ -720,7 +720,7 @@ pub struct EksDestroyer {}
 
 #[async_trait::async_trait]
 impl Destroy for EksDestroyer {
-    type Config = ClusterConfig;
+    type Config = EksClusterConfig;
     type Info = ProductionMemo;
     type Resource = CreatedCluster;
 
