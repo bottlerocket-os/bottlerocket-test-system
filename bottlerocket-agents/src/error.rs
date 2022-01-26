@@ -15,8 +15,11 @@ use tokio::time::error::Elapsed;
 #[derive(Debug, Snafu)]
 #[snafu(visibility(pub))]
 pub enum Error {
-    #[snafu(display("Failed to base64-decode kubeconfig for test cluster: {}", source))]
-    Base64Decode { source: base64::DecodeError },
+    #[snafu(display("Failed to base64-decode '{}' for test cluster: {}", what, source))]
+    Base64Decode {
+        what: String,
+        source: base64::DecodeError,
+    },
 
     #[snafu(display("Could not convert '{}' secret to string: {}", what, source))]
     Conversion { what: String, source: FromUtf8Error },
@@ -24,16 +27,31 @@ pub enum Error {
     #[snafu(display("Failed to setup environment variables: {}", what))]
     EnvSetup { what: String },
 
-    #[snafu(display("Failed to write kubeconfig for test cluster: {}", source))]
-    KubeconfigWrite { source: std::io::Error },
+    #[snafu(display("Failed to write '{}': {}", what, source))]
+    Write {
+        what: String,
+        source: std::io::Error,
+    },
 
     #[snafu(display("Secret was missing: {}", source))]
     SecretMissing {
         source: agent_common::secrets::Error,
     },
 
+    #[snafu(display("Wireguard configuration missing from wireguard secret data"))]
+    WireguardConfMissing,
+
+    #[snafu(display("Failed to run wireguard to set up wireguard VPN tunnel: {}", stderr))]
+    WireguardRun { stderr: String },
+
     #[snafu(display("Failed to create sonobuoy process: {}", source))]
     SonobuoyProcess { source: std::io::Error },
+
+    #[snafu(display("Failed to create '{}' process: {}", what, source))]
+    Process {
+        what: String,
+        source: std::io::Error,
+    },
 
     #[snafu(display("Failed to run conformance test"))]
     SonobuoyRun,

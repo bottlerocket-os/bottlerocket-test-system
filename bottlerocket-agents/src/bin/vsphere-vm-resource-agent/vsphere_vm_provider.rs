@@ -2,6 +2,7 @@ use crate::aws::{create_ssm_activation, ensure_ssm_service_role, wait_for_ssm_re
 use crate::tuf::download_target;
 use aws_config::meta::region::RegionProviderChain;
 use aws_sdk_ssm::Region;
+use bottlerocket_agents::wireguard::{setup_wireguard, WIREGUARD_SECRET_NAME};
 use bottlerocket_agents::{
     decode_write_kubeconfig, setup_resource_env, TufRepoConfig, VSphereClusterInfo,
     AWS_CREDENTIALS_SECRET_NAME, TEST_CLUSTER_KUBECONFIG_PATH, VSPHERE_CREDENTIALS_SECRET_NAME,
@@ -143,6 +144,21 @@ impl Create for VMCreator {
             setup_resource_env(client, aws_secret_name, resources).await?;
             memo.aws_secret_name = Some(aws_secret_name.clone());
         }
+        if let Some(wireguard_secret_name) = spec.secrets.get(WIREGUARD_SECRET_NAME) {
+            // If a wireguard secret is specified, try to set up an wireguard connection with the
+            // wireguard configuration stored in the secret.
+            let wireguard_secret = IntoProviderError::context(
+                client.get_secret(wireguard_secret_name).await,
+                resources,
+                format!("Error getting secret '{}'", wireguard_secret_name),
+            )?;
+            IntoProviderError::context(
+                setup_wireguard(&wireguard_secret).await,
+                resources,
+                "Error setting up wireguard connection",
+            )?;
+        }
+
         let region_provider = RegionProviderChain::first_try(Region::new("us-west-2"));
         let shared_config = aws_config::from_env().region(region_provider).load().await;
         let ssm_client = aws_sdk_ssm::Client::new(&shared_config);
@@ -515,6 +531,21 @@ impl Destroy for VMDestroyer {
         if let Some(aws_secret_name) = spec.secrets.get(AWS_CREDENTIALS_SECRET_NAME) {
             setup_resource_env(client, aws_secret_name, resources).await?;
         }
+        if let Some(wireguard_secret_name) = spec.secrets.get(WIREGUARD_SECRET_NAME) {
+            // If a wireguard secret is specified, try to set up an wireguard connection with the
+            // wireguard configuration stored in the secret.
+            let wireguard_secret = IntoProviderError::context(
+                client.get_secret(wireguard_secret_name).await,
+                resources,
+                format!("Error getting secret '{}'", wireguard_secret_name),
+            )?;
+            IntoProviderError::context(
+                setup_wireguard(&wireguard_secret).await,
+                resources,
+                "Error setting up wireguard connection",
+            )?;
+        }
+
         let region_provider = RegionProviderChain::first_try(Region::new("us-west-2"));
         let shared_config = aws_config::from_env().region(region_provider).load().await;
         let ssm_client = aws_sdk_ssm::Client::new(&shared_config);

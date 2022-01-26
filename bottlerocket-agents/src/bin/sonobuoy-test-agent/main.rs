@@ -35,18 +35,21 @@ spec:
 use async_trait::async_trait;
 use bottlerocket_agents::error::Error;
 use bottlerocket_agents::sonobuoy::{delete_sonobuoy, run_sonobuoy};
+use bottlerocket_agents::wireguard::{setup_wireguard, WIREGUARD_SECRET_NAME};
 use bottlerocket_agents::{
-    decode_write_kubeconfig, init_agent_logger, setup_test_env, SonobuoyConfig,
+    decode_write_kubeconfig, error, init_agent_logger, setup_test_env, SonobuoyConfig,
     AWS_CREDENTIALS_SECRET_NAME, TEST_CLUSTER_KUBECONFIG_PATH,
 };
 use log::info;
 use model::{SecretName, TestResults};
+use snafu::ResultExt;
 use std::path::PathBuf;
 use test_agent::{BootstrapData, ClientError, DefaultClient, Spec, TestAgent};
 
 struct SonobuoyTestRunner {
     config: SonobuoyConfig,
     aws_secret_name: Option<SecretName>,
+    wireguard_secret_name: Option<SecretName>,
     results_dir: PathBuf,
 }
 
@@ -60,6 +63,7 @@ impl test_agent::Runner for SonobuoyTestRunner {
         Ok(Self {
             config: spec.configuration,
             aws_secret_name: spec.secrets.get(AWS_CREDENTIALS_SECRET_NAME).cloned(),
+            wireguard_secret_name: spec.secrets.get(WIREGUARD_SECRET_NAME).cloned(),
             results_dir: spec.results_dir,
         })
     }
@@ -68,6 +72,15 @@ impl test_agent::Runner for SonobuoyTestRunner {
         // Set up the aws credentials if they were provided.
         if let Some(aws_secret_name) = &self.aws_secret_name {
             setup_test_env(self, aws_secret_name).await?;
+        }
+
+        if let Some(wireguard_secret_name) = &self.wireguard_secret_name {
+            // If a wireguard secret is specified, try to set up an wireguard connection with the
+            // wireguard configuration stored in the secret.
+            let wireguard_secret = self
+                .get_secret(wireguard_secret_name)
+                .context(error::SecretMissingSnafu)?;
+            setup_wireguard(&wireguard_secret).await?;
         }
 
         decode_write_kubeconfig(&self.config.kubeconfig_base64, TEST_CLUSTER_KUBECONFIG_PATH)
