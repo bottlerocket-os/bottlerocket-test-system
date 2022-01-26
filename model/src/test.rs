@@ -19,7 +19,9 @@ use std::borrow::Cow;
     plural = "tests",
     singular = "test",
     status = "TestStatus",
-    version = "v1"
+    version = "v1",
+    printcolumn = r#"{"name":"State", "type":"string", "jsonPath":".status.agent.taskState"}"#,
+    printcolumn = r#"{"name":"Result", "type":"string", "jsonPath":".status.agent.results.outcome"}"#
 )]
 #[serde(rename_all = "camelCase")]
 pub struct TestSpec {
