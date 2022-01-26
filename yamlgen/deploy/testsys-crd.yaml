@@ -180,11 +180,11 @@ spec:
         - jsonPath: ".spec.destructionPolicy"
           name: DestructionPolicy
           type: string
-        - jsonPath: ".status.agent.creation.taskState"
+        - jsonPath: ".status.creation.taskState"
           name: CreationState
           type: string
-        - jsonPath: ".status.agent.destruction.taskState"
-          name: CreationState
+        - jsonPath: ".status.destruction.taskState"
+          name: DestructionState
           type: string
       name: v1
       schema:

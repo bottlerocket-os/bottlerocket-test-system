@@ -4,8 +4,8 @@ use aws_sdk_ec2::{Region, SdkError};
 use aws_sdk_eks::error::{DescribeClusterError, DescribeClusterErrorKind};
 use aws_sdk_eks::output::DescribeClusterOutput;
 use bottlerocket_agents::{
-    impl_display_as_json, json_display, setup_resource_env, CreationPolicy, K8sVersion,
-    AWS_CREDENTIALS_SECRET_NAME,
+    impl_display_as_json, json_display, setup_resource_env, ClusterConfig, CreationPolicy,
+    K8sVersion, AWS_CREDENTIALS_SECRET_NAME,
 };
 use log::{debug, info, trace};
 use model::{Configuration, SecretName};
@@ -22,29 +22,6 @@ use std::process::Command;
 const DEFAULT_REGION: &str = "us-west-2";
 /// The default cluster version.
 const DEFAULT_VERSION: &str = "1.21";
-
-/// The configuration information for a eks instance provider.
-#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, Default)]
-#[serde(rename_all = "camelCase")]
-pub struct ClusterConfig {
-    /// The name of the eks cluster to create or an existing cluster.
-    cluster_name: String,
-
-    /// Whether this agent will create the cluster or not.
-    creation_policy: Option<CreationPolicy>,
-
-    /// The AWS region to create the cluster. If no value is provided `us-west-2` will be used.
-    region: Option<String>,
-
-    /// The availability zones. (e.g. us-west-2a,us-west-2b)
-    zones: Option<Vec<String>>,
-
-    /// The eks version of the the cluster (e.g. "1.14", "1.15", "1.16"). Make sure this is
-    /// quoted so that it is interpreted as a JSON/YAML string (not a number).
-    version: Option<K8sVersion>,
-}
-
-impl Configuration for ClusterConfig {}
 
 #[derive(Clone, Debug, Default, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -82,13 +59,9 @@ pub struct CreatedCluster {
     /// The cluster certificate.
     pub certificate: String,
 
-    /// All public subnet ids.
-    pub public_subnet_ids: Vec<String>,
     /// A single public subnet id. Will be `None` if no public ids exist.
     pub public_subnet_id: Option<String>,
 
-    /// All private subnet ids.
-    pub private_subnet_ids: Vec<String>,
     /// A single private subnet id. Will be `None` if no private ids exist.
     pub private_subnet_id: Option<String>,
 
@@ -465,8 +438,6 @@ async fn created_cluster(
         certificate,
         public_subnet_id: first_subnet_id(&public_subnet_ids),
         private_subnet_id: first_subnet_id(&private_subnet_ids),
-        public_subnet_ids,
-        private_subnet_ids,
         nodegroup_sg,
         controlplane_sg,
         clustershared_sg,
