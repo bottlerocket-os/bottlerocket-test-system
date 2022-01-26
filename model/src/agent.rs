@@ -53,6 +53,8 @@ pub struct Agent {
     /// use it, and `SecretName` is provided by the user. `SecretName` is constrained to ascii
     /// alphanumerics plus underscores and dashes.
     pub secrets: Option<BTreeMap<SecretType, SecretName>>,
+    /// Linux capabilities to add for the agent container, e.g. NET_ADMIN
+    pub capabilities: Option<Vec<String>>,
 }
 
 impl Agent {
