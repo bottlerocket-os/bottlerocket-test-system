@@ -1,7 +1,9 @@
+use super::HttpStatusCode;
 use crate::clients::error::{self, Result};
 use crate::constants::NAMESPACE;
 use crate::CrdExt;
 use core::fmt::Debug;
+use http::StatusCode;
 use json_patch::{AddOperation, PatchOperation, RemoveOperation, ReplaceOperation, TestOperation};
 use kube::api::{ListParams, Patch, PatchParams, PostParams};
 use kube::{Api, Resource};
@@ -10,6 +12,7 @@ use serde::de::DeserializeOwned;
 use serde::Serialize;
 use serde_json::Value;
 use snafu::{ensure, OptionExt, ResultExt};
+use std::time::Duration;
 
 /// A trait with implementations of code that is shared between more than one CRD object.
 #[async_trait::async_trait]
@@ -82,6 +85,40 @@ pub trait CrdClient: Sized {
                 method: "create",
                 what: self.kind(),
             })?)
+    }
+
+    async fn delete<S>(&self, name: S) -> Result<Option<Self::Crd>>
+    where
+        S: AsRef<str> + Send,
+    {
+        let name: &str = name.as_ref();
+        Ok(self
+            .api()
+            .delete(name, &Default::default())
+            .await
+            .context(error::KubeApiCallSnafu {
+                method: "delete",
+                what: self.kind(),
+            })?
+            .map_right(|_| None)
+            .map_left(Some)
+            .into_inner())
+    }
+
+    /// Loop until `get(name)` returns `StatusCode::NOT_FOUND`
+    async fn wait_for_deletion<S>(&self, name: S) -> ()
+    where
+        S: AsRef<str> + Send,
+    {
+        let name: &str = name.as_ref();
+        loop {
+            if let Err(err) = self.api().get(name).await {
+                if err.status_code() == Some(StatusCode::NOT_FOUND) {
+                    return;
+                }
+            }
+            tokio::time::sleep(Duration::from_secs(2)).await;
+        }
     }
 
     /// If the `status` field is null, this will populate it with a default-constructed

@@ -36,6 +36,19 @@ pub(crate) enum Error {
     #[snafu(display("Error creating resource: {}", source))]
     CreateResource { source: model::clients::Error },
 
+    #[snafu(display("Unable to delete '{}': {}", what, source))]
+    Delete {
+        what: String,
+        source: model::clients::Error,
+    },
+
+    #[snafu(display("Error deleting {} '{}': {}", what, name, source))]
+    DeleteObject {
+        what: String,
+        name: String,
+        source: kube::Error,
+    },
+
     #[snafu(display("The following tests failed to run '{:?}'", tests))]
     FailedTest { tests: Vec<String> },
 
