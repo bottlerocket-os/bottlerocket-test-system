@@ -144,6 +144,20 @@ impl Cluster {
             ))?
     }
 
+    /// Waits until the resource pod is running. Will timeout after `duration` if not running.
+    pub async fn wait_for_resource_pod(
+        &self,
+        resource_name: &str,
+        duration: Duration,
+    ) -> Result<()> {
+        tokio::time::timeout(duration, self.wait_for_resource_loop(resource_name))
+            .await
+            .context(format!(
+                "Timeout waiting for resource '{}' pod to be in the 'Running' state",
+                resource_name
+            ))?
+    }
+
     /// Waits for a Kubernetes object to become available (retries on 404).
     pub async fn wait_for_object<T>(
         &self,
@@ -236,6 +250,15 @@ impl Cluster {
         }
     }
 
+    async fn wait_for_resource_loop(&self, resource_name: &str) -> Result<()> {
+        loop {
+            if self.is_resource_running(resource_name).await? {
+                return Ok(());
+            }
+            tokio::time::sleep(Duration::from_millis(750)).await;
+        }
+    }
+
     pub async fn wait_for_object_loop<T>(&self, api: Api<T>, name: &str) -> Result<()>
     where
         T: kube::Resource + Clone + DeserializeOwned + Debug,
@@ -282,6 +305,16 @@ impl Cluster {
     /// Returns `true` if the `Test` named `test_name` is in the running state.
     pub async fn is_test_running(&self, test_name: &str) -> Result<bool> {
         let pods = self.find_by_label::<Pod>("job-name", test_name).await?;
+        let pod = match pods.into_iter().next() {
+            None => return Ok(false),
+            Some(pod) => pod,
+        };
+        Ok(is_pod_running(&pod))
+    }
+
+    /// Returns `true` if the `Resource` named `resource_name` is in the running state.
+    pub async fn is_resource_running(&self, resource_name: &str) -> Result<bool> {
+        let pods = self.find_by_label::<Pod>("job-name", resource_name).await?;
         let pod = match pods.into_iter().next() {
             None => return Ok(false),
             Some(pod) => pod,

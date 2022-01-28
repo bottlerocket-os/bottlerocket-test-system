@@ -31,6 +31,8 @@ impl Default for TaskState {
     }
 }
 
+serde_plain::derive_display_from_serialize!(TaskState);
+
 #[derive(Serialize, Deserialize, Debug, Default, Eq, PartialEq, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct Agent {

@@ -12,14 +12,12 @@ use snafu::ResultExt;
 use std::collections::HashMap;
 use std::fmt::Display;
 use structopt::StructOpt;
+use tabled::{Alignment, Column, Full, MaxWidth, Modify, Style, Table, Tabled};
+use termion::terminal_size;
 
 /// Check the status of a TestSys object.
 #[derive(Debug, StructOpt)]
 pub(crate) struct Status {
-    /// Check the status of the `Test`s provided, or all `Test`s if no specific resource is provided.
-    #[structopt(long = "tests", short = "t")]
-    tests: Option<Vec<String>>,
-
     /// Check the status of the `Resource`s provided, or all `Resource`s if no specific resource is provided.
     #[structopt(long = "resources", short = "r")]
     resources: Option<Vec<String>>,
@@ -27,10 +25,6 @@ pub(crate) struct Status {
     /// Check the status of the testsys controller
     #[structopt(long, short = "c")]
     controller: bool,
-
-    /// Continue checking the status of the test/resources(s) until all have completed.
-    #[structopt(long = "wait")]
-    wait: bool,
 
     /// Output the results in JSON format.
     #[structopt(long = "json")]
@@ -42,82 +36,40 @@ impl Status {
         let tests_api = TestClient::new_from_k8s_client(k8s_client.clone());
         let resources_api = ResourceClient::new_from_k8s_client(k8s_client.clone());
         let pod_api = Api::<Pod>::namespaced(k8s_client, NAMESPACE);
-        let mut failures;
         let mut status_results;
-        loop {
-            failures = Vec::new();
-            status_results = StatusResults::new();
-            let mut all_finished = true;
-            if self.controller {
-                status_results.controller_is_running = Some(is_controller_running(&pod_api).await?);
-            }
-            let tests = self.tests(&tests_api).await?;
-            let resources = self.resources(&resources_api).await?;
-            for test in tests {
-                let test_result = TestResult::from_test(&test);
-                if !test_result.is_finished() {
-                    all_finished = false;
-                }
-                if test_result.failed() {
-                    failures.push(test_result.name.clone())
-                }
-                status_results.add_test_result(test_result)
-            }
-            for resource in resources {
-                let resource_result = ResourceResult::from_resource(&resource);
-                if !resource_result.is_finished() {
-                    all_finished = false;
-                }
-                if resource_result.failed() {
-                    failures.push(resource_result.name.clone())
-                }
-                status_results.add_resource_result(resource_result)
-            }
-
-            if !self.json {
-                println!("{}", status_results);
-            }
-            if !self.wait || all_finished {
-                break;
-            }
-
-            tokio::time::sleep(std::time::Duration::from_millis(2000)).await;
+        status_results = StatusResults::new();
+        if self.controller {
+            status_results.controller_is_running = Some(is_controller_running(&pod_api).await?);
         }
-        if self.json {
+        let tests = self.tests(&tests_api).await?;
+        let resources = self.resources(&resources_api).await?;
+        for test in tests {
+            let test_result = TestResult::from_test(&test);
+            status_results.add_test_result(test_result)
+        }
+        for resource in resources {
+            let resource_result = ResourceResult::from_resource(&resource);
+            status_results.add_resource_result(resource_result)
+        }
+
+        if !self.json {
+            let (width, _) = terminal_size().ok().unwrap_or((120, 0));
+            status_results.draw(width);
+        } else {
             println!(
                 "{}",
                 serde_json::to_string(&status_results).context(error::JsonSerializeSnafu)?
             )
         }
-        if !failures.is_empty() {
-            Err(error::Error::FailedTest { tests: failures })
-        } else {
-            Ok(())
-        }
+
+        Ok(())
     }
 
     async fn tests(&self, test_client: &TestClient) -> Result<Vec<Test>> {
-        let test_names = match &self.tests {
-            Some(tests) => tests,
-            None => return Ok(Vec::new()),
-        };
-        if test_names.is_empty() {
-            test_client
-                .get_all()
-                .await
-                .context(error::GetSnafu { what: "all_tests" })
-        } else {
-            stream::iter(test_names)
-                .then(|test_name| async move {
-                    test_client.get(&test_name).await.context(error::GetSnafu {
-                        what: test_name.clone(),
-                    })
-                })
-                .collect::<Vec<Result<Test>>>()
-                .await
-                .into_iter()
-                .collect::<Result<Vec<Test>>>()
-        }
+        test_client
+            .get_all()
+            .await
+            .context(error::GetSnafu { what: "all_tests" })
     }
 
     async fn resources(&self, resource_client: &ResourceClient) -> Result<Vec<Resource>> {
@@ -215,6 +167,31 @@ impl StatusResults {
         self.resources
             .insert(resource_result.name.clone(), resource_result);
     }
+
+    fn draw(&self, width: u16) {
+        let mut results = Vec::new();
+        if let Some(controller_running) = self.controller_is_running {
+            results.push(ResultRow {
+                name: "Controller".to_string(),
+                object_type: "Controller".to_string(),
+                state: if controller_running { "Running" } else { "" }.to_string(),
+                ..Default::default()
+            })
+        }
+        for resource_result in self.resources.values() {
+            results.push(resource_result.into());
+        }
+        for test_result in self.tests.values() {
+            results.push(test_result.into());
+        }
+        let results_table = Results {
+            width,
+            results,
+            ..Default::default()
+        };
+
+        results_table.draw();
+    }
 }
 
 impl Display for StatusResults {
@@ -256,30 +233,6 @@ impl TestResult {
             skipped,
         }
     }
-
-    fn is_finished(&self) -> bool {
-        match self.state {
-            TestUserState::Unknown | TestUserState::Starting | TestUserState::Running => false,
-            TestUserState::NoTests
-            | TestUserState::Passed
-            | TestUserState::Failed
-            | TestUserState::Error
-            | TestUserState::ResourceError
-            | TestUserState::Deleting => true,
-        }
-    }
-
-    fn failed(&self) -> bool {
-        match self.state {
-            TestUserState::Unknown
-            | TestUserState::Starting
-            | TestUserState::Running
-            | TestUserState::NoTests
-            | TestUserState::Passed => false,
-            TestUserState::Failed | TestUserState::Error | TestUserState::ResourceError => true,
-            TestUserState::Deleting => false,
-        }
-    }
 }
 
 impl Display for TestResult {
@@ -306,6 +259,19 @@ impl Display for TestResult {
     }
 }
 
+impl From<&TestResult> for ResultRow {
+    fn from(test_result: &TestResult) -> ResultRow {
+        ResultRow {
+            name: test_result.name.clone(),
+            object_type: "Test".to_string(),
+            state: test_result.state.to_string(),
+            passed: test_result.passed,
+            skipped: test_result.skipped,
+            failed: test_result.failed,
+        }
+    }
+}
+
 impl ResourceResult {
     fn from_resource(resource: &Resource) -> Self {
         let name = resource.name();
@@ -322,14 +288,6 @@ impl ResourceResult {
             delete_state,
         }
     }
-
-    fn is_finished(&self) -> bool {
-        self.create_state == TaskState::Completed || self.create_state == TaskState::Error
-    }
-
-    fn failed(&self) -> bool {
-        self.create_state == TaskState::Error
-    }
 }
 
 impl Display for ResourceResult {
@@ -338,5 +296,129 @@ impl Display for ResourceResult {
         writeln!(f, "Resource Creation State: {:?}", self.create_state)?;
         writeln!(f, "Resource Deletion State: {:?}", self.delete_state)?;
         Ok(())
+    }
+}
+
+impl From<&ResourceResult> for ResultRow {
+    fn from(resource_result: &ResourceResult) -> ResultRow {
+        let state = match resource_result.delete_state {
+            TaskState::Unknown => resource_result.create_state,
+            _ => resource_result.delete_state,
+        };
+        ResultRow {
+            name: resource_result.name.clone(),
+            object_type: "Resource".to_string(),
+            state: state.to_string(),
+            passed: None,
+            skipped: None,
+            failed: None,
+        }
+    }
+}
+
+struct Results {
+    width: u16,
+    results: Vec<ResultRow>,
+    min_name_width: u16,
+    min_object_width: u16,
+    min_state_width: u16,
+    min_passed_width: u16,
+    min_skipped_width: u16,
+    min_failed_width: u16,
+}
+
+impl Default for Results {
+    fn default() -> Self {
+        Self {
+            width: 100,
+            results: Vec::new(),
+            min_name_width: 4,
+            min_object_width: 4,
+            min_state_width: 5,
+            min_passed_width: 6,
+            min_skipped_width: 7,
+            min_failed_width: 6,
+        }
+    }
+}
+
+impl Results {
+    fn draw(&self) {
+        if self.width
+            < self.min_name_width
+                + self.min_object_width
+                + self.min_state_width
+                + self.min_passed_width
+                + self.min_skipped_width
+                + self.min_failed_width
+                + 25
+        {
+            println!("The screen is not wide enough.");
+            return;
+        }
+        let width_diff = self.width
+            - self.min_name_width
+            - self.min_object_width
+            - self.min_state_width
+            - self.min_passed_width
+            - self.min_skipped_width
+            - self.min_failed_width
+            - 25;
+        let mut name = self.min_name_width;
+        let mut object = self.min_object_width;
+        let mut state = self.min_state_width;
+        let passed = self.min_passed_width;
+        let skipped = self.min_skipped_width;
+        let failed = self.min_failed_width;
+        if width_diff < 18 {
+            let diff = width_diff / 3;
+            state += diff;
+            object += diff;
+            name += width_diff - 2 * diff;
+        } else {
+            name += width_diff - 12;
+            object += 6;
+            state += 6;
+        }
+
+        let mut sorted_results = self.results.clone();
+        sorted_results.sort_by(|a, b| a.name.cmp(&b.name));
+
+        let table = Table::new(sorted_results)
+            .with(Style::NO_BORDER)
+            .with(Modify::new(Full).with(Alignment::left()))
+            .with(Modify::new(Column(..1)).with(MaxWidth::truncating(name.into(), "..")))
+            .with(Modify::new(Column(1..2)).with(MaxWidth::truncating(object.into(), "..")))
+            .with(Modify::new(Column(2..3)).with(MaxWidth::truncating(state.into(), "..")))
+            .with(Modify::new(Column(3..4)).with(MaxWidth::truncating(passed.into(), "")))
+            .with(Modify::new(Column(4..5)).with(MaxWidth::truncating(skipped.into(), "")))
+            .with(Modify::new(Column(6..)).with(MaxWidth::truncating(failed.into(), "")));
+        print!("{}", table);
+    }
+}
+
+#[derive(Tabled, Default, Clone)]
+struct ResultRow {
+    #[header("NAME")]
+    name: String,
+    #[header("TYPE")]
+    object_type: String,
+    #[header("STATE")]
+    state: String,
+    #[header("PASSED")]
+    #[field(display_with = "display_option")]
+    passed: Option<u64>,
+    #[header("SKIPPED")]
+    #[field(display_with = "display_option")]
+    skipped: Option<u64>,
+    #[header("FAILED")]
+    #[field(display_with = "display_option")]
+    failed: Option<u64>,
+}
+
+fn display_option(o: &Option<u64>) -> String {
+    match o {
+        Some(count) => format!("{}", count),
+        None => "".to_string(),
     }
 }
