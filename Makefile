@@ -85,15 +85,19 @@ eks-resource-agent ec2-resource-agent ecs-resource-agent vsphere-vm-resource-age
 		--tag $@ \
 		.
 
-# If TESTSYS_SELFTEST_SKIP_IMAGE_BUILDS is set to a non-zero-length string, the container images
-# will not be rebuilt.
+# TESTSYS_SELFTEST_SKIP_IMAGE_BUILDS - If this is set to a non-zero-length string, the container images will will be
+#                                      expected to already exist and will not be built.
+# TESTSYS_SELFTEST_THREADS           - The number of tests that cargo will run in parallel. This defaults to 1 since the
+#                                      integration tests run Kubernetes clusters in kind which can be resource-intensive
+#                                      for some machines.
 integ-test: export TESTSYS_SELFTEST_KIND_PATH := $(shell pwd)/bin/kind
+integ-test: TESTSYS_SELFTEST_THREADS ?= 1
 integ-test: $(if $(TESTSYS_SELFTEST_SKIP_IMAGE_BUILDS), ,controller example-test-agent duplicator-resource-agent)
 	$(shell pwd)/bin/download-kind.sh --platform $(TESTSYS_BUILD_HOST_PLATFORM) --goarch ${TESTSYS_BUILD_HOST_GOARCH}
 	docker tag example-test-agent example-test-agent:integ
 	docker tag controller controller:integ
 	docker tag duplicator-resource-agent duplicator-resource-agent:integ
-	cargo test --features integ -- --test-threads=1
+	cargo test --features integ -- --test-threads=$(TESTSYS_SELFTEST_THREADS)
 
 cargo-deny:
 	# Install cargo-deny to CARGO_HOME which is set to be .cargo in this repository
