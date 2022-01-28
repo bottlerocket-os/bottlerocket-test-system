@@ -11,66 +11,26 @@ on:
     branches: [develop]
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux, x64]
     steps:
       - uses: actions/checkout@v2
       - run: rustup update stable
       - run: make build
-      # Seems like artifact upload/download doesn't like hidden files.
-      - run: mv .cargo cargo
-      # Tar these with quick compression.
-      - run: tar cf - cargo | lz4 -2 - cargo.tar.lz4
-      - run: tar cf - target | lz4 -2 - target.tar.lz4
-      # Upload these artifacts for later use.
-      - uses: actions/upload-artifact@v2
-        with:
-          name: build-artifacts
-          path: |
-            cargo.tar.lz4
-            target.tar.lz4
-  images:
-    strategy:
-      matrix:
-        make_target:
-         - "controller"
-         - "duplicator-resource-agent"
-         - "ec2-resource-agent"
-         - "eks-resource-agent"
-         - "example-resource-agent"
-         - "example-test-agent"
-         - "sonobuoy-test-agent"
-         - "migration-test-agent"
-         - "vsphere-vm-resource-agent"
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-      - run: make ${{ matrix.make_target }}
-      - run: docker save ${{ matrix.make_target }}:latest --output /tmp/${{ matrix.make_target }}.tar
-      - uses: actions/upload-artifact@v2
-        with:
-          name: ${{ matrix.make_target }}
-          path: /tmp/${{ matrix.make_target }}.tar
-  integ:
-    needs: [images, build]
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-      - uses: actions/download-artifact@v2
-        with:
-          path: /tmp
-      - run: docker load --input /tmp/controller/controller.tar
-      - run: docker load --input /tmp/duplicator-resource-agent/duplicator-resource-agent.tar
-      - run: docker load --input /tmp/example-resource-agent/example-resource-agent.tar
-      - run: docker load --input /tmp/example-test-agent/example-test-agent.tar
-      - run: docker load --input /tmp/sonobuoy-test-agent/sonobuoy-test-agent.tar
-      - run: cd /tmp/build-artifacts && lz4 cargo.tar.lz4 - | tar xvf -
-      - run: cd /tmp/build-artifacts && lz4 target.tar.lz4 - | tar xvf -
-      - run: mv /tmp/build-artifacts/cargo .cargo
-      - run: mv /tmp/build-artifacts/target target
+      - run: make controller
+      - run: make duplicator-resource-agent
+      - run: make example-resource-agent
+      - run: make example-test-agent
       - run: make integ-test
         env:
           TESTSYS_SELFTEST_SKIP_IMAGE_BUILDS: true
+          TESTSYS_SELFTEST_THREADS: 6
+  images:
+    runs-on: [ self-hosted, linux, x64 ]
+    steps:
+      - uses: actions/checkout@v2
+      - run: make images
   license-check:
+    # A small machine is OK for this independent job.
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
