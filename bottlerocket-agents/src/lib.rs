@@ -32,7 +32,7 @@ use test_agent::Runner;
 pub const AWS_CREDENTIALS_SECRET_NAME: &str = "awsCredentials";
 pub const VSPHERE_CREDENTIALS_SECRET_NAME: &str = "vsphereCredentials";
 pub const TEST_CLUSTER_KUBECONFIG_PATH: &str = "/local/test-cluster.kubeconfig";
-pub const DEFAULT_AGENT_LEVEL_FILTER: LevelFilter = LevelFilter::Trace;
+pub const DEFAULT_AGENT_LEVEL_FILTER: LevelFilter = LevelFilter::Info;
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, Default)]
 #[serde(rename_all = "camelCase")]
