@@ -13,6 +13,7 @@ mod install;
 mod k8s;
 mod results;
 mod run;
+mod run_aws_ecs;
 mod run_aws_k8s;
 mod run_file;
 mod run_sonobuoy;

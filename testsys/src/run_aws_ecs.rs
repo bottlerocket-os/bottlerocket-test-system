@@ -1,8 +1,6 @@
 use crate::error::{self, Result};
-use bottlerocket_agents::sonobuoy::Mode;
 use bottlerocket_agents::{
-    ClusterType, CreationPolicy, Ec2Config, EksClusterConfig, K8sVersion, SonobuoyConfig,
-    AWS_CREDENTIALS_SECRET_NAME,
+    ClusterType, Ec2Config, EcsClusterConfig, EcsTestConfig, AWS_CREDENTIALS_SECRET_NAME,
 };
 use kube::{api::ObjectMeta, Client};
 use maplit::btreemap;
@@ -11,23 +9,22 @@ use model::constants::NAMESPACE;
 use model::{
     Agent, Configuration, DestructionPolicy, Resource, ResourceSpec, SecretName, Test, TestSpec,
 };
-use serde_json::Value;
 use snafu::ResultExt;
 use structopt::StructOpt;
 
 /// Create an EKS resource, EC2 resource and run Sonobuoy.
 #[derive(Debug, StructOpt)]
-pub(crate) struct RunAwsK8s {
-    /// Name of the sonobuoy test.
+pub(crate) struct RunAwsEcs {
+    /// Name of the ecs test agent.
     #[structopt(long, short)]
     name: String,
 
-    /// Location of the sonobuoy test agent image.
+    /// Location of the ecs test agent image.
     // TODO - default to an ECR public repository image
     #[structopt(long, short)]
     test_agent_image: String,
 
-    /// Name of the pull secret for the sonobuoy test image (if needed).
+    /// Name of the pull secret for the ecs test image (if needed).
     #[structopt(long)]
     test_agent_pull_secret: Option<String>,
 
@@ -35,23 +32,18 @@ pub(crate) struct RunAwsK8s {
     #[structopt(long)]
     keep_running: bool,
 
-    /// The plugin used for the sonobuoy test. Normally this is `e2e` (the default).
-    #[structopt(long, default_value = "e2e")]
-    sonobuoy_plugin: String,
-
-    /// The mode used for the sonobuoy test. One of `non-disruptive-conformance`,
-    /// `certified-conformance`, `quick`. Although the Sonobuoy binary defaults to
-    /// `non-disruptive-conformance`, we default to `quick` to make a quick test the most ergonomic.
-    #[structopt(long, default_value = "quick")]
-    sonobuoy_mode: Mode,
-
-    /// The kubernetes version (with or without the v prefix). Examples: v1.21, 1.21.3, v1.20.1
+    /// A specific task definition that the ecs test agent will use. If one isn't provided,
+    /// a simple default task will be created and used.
     #[structopt(long)]
-    kubernetes_version: Option<K8sVersion>,
+    task_definition_name_and_revision: Option<String>,
 
-    /// The kubernetes conformance image used for the sonobuoy test.
+    /// The number of tasks that should be run (default value is 1).
+    #[structopt(long, default_value = "1")]
+    task_count: i32,
+
+    /// The vpc that will be used for the ecs cluster (defaults to the default vpc).
     #[structopt(long)]
-    kubernetes_conformance_image: Option<String>,
+    vpc: Option<String>,
 
     /// The name of the secret containing aws credentials.
     #[structopt(long)]
@@ -72,20 +64,12 @@ pub(crate) struct RunAwsK8s {
     #[structopt(long)]
     cluster_resource_name: Option<String>,
 
-    /// Whether or not we want the EKS cluster to be created. The possible values are:
-    /// - `create`: the cluster will be created, it is an error for the cluster to pre-exist
-    /// - `ifNotExists`: the cluster will be created if it does not already exist
-    /// - `never`: the cluster must pre-exist or else it is an error
-    #[structopt(long, default_value = "ifNotExists")]
-    cluster_creation_policy: CreationPolicy,
+    /// The aws arn for the instace profile that the ec2 instances should be launched using. If
+    /// no arn is provided, a testsys provided iam instance profile will be used.
+    #[structopt(long)]
+    iam_instance_profile_arn: Option<String>,
 
-    /// Whether or not we want the EKS cluster to be destroyed. The possible values are:
-    /// - `onDeletion`: the cluster will be destroyed when its TestSys resource is deleted.
-    /// - `never`: the cluster will not be destroyed.
-    #[structopt(long, default_value = "never")]
-    cluster_destruction_policy: DestructionPolicy,
-
-    /// The container image of the EKS resource provider.
+    /// The container image of the ECS resource provider.
     // TODO - provide a default on ECR Public
     #[structopt(long)]
     cluster_provider_image: String,
@@ -119,7 +103,7 @@ pub(crate) struct RunAwsK8s {
     ec2_provider_pull_secret: Option<String>,
 }
 
-impl RunAwsK8s {
+impl RunAwsEcs {
     pub(crate) async fn run(self, k8s_client: Client) -> Result<()> {
         let cluster_resource_name = self
             .cluster_resource_name
@@ -132,7 +116,7 @@ impl RunAwsK8s {
             btreemap! [ AWS_CREDENTIALS_SECRET_NAME.to_string() => secret_name.clone()]
         });
 
-        let eks_resource = Resource {
+        let ecs_resource = Resource {
             metadata: ObjectMeta {
                 name: Some(cluster_resource_name.clone()),
                 namespace: Some(NAMESPACE.into()),
@@ -141,54 +125,43 @@ impl RunAwsK8s {
             spec: ResourceSpec {
                 depends_on: None,
                 agent: Agent {
-                    name: "eks-provider".to_string(),
+                    name: "ecs-provider".to_string(),
                     image: self.cluster_provider_image,
                     pull_secret: self.cluster_provider_pull_secret,
                     keep_running: false,
                     timeout: None,
                     configuration: Some(
-                        EksClusterConfig {
+                        EcsClusterConfig {
                             cluster_name: self.cluster_name.to_owned(),
-                            creation_policy: Some(self.cluster_creation_policy),
                             region: Some(self.region.clone()),
-                            zones: None,
-                            version: self.kubernetes_version,
+                            vpc: self.vpc,
                         }
                         .into_map()
                         .context(error::ConfigMapSnafu)?,
                     ),
                     secrets: aws_secret_map.clone(),
                 },
-                destruction_policy: self.cluster_destruction_policy,
+                ..Default::default()
             },
             status: None,
         };
 
-        let mut ec2_config = Ec2Config {
+        let ec2_config = Ec2Config {
             node_ami: self.ami,
             // TODO - configurable
             instance_count: Some(2),
             instance_type: self.instance_type,
             cluster_name: self.cluster_name.clone(),
             region: self.region,
-            instance_profile_arn: format!("${{{}.iamInstanceProfileArn}}", cluster_resource_name),
+            instance_profile_arn: self
+                .iam_instance_profile_arn
+                .unwrap_or_else(|| format!("${{{}.iamInstanceProfileArn}}", cluster_resource_name)),
             subnet_id: format!("${{{}.publicSubnetId}}", cluster_resource_name),
-            cluster_type: ClusterType::Eks,
-            endpoint: Some(format!("${{{}.endpoint}}", cluster_resource_name)),
-            certificate: Some(format!("${{{}.certificate}}", cluster_resource_name)),
-            security_groups: vec![],
+            cluster_type: ClusterType::Ecs,
+            ..Default::default()
         }
         .into_map()
         .context(error::ConfigMapSnafu)?;
-
-        // TODO - we have change the raw map to reference/template a non string field.
-        let previous_value = ec2_config.insert(
-            "securityGroups".to_owned(),
-            Value::String(format!("${{{}.securityGroups}}", cluster_resource_name)),
-        );
-        if previous_value.is_none() {
-            todo!("This is an error: fields in the Ec2Config struct have changed")
-        }
 
         let ec2_resource = Resource {
             metadata: ObjectMeta {
@@ -222,21 +195,19 @@ impl RunAwsK8s {
                 resources: vec![ec2_resource_name.clone(), cluster_resource_name.clone()],
                 depends_on: Default::default(),
                 agent: Agent {
-                    name: "sonobuoy-test-agent".to_string(),
+                    name: "ecs-test-agent".to_string(),
                     image: self.test_agent_image.clone(),
                     pull_secret: self.test_agent_pull_secret.clone(),
                     keep_running: self.keep_running,
                     timeout: None,
                     configuration: Some(
-                        SonobuoyConfig {
-                            kubeconfig_base64: format!(
-                                "${{{}.encodedKubeconfig}}",
-                                cluster_resource_name
-                            ),
-                            plugin: self.sonobuoy_plugin.clone(),
-                            mode: self.sonobuoy_mode,
-                            kubernetes_version: self.kubernetes_version,
-                            kube_conformance_image: self.kubernetes_conformance_image.clone(),
+                        EcsTestConfig {
+                            region: Some(format!("${{{}.region}}", cluster_resource_name)),
+                            cluster_name: format!("${{{}.clusterName}}", cluster_resource_name),
+                            task_count: self.task_count,
+                            subnet: format!("${{{}.publicSubnetId}}", cluster_resource_name),
+                            task_definition_name_and_revision: self
+                                .task_definition_name_and_revision,
                         }
                         .into_map()
                         .context(error::ConfigMapSnafu)?,
@@ -250,10 +221,10 @@ impl RunAwsK8s {
         let test_client = TestClient::new_from_k8s_client(k8s_client);
 
         let _ = resource_client
-            .create(eks_resource)
+            .create(ecs_resource)
             .await
             .context(error::ModelClientSnafu {
-                message: "Unable to create EKS cluster resource object",
+                message: "Unable to create ECS cluster resource object",
             })?;
         println!("Created resource object '{}'", cluster_resource_name);
 
