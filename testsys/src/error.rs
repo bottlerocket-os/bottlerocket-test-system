@@ -51,6 +51,12 @@ pub(crate) enum Error {
         source: kube::Error,
     },
 
+    #[snafu(display("Unable to get logs for '{}': {}", pod, source))]
+    Logs { pod: String, source: kube::Error },
+
+    #[snafu(display("Unable to get next log from stream: {}", source))]
+    LogsStream { source: kube::Error },
+
     #[snafu(display("Unable to get '{}': {}", what, source))]
     Get {
         what: String,
