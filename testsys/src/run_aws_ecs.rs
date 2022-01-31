@@ -140,6 +140,7 @@ impl RunAwsEcs {
                         .context(error::ConfigMapSnafu)?,
                     ),
                     secrets: aws_secret_map.clone(),
+                    capabilities: None,
                 },
                 ..Default::default()
             },
@@ -179,6 +180,7 @@ impl RunAwsEcs {
                     timeout: None,
                     configuration: Some(ec2_config),
                     secrets: aws_secret_map.clone(),
+                    capabilities: None,
                 },
                 destruction_policy: DestructionPolicy::OnDeletion,
             },
@@ -213,6 +215,7 @@ impl RunAwsEcs {
                         .context(error::ConfigMapSnafu)?,
                     ),
                     secrets: aws_secret_map,
+                    capabilities: None,
                 },
             },
             status: None,
