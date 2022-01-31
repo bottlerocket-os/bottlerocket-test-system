@@ -12,6 +12,8 @@ ENV PKG_CONFIG_PATH=/${ARCH}-bottlerocket-linux-musl/sys-root/usr/lib/pkgconfig
 ENV PKG_CONFIG_ALLOW_CROSS=1
 ENV CARGO_HOME=/src/.cargo
 ENV OPENSSL_STATIC=true
+
+# Build bottlerocket-agents
 ADD ./ /src/
 WORKDIR /src/bottlerocket-agents/
 RUN --mount=type=cache,mode=0777,target=/src/target \
@@ -19,6 +21,27 @@ RUN --mount=type=cache,mode=0777,target=/src/target \
       --target ${ARCH}-bottlerocket-linux-musl \
       --path . \
       --root .
+
+# Install boringtun
+RUN cargo install boringtun \
+    --target ${ARCH}-bottlerocket-linux-musl \
+    --root .
+
+# =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^=
+# TODO figure out how to build this in the Bottlerocket SDK
+# Builds wireguard tools
+FROM public.ecr.aws/amazonlinux/amazonlinux:2 as wireguard-build
+RUN yum install -y gcc tar gzip make && yum clean all
+ARG WIREGUARD_TOOLS_VERSION=1.0.20210914
+ARG WIREGUARD_TOOLS_SOURCE_URL=https://github.com/WireGuard/wireguard-tools/archive/refs/tags/v${WIREGUARD_TOOLS_VERSION}.tar.gz
+
+# Download wireguard-tools source and install wg
+RUN temp_dir="$(mktemp -d --suffix wireguard-tools-setup)" && \
+    curl -fsSL "${WIREGUARD_TOOLS_SOURCE_URL}" -o "${temp_dir}/${WIREGUARD_TOOLS_SOURCE_URL##*/}" && \
+    tar xpf "${temp_dir}/${WIREGUARD_TOOLS_SOURCE_URL##*/}" -C "${temp_dir}" && \
+    cd "${temp_dir}/wireguard-tools-${WIREGUARD_TOOLS_VERSION}/src" && \
+    make && WITH_BASHCOMPLETION=no WITH_SYSTEMDUNITS=no make install && \
+    rm -rf ${temp_dir}
 
 # =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^=
 # Builds the EC2 resource agent image
@@ -37,7 +60,7 @@ FROM public.ecr.aws/amazonlinux/amazonlinux:2 as vsphere-vm-resource-agent
 ARG GOARCH
 ARG K8S_VERSION=1.21.6
 
-RUN yum install -y gcc tar gzip openssl-devel && yum clean all
+RUN yum install -y gcc tar gzip openssl-devel iproute && yum clean all
 
 # Copy GOVC
 COPY --from=build /usr/libexec/tools/govc /usr/local/bin/govc
@@ -46,6 +69,11 @@ COPY --from=build /usr/libexec/tools/govc /usr/local/bin/govc
 RUN curl -LO "https://dl.k8s.io/release/v${K8S_VERSION}/bin/linux/${GOARCH}/kubeadm" && \
     install -o root -g root -m 0755 kubeadm /usr/local/bin/kubeadm
 
+# Copy wireguard-tools
+COPY --from=wireguard-build /usr/bin/wg /usr/bin/wg
+COPY --from=wireguard-build /usr/bin/wg-quick /usr/bin/wg-quick
+# Copy boringtun
+COPY --from=build /src/bottlerocket-agents/bin/boringtun /usr/bin/boringtun
 # Copy binary
 COPY --from=build /src/bottlerocket-agents/bin/vsphere-vm-resource-agent ./
 
@@ -94,7 +122,7 @@ ARG SONOBUOY_VERSION=0.53.2
 ARG SONOBUOY_URL=https://github.com/vmware-tanzu/sonobuoy/releases/download/v${SONOBUOY_VERSION}/sonobuoy_${SONOBUOY_VERSION}_linux_${GOARCH}.tar.gz
 ARG AWS_IAM_AUTHENTICATOR_URL=https://amazon-eks.s3.us-west-2.amazonaws.com/1.21.2/2021-07-05/bin/linux/${GOARCH}/aws-iam-authenticator
 ARG AWS_CLI_URL=https://awscli.amazonaws.com/awscli-exe-linux-${ARCH}.zip
-RUN yum install -y tar gzip unzip && yum clean all
+RUN yum install -y tar gzip unzip iproute && yum clean all
 
 # Download aws-iam-authenticator
 RUN temp_dir="$(mktemp -d --suffix aws-iam-authenticator)" && \
@@ -119,6 +147,11 @@ RUN temp_dir="$(mktemp -d --suffix sonobuoy-setup)" && \
     rm -rf ${temp_dir}
 # Copy binary
 COPY --from=build /src/bottlerocket-agents/bin/sonobuoy-test-agent ./
+# Copy wireguard-tools
+COPY --from=wireguard-build /usr/bin/wg /usr/bin/wg
+COPY --from=wireguard-build /usr/bin/wg-quick /usr/bin/wg-quick
+# Copy boringtun
+COPY --from=build /src/bottlerocket-agents/bin/boringtun /usr/bin/boringtun
 
 ENTRYPOINT ["./sonobuoy-test-agent"]
 

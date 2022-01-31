@@ -8,6 +8,7 @@ This `lib.rs` provides code that is used by multiple agent binaries orused by th
 
 pub mod error;
 pub mod sonobuoy;
+pub mod wireguard;
 
 use crate::error::Error;
 use crate::sonobuoy::Mode;
@@ -32,7 +33,7 @@ use test_agent::Runner;
 pub const AWS_CREDENTIALS_SECRET_NAME: &str = "awsCredentials";
 pub const VSPHERE_CREDENTIALS_SECRET_NAME: &str = "vsphereCredentials";
 pub const TEST_CLUSTER_KUBECONFIG_PATH: &str = "/local/test-cluster.kubeconfig";
-pub const DEFAULT_AGENT_LEVEL_FILTER: LevelFilter = LevelFilter::Trace;
+pub const DEFAULT_AGENT_LEVEL_FILTER: LevelFilter = LevelFilter::Info;
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, Default)]
 #[serde(rename_all = "camelCase")]
@@ -340,10 +341,10 @@ pub async fn decode_write_kubeconfig(
 ) -> Result<(), error::Error> {
     let kubeconfig_path = Path::new(kubeconfig_path);
     info!("Decoding kubeconfig for test cluster");
-    let decoded_bytes =
-        base64::decode(kubeconfig_base64.as_bytes()).context(error::Base64DecodeSnafu)?;
+    let decoded_bytes = base64::decode(kubeconfig_base64.as_bytes())
+        .context(error::Base64DecodeSnafu { what: "kubeconfig" })?;
     info!("Storing kubeconfig in {}", kubeconfig_path.display());
-    fs::write(kubeconfig_path, decoded_bytes).context(error::KubeconfigWriteSnafu)?;
+    fs::write(kubeconfig_path, decoded_bytes).context(error::WriteSnafu { what: "kubeconfig" })?;
     Ok(())
 }
 

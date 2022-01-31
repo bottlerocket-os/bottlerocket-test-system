@@ -1,8 +1,8 @@
 use crate::job::error::{JobError, JobResult};
 use k8s_openapi::api::batch::v1::{Job, JobSpec};
 use k8s_openapi::api::core::v1::{
-    Container, EnvVar, LocalObjectReference, PodSpec, PodTemplateSpec, SecretVolumeSource, Volume,
-    VolumeMount,
+    Capabilities, Container, EnvVar, LocalObjectReference, PodSpec, PodTemplateSpec,
+    SecretVolumeSource, SecurityContext, Volume, VolumeMount,
 };
 use k8s_openapi::apimachinery::pkg::apis::meta::v1::ObjectMeta;
 use kube::api::PostParams;
@@ -42,6 +42,14 @@ impl JobBuilder<'_> {
     fn build(self) -> Job {
         let vars = env_vars(self.environment_variables);
         let labels = create_labels(self.job_type, &self.agent.name, self.job_name);
+        // Set up the container's security context
+        let security_context = self.agent.capabilities.as_ref().map(|c| SecurityContext {
+            capabilities: Some(Capabilities {
+                add: Some(c.to_owned()),
+                ..Capabilities::default()
+            }),
+            ..SecurityContext::default()
+        });
 
         Job {
             metadata: ObjectMeta {
@@ -59,6 +67,7 @@ impl JobBuilder<'_> {
                             image: Some(self.agent.image.to_owned()),
                             env: if vars.is_empty() { None } else { Some(vars) },
                             volume_mounts: mounts(self.agent),
+                            security_context,
                             ..Container::default()
                         }],
                         restart_policy: Some(String::from("Never")),

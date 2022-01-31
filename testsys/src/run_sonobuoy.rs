@@ -115,6 +115,8 @@ impl RunSonobuoy {
                             .insert(AWS_CREDENTIALS_SECRET_NAME.to_string(), secret_name.clone());
                         secrets_map
                     }),
+                    // FIXME: Add CLI option for setting this
+                    capabilities: None,
                 },
             },
             status: None,
