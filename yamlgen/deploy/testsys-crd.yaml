@@ -32,6 +32,12 @@ spec:
                 agent:
                   description: Information about the test agent.
                   properties:
+                    capabilities:
+                      description: "Linux capabilities to add for the agent container, e.g. NET_ADMIN"
+                      items:
+                        type: string
+                      nullable: true
+                      type: array
                     configuration:
                       description: "The configuration to pass to the agent. This is 'open' to allow agents to define their own schemas."
                       nullable: true
@@ -197,6 +203,12 @@ spec:
                 agent:
                   description: Information about the resource agent.
                   properties:
+                    capabilities:
+                      description: "Linux capabilities to add for the agent container, e.g. NET_ADMIN"
+                      items:
+                        type: string
+                      nullable: true
+                      type: array
                     configuration:
                       description: "The configuration to pass to the agent. This is 'open' to allow agents to define their own schemas."
                       nullable: true
