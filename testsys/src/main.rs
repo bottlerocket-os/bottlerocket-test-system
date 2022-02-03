@@ -11,6 +11,7 @@ mod add_secret_map;
 mod error;
 mod install;
 mod k8s;
+mod logs;
 mod results;
 mod run;
 mod run_aws_ecs;
@@ -55,6 +56,8 @@ enum Command {
     Set(set::Set),
     /// Retrieve the results tar from the test.
     Results(results::Results),
+    /// Retrieve the logs for a test pod.
+    Logs(logs::Logs),
 }
 
 #[tokio::main]
@@ -76,6 +79,7 @@ async fn run(args: Args) -> Result<()> {
         Command::Add(add) => add.run(k8s_client).await,
         Command::Set(set) => set.run(k8s_client).await,
         Command::Results(results) => results.run(k8s_client).await,
+        Command::Logs(logs) => logs.run(k8s_client).await,
     }
 }
 
