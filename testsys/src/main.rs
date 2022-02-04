@@ -8,6 +8,7 @@ mod add;
 mod add_aws_secret;
 mod add_secret;
 mod add_secret_map;
+mod delete;
 mod error;
 mod install;
 mod k8s;
@@ -58,6 +59,8 @@ enum Command {
     Results(results::Results),
     /// Retrieve the logs for a test pod.
     Logs(logs::Logs),
+    /// Delete a testsys object.
+    Delete(delete::Delete),
 }
 
 #[tokio::main]
@@ -80,6 +83,7 @@ async fn run(args: Args) -> Result<()> {
         Command::Set(set) => set.run(k8s_client).await,
         Command::Results(results) => results.run(k8s_client).await,
         Command::Logs(logs) => logs.run(k8s_client).await,
+        Command::Delete(delete) => delete.run(k8s_client).await,
     }
 }
 
