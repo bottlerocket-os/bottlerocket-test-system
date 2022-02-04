@@ -8,6 +8,15 @@ FROM ${BUILDER_IMAGE} as build
 ADD ./ /src
 
 # =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^=
+FROM build as build-go
+USER builder
+
+ARG GOARCH
+ARG GOROOT="/usr/libexec/go"
+
+ENV PATH="${GOROOT}/bin:${PATH}"
+
+# =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^=
 FROM build as build-src
 USER root
 
@@ -93,6 +102,29 @@ RUN curl -OL ${SONOBUOY_BINARY_URL} && \
     rm sonobuoy_${SONOBUOY_VERSION}_linux_${GOARCH}.tar.gz
 
 # =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^=
+FROM build-go as aws-iam-authenticator-build
+
+USER root
+RUN mkdir -p /usr/share/licenses/aws-iam-authenticator && \
+    chown -R builder:builder /usr/share/licenses/aws-iam-authenticator
+
+ARG AWS_IAM_AUTHENTICATOR_VERSION=0.5.3
+ARG AWS_IAM_AUTHENTICATOR_SOURCE_URL="https://github.com/kubernetes-sigs/aws-iam-authenticator/archive/refs/tags/v${AWS_IAM_AUTHENTICATOR_VERSION}.tar.gz"
+
+USER builder
+WORKDIR /home/builder/
+RUN mkdir aws-iam-authenticator && curl -L ${AWS_IAM_AUTHENTICATOR_SOURCE_URL} \
+      -o aws-iam-authenticator-${AWS_IAM_AUTHENTICATOR_VERSION}.tar.gz && \
+    tar -xf aws-iam-authenticator-${AWS_IAM_AUTHENTICATOR_VERSION}.tar.gz --strip-components 1 \
+      -C aws-iam-authenticator && \
+    rm aws-iam-authenticator-${AWS_IAM_AUTHENTICATOR_VERSION}.tar.gz
+
+WORKDIR /home/builder/aws-iam-authenticator/
+RUN go mod vendor
+RUN go build -mod=vendor -o /tmp/aws-iam-authenticator \
+      ./cmd/aws-iam-authenticator
+
+# =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^=
 # Builds the EC2 resource agent image
 FROM scratch as ec2-resource-agent
 # Copy CA certificates store
@@ -161,18 +193,12 @@ ENTRYPOINT ["./ecs-test-agent"]
 # =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^=
 # Builds the Sonobuoy test agent image
 FROM public.ecr.aws/amazonlinux/amazonlinux:2 AS sonobuoy-test-agent
-ARG GOARCH
 ARG ARCH
 RUN yum install -y unzip iproute && yum clean all
-ARG AWS_IAM_AUTHENTICATOR_URL=https://amazon-eks.s3.us-west-2.amazonaws.com/1.21.2/2021-07-05/bin/linux/${GOARCH}/aws-iam-authenticator
 ARG AWS_CLI_URL=https://awscli.amazonaws.com/awscli-exe-linux-${ARCH}.zip
 
-# Download aws-iam-authenticator
-RUN temp_dir="$(mktemp -d --suffix aws-iam-authenticator)" && \
-    curl -fsSL "${AWS_IAM_AUTHENTICATOR_URL}" -o "${temp_dir}/${AWS_IAM_AUTHENTICATOR_URL##*/}" && \
-    chmod 0755 "${temp_dir}/${AWS_IAM_AUTHENTICATOR_URL##*/}" && \
-    mv "${temp_dir}/${AWS_IAM_AUTHENTICATOR_URL##*/}" /usr/bin/aws-iam-authenticator && \
-    rm -rf ${temp_dir}
+# Copy aws-iam-authenticator binary
+COPY --from=aws-iam-authenticator-build /tmp/aws-iam-authenticator /usr/bin/aws-iam-authenticator
 
 # Download aws-cli
 RUN temp_dir="$(mktemp -d --suffix aws-cli)" && \
