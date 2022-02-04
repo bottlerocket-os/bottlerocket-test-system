@@ -19,6 +19,7 @@ mod run_aws_ecs;
 mod run_aws_k8s;
 mod run_file;
 mod run_sonobuoy;
+mod run_vmware;
 mod set;
 mod status;
 

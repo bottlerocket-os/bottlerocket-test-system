@@ -4,7 +4,7 @@ use aws_config::meta::region::RegionProviderChain;
 use aws_sdk_ssm::Region;
 use bottlerocket_agents::wireguard::{setup_wireguard, WIREGUARD_SECRET_NAME};
 use bottlerocket_agents::{
-    decode_write_kubeconfig, setup_resource_env, TufRepoConfig, VSphereClusterInfo,
+    decode_write_kubeconfig, setup_resource_env, TufRepoConfig, VSphereVmConfig,
     AWS_CREDENTIALS_SECRET_NAME, TEST_CLUSTER_KUBECONFIG_PATH, VSPHERE_CREDENTIALS_SECRET_NAME,
 };
 use k8s_openapi::api::core::v1::Service;
@@ -67,42 +67,6 @@ pub struct ProductionMemo {
 }
 
 impl Configuration for ProductionMemo {}
-
-#[derive(Clone, Debug, Serialize, Deserialize, Default)]
-#[serde(rename_all = "camelCase")]
-pub struct VSphereVmConfig {
-    /// The name of the OVA file used for the VSphere worker nodes.
-    ova_name: String,
-
-    /// TUF repository where the OVA file can be found
-    tuf_repo: TufRepoConfig,
-
-    /// The number of VMs to create. If no value is provided 2 VMs will be created.
-    vm_count: Option<i32>,
-
-    /// URL of the vCenter instance to connect to
-    vcenter_host_url: String,
-
-    /// vCenter datacenter
-    vcenter_datacenter: String,
-
-    /// vCenter datastore
-    vcenter_datastore: String,
-
-    /// vCenter network
-    vcenter_network: String,
-
-    /// vCenter resource pool
-    vcenter_resource_pool: String,
-
-    /// The workloads folder to create the K8s cluster control plane in.
-    vcenter_workload_folder: String,
-
-    /// vSphere cluster information
-    cluster: VSphereClusterInfo,
-}
-
-impl Configuration for VSphereVmConfig {}
 
 /// Once we have fulfilled the `Create` request, we return information about the batch of VSphere VMs
 /// we've created
