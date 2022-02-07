@@ -19,6 +19,8 @@ ENV PATH="${GOROOT}/bin:${PATH}"
 # =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^=
 FROM build as build-src
 USER root
+RUN mkdir -p /usr/share/licenses/testsys && \
+    chown -R builder:builder /usr/share/licenses/testsys
 
 ARG ARCH
 # We need these environment variables set for building the `openssl-sys` crate
@@ -29,12 +31,19 @@ ENV OPENSSL_STATIC=true
 
 # Build bottlerocket-agents
 WORKDIR /src/bottlerocket-agents/
+RUN cp -p /src/LICENSE-APACHE /src/LICENSE-MIT /usr/share/licenses/testsys && \
+    /usr/libexec/tools/bottlerocket-license-scan \
+      --clarify /src/clarify.toml \
+      --spdx-data /usr/libexec/tools/spdx-data \
+      --out-dir /usr/share/licenses/testsys/vendor \
+      cargo --offline --locked Cargo.toml
 RUN --mount=type=cache,mode=0777,target=/src/target \
     cargo install --offline --locked \
       --target ${ARCH}-bottlerocket-linux-musl \
       --path . \
       --root .
 
+# TODO get licenses for boringtun
 # Install boringtun
 RUN cargo install boringtun \
     --target ${ARCH}-bottlerocket-linux-musl \
@@ -57,45 +66,94 @@ RUN temp_dir="$(mktemp -d --suffix wireguard-tools-setup)" && \
     rm -rf ${temp_dir}
 
 # =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^=
-FROM build as eksctl-build
+FROM build-go as eksctl-build
 
 USER root
+RUN mkdir -p /usr/share/licenses/eksctl && \
+    chown -R builder:builder /usr/share/licenses/eksctl
 
 ARG EKSCTL_VERSION=0.82.0
+ARG EKSCTL_SOURCE_URL="https://github.com/weaveworks/eksctl/archive/refs/tags/v${EKSCTL_VERSION}.tar.gz"
+
 ARG GOARCH
 ARG EKSCTL_BINARY_URL="https://github.com/weaveworks/eksctl/releases/download/v${EKSCTL_VERSION}/eksctl_Linux_${GOARCH}.tar.gz"
 
 USER builder
 WORKDIR /home/builder/
+RUN mkdir eksctl && curl -L ${EKSCTL_SOURCE_URL} \
+      -o eksctl-${EKSCTL_VERSION}.tar.gz && \
+    tar -xf eksctl-${EKSCTL_VERSION}.tar.gz --strip-components 1 -C eksctl && \
+    rm eksctl-${EKSCTL_VERSION}.tar.gz
+
+WORKDIR /home/builder/eksctl/
+RUN go mod vendor
+RUN cp -p LICENSE /usr/share/licenses/eksctl && \
+    /usr/libexec/tools/bottlerocket-license-scan \
+      --clarify /src/clarify.toml \
+      --spdx-data /usr/libexec/tools/spdx-data \
+      --out-dir /usr/share/licenses/eksctl/vendor \
+      go-vendor ./vendor
 RUN curl -OL "${EKSCTL_BINARY_URL}" && \
     tar -xf eksctl_Linux_${GOARCH}.tar.gz -C /tmp && \
     rm eksctl_Linux_${GOARCH}.tar.gz
 
 # =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^=
-FROM build as kubernetes-build
+FROM build-go as kubernetes-build
 
 USER root
+RUN mkdir -p /usr/share/licenses/kubernetes && \
+    chown -R builder:builder /usr/share/licenses/kubernetes
 
 ARG K8S_VERSION=1.21.6
+ARG K8S_SOURCE_URL="https://github.com/kubernetes/kubernetes/archive/refs/tags/v${K8S_VERSION}.tar.gz"
+
 ARG GOARCH
 ARG KUBEADM_BINARY_URL="https://dl.k8s.io/release/v${K8S_VERSION}/bin/linux/${GOARCH}/kubeadm"
 
 USER builder
 WORKDIR /home/builder/
+RUN mkdir kubernetes && curl -L "${K8S_SOURCE_URL}" -o k8s-${K8S_VERSION}.tar.gz && \
+    tar -xf k8s-${K8S_VERSION}.tar.gz --strip-components 1 -C kubernetes && \
+    rm k8s-${K8S_VERSION}.tar.gz
+
+WORKDIR /home/builder/kubernetes/
+RUN go mod vendor
+RUN cp -p LICENSE /usr/share/licenses/kubernetes && \
+    /usr/libexec/tools/bottlerocket-license-scan \
+      --clarify /src/clarify.toml \
+      --spdx-data /usr/libexec/tools/spdx-data \
+      --out-dir /usr/share/licenses/kubernetes/vendor \
+      go-vendor ./vendor
 RUN curl -L ${KUBEADM_BINARY_URL} -o kubeadm.${GOARCH} && \
     install -m 0755 kubeadm.${GOARCH} /tmp/kubeadm
 
 # =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^=
-FROM build as sonobuoy-build
+FROM build-go as sonobuoy-build
 
 USER root
+RUN mkdir -p /usr/share/licenses/sonobuoy && \
+    chown -R builder:builder /usr/share/licenses/sonobuoy
 
 ARG SONOBUOY_VERSION=0.53.2
+ARG SONOBUOY_SOURCE_URL="https://github.com/vmware-tanzu/sonobuoy/archive/refs/tags/v${SONOBUOY_VERSION}.tar.gz"
+
 ARG GOARCH
 ARG SONOBUOY_BINARY_URL="https://github.com/vmware-tanzu/sonobuoy/releases/download/v${SONOBUOY_VERSION}/sonobuoy_${SONOBUOY_VERSION}_linux_${GOARCH}.tar.gz"
 
 USER builder
 WORKDIR /home/builder/
+RUN mkdir sonobuoy && curl -L "${SONOBUOY_SOURCE_URL}" -o sonobuoy-${SONOBUOY_VERSION}.tar.gz && \
+    tar -xf sonobuoy-${SONOBUOY_VERSION}.tar.gz --strip-components 1 -C sonobuoy && \
+    rm sonobuoy-${SONOBUOY_VERSION}.tar.gz
+
+WORKDIR /home/builder/sonobuoy/
+RUN go mod vendor
+RUN cp -p LICENSE /usr/share/licenses/sonobuoy && \
+    /usr/libexec/tools/bottlerocket-license-scan \
+      --clarify /src/clarify.toml \
+      --spdx-data /usr/libexec/tools/spdx-data \
+      --out-dir /usr/share/licenses/sonobuoy/vendor \
+      go-vendor ./vendor
 RUN curl -OL ${SONOBUOY_BINARY_URL} && \
     tar -xf sonobuoy_${SONOBUOY_VERSION}_linux_${GOARCH}.tar.gz -C /tmp && \
     chmod 0755 /tmp/sonobuoy && \
@@ -143,9 +201,13 @@ RUN yum install -y iproute && yum clean all
 
 # Copy govc binary
 COPY --from=build /usr/libexec/tools/govc /usr/local/bin/govc
+# Copy govc licenses
+COPY --from=build /usr/share/licenses/govmomi /licenses/govmomi
 
 # Copy kubeadm binary
 COPY --from=kubernetes-build /tmp/kubeadm /usr/local/bin/kubeadm
+# Copy kubeadm licenses
+COPY --from=kubernetes-build /usr/share/licenses/kubernetes /licenses/kubernetes
 
 # Copy wireguard-tools binaries
 COPY --from=wireguard-build /usr/bin/wg /usr/bin/wg
@@ -156,6 +218,8 @@ COPY --from=build-src /src/bottlerocket-agents/bin/boringtun /usr/bin/boringtun
 
 # Copy binary
 COPY --from=build-src /src/bottlerocket-agents/bin/vsphere-vm-resource-agent ./
+# Copy licenses
+COPY --from=build-src /usr/share/licenses/testsys /licenses/testsys
 
 ENTRYPOINT ["./vsphere-vm-resource-agent"]
 
@@ -165,9 +229,13 @@ FROM scratch as eks-resource-agent
 
 # Copy eksctl binary
 COPY --from=eksctl-build /tmp/eksctl /usr/bin/eksctl
+# Copy eksctl licenses
+COPY --from=eksctl-build /usr/share/licenses/eksctl /licenses/eksctl
 
 # Copy binary
 COPY --from=build-src /src/bottlerocket-agents/bin/eks-resource-agent ./
+# Copy licenses
+COPY --from=build-src /usr/share/licenses/testsys /licenses/testsys
 
 ENTRYPOINT ["./eks-resource-agent"]
 
@@ -179,6 +247,8 @@ COPY --from=build /etc/ssl /etc/ssl
 COPY --from=build /etc/pki /etc/pki
 # Copy binary
 COPY --from=build-src /src/bottlerocket-agents/bin/ecs-resource-agent ./
+# Copy licenses
+COPY --from=build-src /usr/share/licenses/testsys /licenses/testsys
 
 ENTRYPOINT ["./ecs-resource-agent"]
 
@@ -187,6 +257,8 @@ ENTRYPOINT ["./ecs-resource-agent"]
 FROM scratch as ecs-test-agent
 # Copy binary
 COPY --from=build-src /src/bottlerocket-agents/bin/ecs-test-agent ./
+# Copy licenses
+COPY --from=build-src /usr/share/licenses/testsys /licenses/testsys
 
 ENTRYPOINT ["./ecs-test-agent"]
 
@@ -194,12 +266,16 @@ ENTRYPOINT ["./ecs-test-agent"]
 # Builds the Sonobuoy test agent image
 FROM public.ecr.aws/amazonlinux/amazonlinux:2 AS sonobuoy-test-agent
 ARG ARCH
+# TODO remove unzip once aws-cli moves out
 RUN yum install -y unzip iproute && yum clean all
 ARG AWS_CLI_URL=https://awscli.amazonaws.com/awscli-exe-linux-${ARCH}.zip
 
 # Copy aws-iam-authenticator binary
 COPY --from=aws-iam-authenticator-build /tmp/aws-iam-authenticator /usr/bin/aws-iam-authenticator
+# Copy aws-iam-authenticator licenses
+COPY --from=aws-iam-authenticator-build /usr/share/licenses/aws-iam-authenticator /licenses/aws-iam-authenticator
 
+# TODO move this out and attribute licenses
 # Download aws-cli
 RUN temp_dir="$(mktemp -d --suffix aws-cli)" && \
     curl -fsSL "${AWS_CLI_URL}" -o "${temp_dir}/awscliv2.zip" && \
@@ -209,6 +285,8 @@ RUN temp_dir="$(mktemp -d --suffix aws-cli)" && \
 
 # Copy sonobuoy binary
 COPY --from=sonobuoy-build /tmp/sonobuoy /usr/bin/sonobuoy
+# Copy sonobuoy licenses
+COPY --from=sonobuoy-build /usr/share/licenses/sonobuoy /licenses/sonobuoy
 
 # Copy wireguard-tools
 COPY --from=wireguard-build /usr/bin/wg /usr/bin/wg
@@ -219,6 +297,8 @@ COPY --from=build-src /src/bottlerocket-agents/bin/boringtun /usr/bin/boringtun
 
 # Copy binary
 COPY --from=build-src /src/bottlerocket-agents/bin/sonobuoy-test-agent ./
+# Copy licenses
+COPY --from=build-src /usr/share/licenses/testsys /licenses/testsys
 
 ENTRYPOINT ["./sonobuoy-test-agent"]
 
@@ -228,5 +308,7 @@ FROM scratch as migration-test-agent
 COPY --from=build-src /src/bottlerocket-agents/bin/migration-test-agent ./
 # Copy SSM documents
 COPY --from=build-src /src/bottlerocket-agents/src/bin/migration-test-agent/ssm-documents/ /local/ssm-documents/
+# Copy licenses
+COPY --from=build-src /usr/share/licenses/testsys /licenses/testsys
 
 ENTRYPOINT ["./migration-test-agent"]
