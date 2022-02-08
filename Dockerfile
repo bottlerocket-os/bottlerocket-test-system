@@ -12,6 +12,7 @@ FROM build as build-go
 USER builder
 
 ARG GOARCH
+ARG GOOS=linux
 ARG GOROOT="/usr/libexec/go"
 
 ENV PATH="${GOROOT}/bin:${PATH}"
@@ -81,9 +82,11 @@ ARG EKSCTL_BINARY_URL="https://github.com/weaveworks/eksctl/releases/download/v$
 USER builder
 WORKDIR /home/builder/
 RUN mkdir eksctl && curl -L ${EKSCTL_SOURCE_URL} \
-      -o eksctl-${EKSCTL_VERSION}.tar.gz && \
-    tar -xf eksctl-${EKSCTL_VERSION}.tar.gz --strip-components 1 -C eksctl && \
-    rm eksctl-${EKSCTL_VERSION}.tar.gz
+      -o eksctl_${EKSCTL_VERSION}.tar.gz && \
+    grep eksctl_${EKSCTL_VERSION}.tar.gz \
+      /src/hashes/eksctl | sha512sum --check - && \
+    tar -xf eksctl_${EKSCTL_VERSION}.tar.gz --strip-components 1 -C eksctl && \
+    rm eksctl_${EKSCTL_VERSION}.tar.gz
 
 WORKDIR /home/builder/eksctl/
 RUN go mod vendor
@@ -93,9 +96,12 @@ RUN cp -p LICENSE /usr/share/licenses/eksctl && \
       --spdx-data /usr/libexec/tools/spdx-data \
       --out-dir /usr/share/licenses/eksctl/vendor \
       go-vendor ./vendor
-RUN curl -OL "${EKSCTL_BINARY_URL}" && \
-    tar -xf eksctl_Linux_${GOARCH}.tar.gz -C /tmp && \
-    rm eksctl_Linux_${GOARCH}.tar.gz
+RUN curl -L "${EKSCTL_BINARY_URL}" \
+      -o eksctl_${EKSCTL_VERSION}_${GOOS}_${GOARCH}.tar.gz && \
+    grep eksctl_${EKSCTL_VERSION}_${GOOS}_${GOARCH}.tar.gz \
+      /src/hashes/eksctl | sha512sum --check - && \
+    tar -xf eksctl_${EKSCTL_VERSION}_${GOOS}_${GOARCH}.tar.gz -C /tmp && \
+    rm eksctl_${EKSCTL_VERSION}_${GOOS}_${GOARCH}.tar.gz
 
 # =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^=
 FROM build-go as kubernetes-build
@@ -112,9 +118,13 @@ ARG KUBEADM_BINARY_URL="https://dl.k8s.io/release/v${K8S_VERSION}/bin/linux/${GO
 
 USER builder
 WORKDIR /home/builder/
-RUN mkdir kubernetes && curl -L "${K8S_SOURCE_URL}" -o k8s-${K8S_VERSION}.tar.gz && \
-    tar -xf k8s-${K8S_VERSION}.tar.gz --strip-components 1 -C kubernetes && \
-    rm k8s-${K8S_VERSION}.tar.gz
+RUN mkdir kubernetes && \
+    curl -L "${K8S_SOURCE_URL}" -o kubernetes_${K8S_VERSION}.tar.gz && \
+    grep kubernetes_${K8S_VERSION}.tar.gz \
+      /src/hashes/kubernetes | sha512sum --check - && \
+    tar -xf kubernetes_${K8S_VERSION}.tar.gz \
+      --strip-components 1 -C kubernetes && \
+    rm kubernetes_${K8S_VERSION}.tar.gz
 
 WORKDIR /home/builder/kubernetes/
 RUN go mod vendor
@@ -124,8 +134,11 @@ RUN cp -p LICENSE /usr/share/licenses/kubernetes && \
       --spdx-data /usr/libexec/tools/spdx-data \
       --out-dir /usr/share/licenses/kubernetes/vendor \
       go-vendor ./vendor
-RUN curl -L ${KUBEADM_BINARY_URL} -o kubeadm.${GOARCH} && \
-    install -m 0755 kubeadm.${GOARCH} /tmp/kubeadm
+RUN curl -L ${KUBEADM_BINARY_URL} \
+      -o kubeadm_${K8S_VERSION}_${GOOS}_${GOARCH} && \
+    grep kubeadm_${K8S_VERSION}_${GOOS}_${GOARCH} \
+      /src/hashes/kubernetes | sha512sum --check - && \
+    install -m 0755 kubeadm_${K8S_VERSION}_${GOOS}_${GOARCH} /tmp/kubeadm
 
 # =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^=
 FROM build-go as sonobuoy-build
@@ -142,9 +155,13 @@ ARG SONOBUOY_BINARY_URL="https://github.com/vmware-tanzu/sonobuoy/releases/downl
 
 USER builder
 WORKDIR /home/builder/
-RUN mkdir sonobuoy && curl -L "${SONOBUOY_SOURCE_URL}" -o sonobuoy-${SONOBUOY_VERSION}.tar.gz && \
-    tar -xf sonobuoy-${SONOBUOY_VERSION}.tar.gz --strip-components 1 -C sonobuoy && \
-    rm sonobuoy-${SONOBUOY_VERSION}.tar.gz
+RUN mkdir sonobuoy && \
+    curl -L "${SONOBUOY_SOURCE_URL}" -o sonobuoy_${SONOBUOY_VERSION}.tar.gz && \
+    grep sonobuoy_${SONOBUOY_VERSION}.tar.gz \
+      /src/hashes/sonobuoy | sha512sum --check - && \
+    tar -xf sonobuoy_${SONOBUOY_VERSION}.tar.gz \
+      --strip-components 1 -C sonobuoy && \
+    rm sonobuoy_${SONOBUOY_VERSION}.tar.gz
 
 WORKDIR /home/builder/sonobuoy/
 RUN go mod vendor
@@ -155,9 +172,11 @@ RUN cp -p LICENSE /usr/share/licenses/sonobuoy && \
       --out-dir /usr/share/licenses/sonobuoy/vendor \
       go-vendor ./vendor
 RUN curl -OL ${SONOBUOY_BINARY_URL} && \
-    tar -xf sonobuoy_${SONOBUOY_VERSION}_linux_${GOARCH}.tar.gz -C /tmp && \
+    grep sonobuoy_${SONOBUOY_VERSION}_${GOOS}_${GOARCH}.tar.gz \
+      /src/hashes/sonobuoy | sha512sum --check - && \
+    tar -xf sonobuoy_${SONOBUOY_VERSION}_${GOOS}_${GOARCH}.tar.gz -C /tmp && \
     chmod 0755 /tmp/sonobuoy && \
-    rm sonobuoy_${SONOBUOY_VERSION}_linux_${GOARCH}.tar.gz
+    rm sonobuoy_${SONOBUOY_VERSION}_${GOOS}_${GOARCH}.tar.gz
 
 # =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^=
 FROM build-go as aws-iam-authenticator-build
@@ -171,11 +190,14 @@ ARG AWS_IAM_AUTHENTICATOR_SOURCE_URL="https://github.com/kubernetes-sigs/aws-iam
 
 USER builder
 WORKDIR /home/builder/
-RUN mkdir aws-iam-authenticator && curl -L ${AWS_IAM_AUTHENTICATOR_SOURCE_URL} \
-      -o aws-iam-authenticator-${AWS_IAM_AUTHENTICATOR_VERSION}.tar.gz && \
-    tar -xf aws-iam-authenticator-${AWS_IAM_AUTHENTICATOR_VERSION}.tar.gz --strip-components 1 \
-      -C aws-iam-authenticator && \
-    rm aws-iam-authenticator-${AWS_IAM_AUTHENTICATOR_VERSION}.tar.gz
+RUN mkdir aws-iam-authenticator && \
+    curl -L ${AWS_IAM_AUTHENTICATOR_SOURCE_URL} \
+      -o aws-iam-authenticator_${AWS_IAM_AUTHENTICATOR_VERSION}.tar.gz && \
+    grep aws-iam-authenticator_${AWS_IAM_AUTHENTICATOR_VERSION}.tar.gz \
+      /src/hashes/aws-iam-authenticator | sha512sum --check - && \
+    tar -xf aws-iam-authenticator_${AWS_IAM_AUTHENTICATOR_VERSION}.tar.gz \
+      --strip-components 1 -C aws-iam-authenticator && \
+    rm aws-iam-authenticator_${AWS_IAM_AUTHENTICATOR_VERSION}.tar.gz
 
 WORKDIR /home/builder/aws-iam-authenticator/
 RUN go mod vendor
@@ -275,7 +297,7 @@ COPY --from=aws-iam-authenticator-build /tmp/aws-iam-authenticator /usr/bin/aws-
 # Copy aws-iam-authenticator licenses
 COPY --from=aws-iam-authenticator-build /usr/share/licenses/aws-iam-authenticator /licenses/aws-iam-authenticator
 
-# TODO move this out and attribute licenses
+# TODO move this out, get hashes, and attribute licenses
 # Download aws-cli
 RUN temp_dir="$(mktemp -d --suffix aws-cli)" && \
     curl -fsSL "${AWS_CLI_URL}" -o "${temp_dir}/awscliv2.zip" && \
