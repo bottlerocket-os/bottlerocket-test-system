@@ -10,8 +10,6 @@ use tokio::time::Duration;
 /// machines running a VM for docker.
 const POD_TIMEOUT: Duration = Duration::from_secs(300);
 
-const TEST_TIMEOUT: Duration = Duration::from_secs(30);
-
 /// We will test:
 /// `testsys install`
 /// 'testsys run` (with a manifest)
@@ -33,17 +31,7 @@ async fn test_system() {
         "controller:integ",
     ]);
     cmd.assert().success();
-
-    let mut cmd = Command::cargo_bin("testsys").unwrap();
-    cmd.args(&[
-        "--kubeconfig",
-        cluster.kubeconfig().to_str().unwrap(),
-        "status",
-        "-c",
-        "--wait",
-    ])
-    .timeout(POD_TIMEOUT);
-    cmd.assert().success();
+    cluster.wait_for_controller(POD_TIMEOUT).await.unwrap();
 
     cluster
         .load_image_to_cluster("example-test-agent:integ")
@@ -66,37 +54,16 @@ async fn test_system() {
     cmd.args(&[
         "--kubeconfig",
         cluster.kubeconfig().to_str().unwrap(),
-        "status",
-        "-t",
-        "hello-bones-1",
-        "-r",
-        "dup-1",
-        "--wait",
-    ])
-    .timeout(TEST_TIMEOUT);
-    cmd.assert().failure();
-
-    let mut cmd = Command::cargo_bin("testsys").unwrap();
-    cmd.args(&[
-        "--kubeconfig",
-        cluster.kubeconfig().to_str().unwrap(),
         "run",
         "file",
         data::integ_test_depended_on_path().to_str().unwrap(),
     ]);
     cmd.assert().success();
 
-    let mut cmd = Command::cargo_bin("testsys").unwrap();
-    cmd.args(&[
-        "--kubeconfig",
-        cluster.kubeconfig().to_str().unwrap(),
-        "status",
-        "-t",
-        "hello-bones-2",
-        "--wait",
-    ])
-    .timeout(POD_TIMEOUT);
-    cmd.assert().success();
+    cluster
+        .wait_for_test_pod("hello-bones-1", POD_TIMEOUT)
+        .await
+        .unwrap();
 
     let mut cmd = Command::cargo_bin("testsys").unwrap();
     cmd.args(&[
@@ -107,31 +74,6 @@ async fn test_system() {
         "--keep-running",
         "false",
     ]);
-    cmd.assert().success();
-
-    let mut cmd = Command::cargo_bin("testsys").unwrap();
-    cmd.args(&[
-        "--kubeconfig",
-        cluster.kubeconfig().to_str().unwrap(),
-        "status",
-        "-t",
-        "hello-bones-1",
-        "--wait",
-    ])
-    .timeout(POD_TIMEOUT);
-    cmd.assert().success();
-
-    let mut cmd = Command::cargo_bin("testsys").unwrap();
-    cmd.args(&[
-        "--kubeconfig",
-        cluster.kubeconfig().to_str().unwrap(),
-        "status",
-        "-t",
-        "-r",
-        "-c",
-        "--wait",
-    ])
-    .timeout(POD_TIMEOUT);
     cmd.assert().success();
 
     // Delete everything
@@ -177,21 +119,6 @@ async fn test_system() {
             .to_str()
             .unwrap(),
     ]);
-    cmd.assert().success();
-
-    // We need to give k8s some time to finalize the object creation.
-    // tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
-
-    let mut cmd = Command::cargo_bin("testsys").unwrap();
-    cmd.args(&[
-        "--kubeconfig",
-        cluster.kubeconfig().to_str().unwrap(),
-        "status",
-        "-r",
-        "never-destroy",
-        "--wait",
-    ])
-    .timeout(POD_TIMEOUT);
     cmd.assert().success();
 
     // Watch for a bit and fail if we see the destruction pod.
