@@ -30,7 +30,7 @@ serde_plain = "1"
 sha2 = "0.10"
 snafu = "0.7"
 test-agent = { path = "../agent/test-agent" }
-tokio = { version = "1", default-features = false, features = ["macros", "rt-multi-thread"] }
+tokio = { version = "1", default-features = false, features = ["macros", "rt-multi-thread", "time"] }
 tough = { version = "0.12", features = ["http"] }
 url = "2.2"
 uuid = { version = "0.8", default-features = false, features = ["serde", "v4"] }

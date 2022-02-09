@@ -11,7 +11,6 @@ use resource_agent::provider::{
     Create, Destroy, IntoProviderError, ProviderResult, Resources, Spec,
 };
 use serde::{Deserialize, Serialize};
-use std::time::Duration;
 
 /// The default region for the cluster.
 const DEFAULT_REGION: &str = "us-west-2";
@@ -173,8 +172,6 @@ async fn create_iam_instance_profile(iam_client: &aws_sdk_iam::Client) -> Provid
                 Resources::Remaining,
                 "Unable to add role to instance profile",
             )?;
-        // TODO: find a better way to allow propagation than a sleep.
-        tokio::time::sleep(Duration::from_secs(60)).await;
         instance_profile_arn(iam_client).await
     }
 }
