@@ -8,6 +8,8 @@ TOP := $(dir $(firstword $(MAKEFILE_LIST)))
 TESTSYS_BUILD_HOST_UNAME_ARCH=$(shell uname -m)
 TESTSYS_BUILD_HOST_GOARCH ?= $(lastword $(subst :, ,$(filter $(TESTSYS_BUILD_HOST_UNAME_ARCH):%,x86_64:amd64 aarch64:arm64)))
 TESTSYS_BUILD_HOST_PLATFORM=$(shell uname | tr '[:upper:]' '[:lower:]')
+# On some hosts we get an x509 certificate error and need to set GOPROXY to "direct"
+TESTSYS_BUILD_GOPROXY ?= direct
 
 BOTTLEROCKET_SDK_VERSION = v0.25.1
 BOTTLEROCKET_SDK_ARCH = $(TESTSYS_BUILD_HOST_UNAME_ARCH)
@@ -21,6 +23,7 @@ show-variables:
 	$(info TESTSYS_BUILD_HOST_UNAME_ARCH=$(TESTSYS_BUILD_HOST_UNAME_ARCH))
 	$(info TESTSYS_BUILD_HOST_GOARCH=$(TESTSYS_BUILD_HOST_GOARCH))
 	$(info TESTSYS_BUILD_HOST_PLATFORM=$(TESTSYS_BUILD_HOST_PLATFORM))
+	$(info TESTSYS_BUILD_GOPROXY=$(TESTSYS_BUILD_GOPROXY))
 	@echo > /dev/null
 
 # Fetches crates from upstream
@@ -81,6 +84,8 @@ eks-resource-agent ec2-resource-agent ecs-resource-agent vsphere-vm-resource-age
 		--build-arg ARCH="$(TESTSYS_BUILD_HOST_UNAME_ARCH)" \
 		--build-arg BUILDER_IMAGE="$(BUILDER_IMAGE)" \
 		--build-arg GOARCH="$(TESTSYS_BUILD_HOST_GOARCH)" \
+		--build-arg GOPROXY="$(TESTSYS_BUILD_GOPROXY)" \
+		--network=host \
 		--target $@ \
 		--tag $@ \
 		.
