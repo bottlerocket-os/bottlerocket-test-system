@@ -1,5 +1,5 @@
 use crate::error::Result;
-use crate::{run_aws_ecs, run_aws_k8s, run_file, run_sonobuoy};
+use crate::{run_aws_ecs, run_aws_k8s, run_file, run_sonobuoy, run_vmware};
 use kube::Client;
 use structopt::StructOpt;
 
@@ -22,6 +22,9 @@ enum Command {
     /// Create an ECS resource, an EC2 resource, and run an ECS task. This test mode is useful
     /// for the `aws-ecs` variants of Bottlerocket.
     AwsEcs(Box<run_aws_ecs::RunAwsEcs>),
+    /// Create VM nodes on a cluster running in vSphere and run a sonobuoy test. This test mode is
+    /// useful for the `vmware` variants of Bottlerocket.
+    Vmware(Box<run_vmware::RunVmware>),
 }
 
 impl Run {
@@ -31,6 +34,7 @@ impl Run {
             Command::Sonobuoy(run_sonobuoy) => run_sonobuoy.run(k8s_client).await,
             Command::AwsK8s(run_aws_k8s) => run_aws_k8s.run(k8s_client).await,
             Command::AwsEcs(run_aws_ecs) => run_aws_ecs.run(k8s_client).await,
+            Command::Vmware(run_vmware) => run_vmware.run(k8s_client).await,
         }
     }
 }

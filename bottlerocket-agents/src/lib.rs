@@ -499,3 +499,39 @@ where
 
     Ok(())
 }
+
+#[derive(Clone, Debug, Serialize, Deserialize, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct VSphereVmConfig {
+    /// The name of the OVA file used for the VSphere worker nodes.
+    pub ova_name: String,
+
+    /// TUF repository where the OVA file can be found
+    pub tuf_repo: TufRepoConfig,
+
+    /// The number of VMs to create. If no value is provided 2 VMs will be created.
+    pub vm_count: Option<i32>,
+
+    /// URL of the vCenter instance to connect to
+    pub vcenter_host_url: String,
+
+    /// vCenter datacenter
+    pub vcenter_datacenter: String,
+
+    /// vCenter datastore
+    pub vcenter_datastore: String,
+
+    /// vCenter network
+    pub vcenter_network: String,
+
+    /// vCenter resource pool
+    pub vcenter_resource_pool: String,
+
+    /// The workloads folder to create the K8s cluster control plane in.
+    pub vcenter_workload_folder: String,
+
+    /// vSphere cluster information
+    pub cluster: VSphereClusterInfo,
+}
+
+impl Configuration for VSphereVmConfig {}
