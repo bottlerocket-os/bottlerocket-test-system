@@ -276,7 +276,7 @@ ENTRYPOINT ["./ecs-resource-agent"]
 
 # =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^=
 # Builds the ECS test agent image
-FROM scratch as ecs-test-agent
+FROM public.ecr.aws/amazonlinux/amazonlinux:2 as ecs-test-agent
 # Copy binary
 COPY --from=build-src /src/bottlerocket-agents/bin/ecs-test-agent ./
 # Copy licenses
@@ -325,7 +325,7 @@ COPY --from=build-src /usr/share/licenses/testsys /licenses/testsys
 ENTRYPOINT ["./sonobuoy-test-agent"]
 
 # =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^=
-FROM scratch as migration-test-agent
+FROM public.ecr.aws/amazonlinux/amazonlinux:2 as migration-test-agent
 # Copy binary
 COPY --from=build-src /src/bottlerocket-agents/bin/migration-test-agent ./
 # Copy SSM documents
