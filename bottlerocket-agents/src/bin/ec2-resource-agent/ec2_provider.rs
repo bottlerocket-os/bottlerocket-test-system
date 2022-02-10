@@ -1,13 +1,16 @@
 use aws_config::meta::region::RegionProviderChain;
+use aws_sdk_ec2::client::fluent_builders::RunInstances;
+use aws_sdk_ec2::error::RunInstancesError;
 use aws_sdk_ec2::model::{
     ArchitectureValues, Filter, IamInstanceProfileSpecification, InstanceType, ResourceType, Tag,
     TagSpecification,
 };
-use aws_sdk_ec2::Region;
+use aws_sdk_ec2::output::RunInstancesOutput;
+use aws_sdk_ec2::{Region, SdkError};
 use bottlerocket_agents::{
     json_display, setup_resource_env, ClusterType, Ec2Config, AWS_CREDENTIALS_SECRET_NAME,
 };
-use log::{debug, info, trace};
+use log::{debug, info, trace, warn};
 use model::{Configuration, SecretName};
 use resource_agent::clients::InfoClient;
 use resource_agent::provider::{
@@ -149,9 +152,17 @@ impl Create for Ec2Creator {
             );
 
         info!("Starting instances");
-        let instances = run_instances
-            .send()
-            .await
+        let run_instance_result = tokio::time::timeout(
+            Duration::from_secs(360),
+            wait_for_successful_run_instances(&run_instances),
+        )
+        .await
+        .context(
+            Resources::Clear,
+            "Failed to run instances within the time limit",
+        )?;
+
+        let instances = run_instance_result
             .context(resources_situation(&memo), "Failed to create instances")?
             .instances
             .context(Resources::Remaining, "Results missing instances field")?;
@@ -196,6 +207,26 @@ impl Create for Ec2Creator {
         info!("Done: instances {:?} are running", memo.instance_ids);
         // Return the ids for the created instances.
         Ok(CreatedEc2Instances { ids: instance_ids })
+    }
+}
+
+async fn wait_for_successful_run_instances(
+    run_instances: &RunInstances,
+) -> Result<RunInstancesOutput, SdkError<RunInstancesError>> {
+    loop {
+        let run_instance_result = run_instances.clone().send().await;
+        if let Err(SdkError::ServiceError { err, raw: _ }) = &run_instance_result {
+            if matches!(&err.code(), Some("InvalidParameterValue")) {
+                warn!(
+                    "An error occured while trying to run instances '{}'. Retrying in 10s.",
+                    err
+                );
+                tokio::time::sleep(Duration::from_secs(10)).await;
+                info!("Rerunning run instances");
+                continue;
+            }
+        };
+        return run_instance_result;
     }
 }
 
