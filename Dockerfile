@@ -14,8 +14,10 @@ USER builder
 ARG GOARCH
 ARG GOOS=linux
 ARG GOROOT="/usr/libexec/go"
+ARG GOPROXY
 
 ENV PATH="${GOROOT}/bin:${PATH}"
+ENV GOPROXY="${GOPROXY}"
 
 # =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^=
 FROM build as build-src
@@ -89,13 +91,16 @@ RUN mkdir eksctl && curl -L ${EKSCTL_SOURCE_URL} \
     rm eksctl_${EKSCTL_VERSION}.tar.gz
 
 WORKDIR /home/builder/eksctl/
-RUN go mod vendor
-RUN cp -p LICENSE /usr/share/licenses/eksctl && \
-    /usr/libexec/tools/bottlerocket-license-scan \
-      --clarify /src/clarify.toml \
-      --spdx-data /usr/libexec/tools/spdx-data \
-      --out-dir /usr/share/licenses/eksctl/vendor \
-      go-vendor ./vendor
+# TODO - restore this with a fix for https://github.com/bottlerocket-os/bottlerocket-test-system/issues/288
+# For reasons not yet understood, this can take an hour or more in certain environments. For now we need
+# to skip it until we can figure out what is happening.
+#RUN go mod vendor
+#RUN cp -p LICENSE /usr/share/licenses/eksctl && \
+#    /usr/libexec/tools/bottlerocket-license-scan \
+#      --clarify /src/clarify.toml \
+#      --spdx-data /usr/libexec/tools/spdx-data \
+#      --out-dir /usr/share/licenses/eksctl/vendor \
+#      go-vendor ./vendor
 RUN curl -L "${EKSCTL_BINARY_URL}" \
       -o eksctl_${EKSCTL_VERSION}_${GOOS}_${GOARCH}.tar.gz && \
     grep eksctl_${EKSCTL_VERSION}_${GOOS}_${GOARCH}.tar.gz \
@@ -251,8 +256,9 @@ FROM scratch as eks-resource-agent
 
 # Copy eksctl binary
 COPY --from=eksctl-build /tmp/eksctl /usr/bin/eksctl
+# TODO - restore this with a fix for https://github.com/bottlerocket-os/bottlerocket-test-system/issues/288
 # Copy eksctl licenses
-COPY --from=eksctl-build /usr/share/licenses/eksctl /licenses/eksctl
+#COPY --from=eksctl-build /usr/share/licenses/eksctl /licenses/eksctl
 
 # Copy binary
 COPY --from=build-src /src/bottlerocket-agents/bin/eks-resource-agent ./
