@@ -206,7 +206,7 @@ RUN mkdir aws-iam-authenticator && \
 
 WORKDIR /home/builder/aws-iam-authenticator/
 RUN go mod vendor
-RUN go build -mod=vendor -o /tmp/aws-iam-authenticator \
+RUN CGO_ENABLED=0 go build -mod=vendor -o /tmp/aws-iam-authenticator \
       ./cmd/aws-iam-authenticator
 
 # =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^=
