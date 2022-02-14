@@ -217,6 +217,8 @@ COPY --from=build /etc/ssl /etc/ssl
 COPY --from=build /etc/pki /etc/pki
 # Copy binary
 COPY --from=build-src /src/bottlerocket-agents/bin/ec2-resource-agent ./
+# Copy licenses
+COPY --from=build-src /usr/share/licenses/testsys /licenses/testsys
 
 ENTRYPOINT ["./ec2-resource-agent"]
 
@@ -260,6 +262,9 @@ COPY --from=eksctl-build /tmp/eksctl /usr/bin/eksctl
 # Copy eksctl licenses
 #COPY --from=eksctl-build /usr/share/licenses/eksctl /licenses/eksctl
 
+# Copy CA certificates store
+COPY --from=build /etc/ssl /etc/ssl
+COPY --from=build /etc/pki /etc/pki
 # Copy binary
 COPY --from=build-src /src/bottlerocket-agents/bin/eks-resource-agent ./
 # Copy licenses
