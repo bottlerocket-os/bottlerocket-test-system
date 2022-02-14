@@ -16,7 +16,7 @@ use env_logger::Builder;
 use log::{info, LevelFilter};
 use model::{Configuration, SecretName};
 use resource_agent::clients::InfoClient;
-use resource_agent::provider::{ProviderResult, Resources};
+use resource_agent::provider::{ProviderError, ProviderResult, Resources};
 use serde::{Deserialize, Serialize};
 use serde_plain::{
     derive_deserialize_from_fromstr, derive_display_from_serialize,
@@ -26,6 +26,7 @@ use snafu::{OptionExt, ResultExt};
 use std::collections::HashSet;
 use std::fmt::{Display, Formatter};
 use std::path::Path;
+use std::process::Output;
 use std::str::FromStr;
 use std::{env, fs};
 use test_agent::Runner;
@@ -535,3 +536,29 @@ pub struct VSphereVmConfig {
 }
 
 impl Configuration for VSphereVmConfig {}
+
+/// If the command was successful (exit code zero), returns the command's `stdout`. Otherwise
+/// returns a provider error.
+/// - `output`: the `Output` object from a `std::process::Command`
+/// - `hint`: the command that was executed, e.g. `echo hello world`
+/// - `resources`: whether or not resources will be leftover if this command failed
+pub fn provider_error_for_cmd_output(
+    output: Output,
+    hint: &str,
+    resources: Resources,
+) -> ProviderResult<String> {
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    if output.status.success() {
+        Ok(stdout.to_string())
+    } else {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        let code = output.status.code().unwrap_or(-1);
+        Err(ProviderError::new_with_context(
+            resources,
+            format!(
+                "Error running '{}', exit code {}\nstderr:\n{}\nstdout:\n{}",
+                hint, code, stderr, stdout
+            ),
+        ))
+    }
+}
