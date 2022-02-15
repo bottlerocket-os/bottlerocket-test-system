@@ -1,11 +1,12 @@
 use crate::error::{self, AgentError, Error, Result};
 use crate::{BootstrapData, Client, Runner};
-use log::{debug, error};
+use log::{debug, error, info, trace};
 use snafu::ResultExt;
 use std::fs::File;
 use std::path::PathBuf;
 use std::time::Duration;
 use tar::Builder;
+use tokio::time::sleep;
 
 /// The `TestAgent` is the main entrypoint for the program running in a TestPod. It starts a test
 /// run, regularly checks the health of the test run, observes cancellation of a test run, and sends
@@ -54,21 +55,20 @@ where
         let result = self.run_inner().await;
         let tar_result = self.tar_results().await;
 
-        loop {
-            let keep_running = match self.client.keep_running().await {
-                Err(e) => {
-                    error!("Unable to communicate with Kuberenetes: '{}'", e);
-                    // If we can't communicate Kubernetes, its safest to
-                    // stay running in case some debugging is needed.
-                    true
-                }
-                Ok(value) => value,
-            };
-            if !keep_running {
-                break;
-            }
-            tokio::time::sleep(Duration::from_millis(2000)).await;
+        match &result {
+            Ok(_) => info!("Test execution finished without returning an error."),
+            Err(e) => error!("Test execution returned an error: {}", e),
         }
+        match &tar_result {
+            Ok(_) => info!("Test output tarball created."),
+            Err(e) => error!("Error creating output tarball: {}", e),
+        }
+
+        if self.keep_running().await {
+            info!("'keep_running' is true.");
+            self.loop_while_keep_running_is_true().await
+        }
+
         // We want the running error first if there was one.
         match result {
             Err(e) => Err(e),
@@ -159,5 +159,28 @@ where
 
     pub async fn results_file(&self) -> Result<PathBuf, C::E, R::E> {
         self.client.results_file().await.map_err(Error::Client)
+    }
+
+    async fn keep_running(&self) -> bool {
+        match self.client.keep_running().await {
+            Err(e) => {
+                error!("Unable to communicate with Kuberenetes: '{}'", e);
+                // If we can't communicate Kubernetes, its safest to
+                // stay running in case some debugging is needed.
+                true
+            }
+            Ok(value) => value,
+        }
+    }
+
+    async fn loop_while_keep_running_is_true(&self) {
+        loop {
+            sleep(Duration::from_secs(10)).await;
+            if !self.keep_running().await {
+                info!("'keep_running' has been set to false, exiting.");
+                return;
+            }
+            trace!("'keep_running' is still true");
+        }
     }
 }
