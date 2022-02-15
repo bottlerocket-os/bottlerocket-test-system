@@ -61,4 +61,8 @@ impl AgentClient for MockAgentClient {
     async fn send_destroy_failed(&self, _error: &ProviderError) -> ClientResult<()> {
         Ok(())
     }
+
+    async fn get_keep_running(&self) -> ClientResult<bool> {
+        Ok(false)
+    }
 }

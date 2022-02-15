@@ -190,4 +190,14 @@ impl AgentClient for DefaultAgentClient {
             .await?;
         Ok(())
     }
+
+    async fn get_keep_running(&self) -> ClientResult<bool> {
+        Ok(self
+            .resource_client
+            .get(&self.data.resource_name)
+            .await?
+            .spec
+            .agent
+            .keep_running)
+    }
 }

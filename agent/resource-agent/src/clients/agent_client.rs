@@ -47,6 +47,8 @@ pub trait AgentClient: Sized {
 
     /// Notify Kubernetes that the destruction of resources failed and provide an error message.
     async fn send_destroy_failed(&self, error: &ProviderError) -> ClientResult<()>;
+
+    async fn get_keep_running(&self) -> ClientResult<bool>;
 }
 
 /// Provides the default [`AgentClient`] implementation.
