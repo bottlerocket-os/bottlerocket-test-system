@@ -67,6 +67,7 @@ pub struct CreatedCluster {
 
     /// Security groups necessary for ec2 instances
     pub security_groups: Vec<String>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
     pub nodegroup_sg: Vec<String>,
     pub controlplane_sg: Vec<String>,
     pub clustershared_sg: Vec<String>,
@@ -624,6 +625,11 @@ async fn security_group(
     // If we haven't found the security group (or we found too many), the user may experience hard-
     // to-diagnose issues downstream, so we want to raise an error here.
     if security_groups.is_empty() {
+        // Only self-managed nodegroup will have this security group created.
+        // eksctl creates managed nodegroups by default in newer versions. So it's ok if this is missing.
+        if security_group_type == SecurityGroupType::NodeGroup {
+            return Ok(security_groups);
+        }
         return Err(ProviderError::new_with_context(
             Resources::Remaining,
             format!(
