@@ -143,6 +143,7 @@ impl Create for Ec2Creator {
                 &spec.configuration.cluster_name,
                 &spec.configuration.endpoint,
                 &spec.configuration.certificate,
+                &spec.configuration.cluster_dns_ip,
                 &memo,
             )?)
             .iam_instance_profile(
@@ -301,6 +302,7 @@ fn userdata(
     cluster_name: &str,
     endpoint: &Option<String>,
     certificate: &Option<String>,
+    cluster_dns_ip: &Option<String>,
     memo: &ProductionMemo,
 ) -> ProviderResult<String> {
     Ok(match cluster_type {
@@ -311,14 +313,18 @@ ignore-waves = true
 [settings.kubernetes]
 api-server = "{}"
 cluster-name = "{}"
-cluster-certificate = "{}""#,
+cluster-certificate = "{}"
+cluster-dns-ip = "{}""#,
             endpoint
                 .as_ref()
                 .context(memo, "Server endpoint is required for eks clusters.")?,
             cluster_name,
             certificate
                 .as_ref()
-                .context(memo, "Cluster certificate is required for eks clusters.")?
+                .context(memo, "Cluster certificate is required for eks clusters.")?,
+            cluster_dns_ip
+                .as_ref()
+                .context(memo, "Cluster DNS IP is required for eks clusters.")?,
         )),
         ClusterType::Ecs => base64::encode(format!(
             r#"[settings.ecs]

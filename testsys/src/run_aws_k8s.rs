@@ -357,6 +357,7 @@ impl RunAwsK8s {
             cluster_type: ClusterType::Eks,
             endpoint: Some(format!("${{{}.endpoint}}", cluster_resource_name)),
             certificate: Some(format!("${{{}.certificate}}", cluster_resource_name)),
+            cluster_dns_ip: Some(format!("${{{}.clusterDnsIp}}", cluster_resource_name)),
             security_groups: vec![],
         }
         .into_map()

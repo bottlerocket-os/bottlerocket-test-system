@@ -2,6 +2,7 @@ use aws_config::meta::region::RegionProviderChain;
 use aws_sdk_ec2::model::{Filter, SecurityGroup, Subnet};
 use aws_sdk_ec2::{Region, SdkError};
 use aws_sdk_eks::error::{DescribeClusterError, DescribeClusterErrorKind};
+use aws_sdk_eks::model::IpFamily;
 use aws_sdk_eks::output::DescribeClusterOutput;
 use bottlerocket_agents::{
     impl_display_as_json, json_display, provider_error_for_cmd_output, setup_resource_env,
@@ -58,6 +59,9 @@ pub struct CreatedCluster {
 
     /// The cluster certificate.
     pub certificate: String,
+
+    /// The cluster DNS IP.
+    pub cluster_dns_ip: String,
 
     /// A single public subnet id. Will be `None` if no public ids exist.
     pub public_subnet_id: Option<String>,
@@ -368,6 +372,7 @@ async fn created_cluster(
     let eks_subnet_ids = eks_subnet_ids(&aws_clients.eks_client, cluster_name).await?;
     let endpoint = endpoint(&aws_clients.eks_client, cluster_name).await?;
     let certificate = certificate(&aws_clients.eks_client, cluster_name).await?;
+    let cluster_dns_ip = cluster_dns_ip(&aws_clients.eks_client, cluster_name).await?;
 
     info!("Getting public subnet ids");
     let public_subnet_ids: Vec<String> = subnet_ids(
@@ -445,6 +450,7 @@ async fn created_cluster(
         region: region.to_string(),
         endpoint,
         certificate,
+        cluster_dns_ip,
         public_subnet_id: first_subnet_id(&public_subnet_ids),
         private_subnet_id: first_subnet_id(&private_subnet_ids),
         nodegroup_sg,
@@ -531,6 +537,95 @@ async fn certificate(
         .as_ref()
         .context(Resources::Remaining, "Certificate authority missing data")
         .map(|ids| ids.clone())
+}
+
+async fn cluster_dns_ip(
+    eks_client: &aws_sdk_eks::Client,
+    cluster_name: &str,
+) -> ProviderResult<String> {
+    let kubernetes_network_config = eks_client
+        .describe_cluster()
+        .name(cluster_name)
+        .send()
+        .await
+        .context(Resources::Remaining, "Unable to get eks describe cluster")?
+        .cluster
+        .and_then(|c| c.kubernetes_network_config)
+        .context(
+            Resources::Remaining,
+            "DescribeCluster missing KubernetesNetworkConfig field",
+        )?;
+
+    service_ip_cidr_to_cluster_dns_ip(
+        kubernetes_network_config.ip_family,
+        kubernetes_network_config.service_ipv4_cidr,
+        kubernetes_network_config.service_ipv6_cidr,
+    )
+}
+
+fn service_ip_cidr_to_cluster_dns_ip(
+    ip_family: Option<IpFamily>,
+    service_ipv4_cidr: Option<String>,
+    service_ipv6_cidr: Option<String>,
+) -> ProviderResult<String> {
+    let ip_family = ip_family.as_ref().context(
+        Resources::Remaining,
+        "Cluster network config missing IP family information",
+    )?;
+    match ip_family {
+        IpFamily::Ipv6 => {
+            let service_ipv6_cidr = service_ipv6_cidr.as_ref().context(
+                Resources::Remaining,
+                "IPv6 Cluster missing serviceIPv6CIDR information",
+            )?;
+            Ok(service_ipv6_cidr.split('/').collect::<Vec<&str>>()[0].to_string() + "a")
+        }
+        // If IP family is IPv4 or unknown, we fallback to deriving the cluster dns IP from service IPv4 CIDR
+        _ => {
+            let service_ipv4_cidr = service_ipv4_cidr.as_ref().context(
+                Resources::Remaining,
+                "IPv4 Cluster missing serviceIPv4CIDR information",
+            )?;
+            let mut cidr_split: Vec<&str> = service_ipv4_cidr.split('.').collect();
+            if cidr_split.len() != 4 {
+                return Err(ProviderError::new_with_context(
+                    Resources::Remaining,
+                    format!(
+                        "Expected 4 components in serviceIPv4CIDR but found {}",
+                        cidr_split.len()
+                    ),
+                ));
+            }
+            cidr_split[3] = "10";
+            Ok(cidr_split.join("."))
+        }
+    }
+}
+
+#[test]
+fn cluster_dns_ip_from_service_ipv4_cidr() {
+    assert_eq!(
+        service_ip_cidr_to_cluster_dns_ip(
+            Some(IpFamily::Ipv4),
+            Some("10.100.0.0/16".to_string()),
+            None
+        )
+        .unwrap(),
+        "10.100.0.10".to_string()
+    )
+}
+
+#[test]
+fn cluster_dns_ip_from_service_ipv6_cidr() {
+    assert_eq!(
+        service_ip_cidr_to_cluster_dns_ip(
+            Some(IpFamily::Ipv6),
+            None,
+            Some("fd30:1c53:5f8a::/108".to_string())
+        )
+        .unwrap(),
+        "fd30:1c53:5f8a::a".to_string()
+    )
 }
 
 fn first_subnet_id(subnet_ids: &[String]) -> Option<String> {

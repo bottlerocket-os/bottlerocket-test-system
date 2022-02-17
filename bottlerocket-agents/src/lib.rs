@@ -155,6 +155,9 @@ pub struct Ec2Config {
     /// The eks certificate. The certificate is required for eks clusters.
     pub certificate: Option<String>,
 
+    /// The cluster DNS IP for the K8s cluster. This is used to determine the IP family of the node IP.
+    pub cluster_dns_ip: Option<String>,
+
     // Eks specific instance information.
     /// The security groups that should be attached to the instances.
     #[serde(default)]
