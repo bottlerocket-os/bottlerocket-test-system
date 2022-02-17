@@ -2,9 +2,10 @@ use crate::error::{self, Result};
 use bottlerocket_agents::sonobuoy::Mode;
 use bottlerocket_agents::wireguard::WIREGUARD_SECRET_NAME;
 use bottlerocket_agents::{
-    K8sVersion, SonobuoyConfig, VSphereVmConfig, AWS_CREDENTIALS_SECRET_NAME,
-    VSPHERE_CREDENTIALS_SECRET_NAME,
+    K8sVersion, MigrationConfig, SonobuoyConfig, TufRepoConfig, VSphereClusterInfo,
+    VSphereVmConfig, AWS_CREDENTIALS_SECRET_NAME, VSPHERE_CREDENTIALS_SECRET_NAME,
 };
+use kube::ResourceExt;
 use kube::{api::ObjectMeta, Client};
 use maplit::btreemap;
 use model::clients::{CrdClient, ResourceClient, TestClient};
@@ -12,7 +13,9 @@ use model::constants::NAMESPACE;
 use model::{
     Agent, Configuration, DestructionPolicy, Resource, ResourceSpec, SecretName, Test, TestSpec,
 };
+use serde_json::Value;
 use snafu::ResultExt;
+use std::collections::BTreeMap;
 use std::fs::read_to_string;
 use std::path::PathBuf;
 use structopt::StructOpt;
@@ -139,100 +142,144 @@ pub(crate) struct RunVmware {
     /// Capabilities that should be enabled in the resource provider and the test agent.
     #[structopt(long)]
     capabilities: Vec<String>,
+
+    /// Perform an upgrade downgrade test.
+    #[structopt(long, requires_all(&["starting-version", "upgrade-version"]))]
+    upgrade_downgrade: bool,
+
+    /// Starting version for an upgrade/downgrade test.
+    #[structopt(long, requires("upgrade-downgrade"))]
+    starting_version: Option<String>,
+
+    /// Version the ec2 instances should be upgraded to in an upgrade/downgrade test.
+    #[structopt(long, requires("upgrade-downgrade"))]
+    upgrade_version: Option<String>,
+
+    /// The aws region for ssm on vm nodes
+    #[structopt(long, default_value = "us-west-2")]
+    region: String,
+
+    /// Location of the migration agent image.
+    // TODO - default to an ECR public repository image
+    #[structopt(long)]
+    migration_agent_image: Option<String>,
+
+    /// Name of the pull secret for the ecs migration image (if needed).
+    #[structopt(long)]
+    migration_agent_pull_secret: Option<String>,
 }
 
 impl RunVmware {
     pub(crate) async fn run(self, k8s_client: Client) -> Result<()> {
         let vm_resource_name = self
             .vm_resource_name
+            .clone()
             .unwrap_or(format!("{}-vms", self.cluster_name));
         let secret_map = btreemap! [ AWS_CREDENTIALS_SECRET_NAME.to_string() => self.aws_secret.clone(),
-        VSPHERE_CREDENTIALS_SECRET_NAME.to_string() => self.vsphere_secret,
-        WIREGUARD_SECRET_NAME.to_string() => self.wireguard_secret ];
+        VSPHERE_CREDENTIALS_SECRET_NAME.to_string() => self.vsphere_secret.clone(),
+        WIREGUARD_SECRET_NAME.to_string() => self.wireguard_secret.clone() ];
 
         let encoded_kubeconfig = base64::encode(
             read_to_string(&self.target_cluster_kubeconfig_path).context(error::FileSnafu {
-                path: self.target_cluster_kubeconfig_path,
+                path: self.target_cluster_kubeconfig_path.clone(),
             })?,
         );
 
-        let vm_config = VSphereVmConfig {
-            ova_name: self.ova_name,
-            vm_count: self.vm_count,
-            tuf_repo: bottlerocket_agents::TufRepoConfig {
-                metadata_url: self.tuf_repo_metadata_url,
-                targets_url: self.tuf_repo_targets_url,
-            },
-            vcenter_host_url: self.vcenter_url,
-            vcenter_datacenter: self.datacenter,
-            vcenter_datastore: self.datastore,
-            vcenter_network: self.network,
-            vcenter_resource_pool: self.resource_pool,
-            vcenter_workload_folder: self.workload_folder,
-            cluster: bottlerocket_agents::VSphereClusterInfo {
-                name: self.cluster_name,
-                control_plane_endpoint_ip: self.cluster_endpoint,
-                kubeconfig_base64: encoded_kubeconfig.clone(),
-            },
-        }
-        .into_map()
-        .context(error::ConfigMapSnafu)?;
+        let vm_resource = self.vm_resource(
+            &vm_resource_name,
+            Some(secret_map.clone()),
+            &encoded_kubeconfig,
+        )?;
 
-        let vm_resource = Resource {
-            metadata: ObjectMeta {
-                name: Some(vm_resource_name.clone()),
-                namespace: Some(NAMESPACE.into()),
-                ..Default::default()
-            },
-            spec: ResourceSpec {
-                depends_on: None,
-                agent: Agent {
-                    name: "vsphere-vm-provider".to_string(),
-                    image: self.vm_provider_image,
-                    pull_secret: self.vm_provider_pull_secret,
-                    keep_running: false,
-                    timeout: None,
-                    configuration: Some(vm_config),
-                    secrets: Some(secret_map.clone()),
-                    capabilities: Some(self.capabilities.clone()),
-                },
-                destruction_policy: DestructionPolicy::OnDeletion,
-            },
-            status: None,
+        let tests = if self.upgrade_downgrade {
+            if let (Some(starting_version), Some(upgrade_version), Some(migration_agent_image)) = (
+                self.starting_version.as_ref(),
+                self.upgrade_version.as_ref(),
+                self.migration_agent_image.as_ref(),
+            ) {
+                let tuf_repo = TufRepoConfig {
+                    metadata_url: self.tuf_repo_metadata_url.clone(),
+                    targets_url: self.tuf_repo_targets_url.clone(),
+                };
+                let init_test_name = format!("{}-1-initial", self.name);
+                let upgrade_test_name = format!("{}-2-migrate", self.name);
+                let upgraded_test_name = format!("{}-3-migrated", self.name);
+                let downgrade_test_name = format!("{}-4-migrate", self.name);
+                let final_test_name = format!("{}-5-final", self.name);
+                let init_sonobuoy_test = self.sonobuoy_test(
+                    &init_test_name,
+                    &encoded_kubeconfig,
+                    secret_map.clone(),
+                    &vm_resource_name,
+                    None,
+                )?;
+                let upgrade_test = self.migration_test(
+                    &upgrade_test_name,
+                    upgrade_version,
+                    Some(tuf_repo.clone()),
+                    secret_map.clone(),
+                    &vm_resource_name,
+                    Some(vec![init_test_name.clone()]),
+                    migration_agent_image,
+                    &self.migration_agent_pull_secret,
+                )?;
+                let upgraded_sonobuoy_test = self.sonobuoy_test(
+                    &upgraded_test_name,
+                    &encoded_kubeconfig,
+                    secret_map.clone(),
+                    &vm_resource_name,
+                    Some(vec![init_test_name.clone(), upgrade_test_name.clone()]),
+                )?;
+                let downgrade_test = self.migration_test(
+                    &downgrade_test_name,
+                    starting_version,
+                    Some(tuf_repo),
+                    secret_map.clone(),
+                    &vm_resource_name,
+                    Some(vec![
+                        init_test_name.clone(),
+                        upgrade_test_name.clone(),
+                        upgraded_test_name.clone(),
+                    ]),
+                    migration_agent_image,
+                    &self.migration_agent_pull_secret,
+                )?;
+                let final_sonobuoy_test = self.sonobuoy_test(
+                    &final_test_name,
+                    &encoded_kubeconfig,
+                    secret_map.clone(),
+                    &vm_resource_name,
+                    Some(vec![
+                        init_test_name,
+                        upgrade_test_name,
+                        upgraded_test_name,
+                        downgrade_test_name,
+                    ]),
+                )?;
+                vec![
+                    init_sonobuoy_test,
+                    upgrade_test,
+                    upgraded_sonobuoy_test,
+                    downgrade_test,
+                    final_sonobuoy_test,
+                ]
+            } else {
+                return Err(error::Error::InvalidArguments {
+                    why: "If performing an upgrade/downgrade test,\
+                         `starting-version`, `upgrade-version` must be provided."
+                        .to_string(),
+                });
+            }
+        } else {
+            vec![self.sonobuoy_test(
+                &self.name,
+                &encoded_kubeconfig,
+                secret_map.clone(),
+                &vm_resource_name,
+                None,
+            )?]
         };
 
-        let test = Test {
-            metadata: ObjectMeta {
-                name: Some(self.name.clone()),
-                namespace: Some(NAMESPACE.into()),
-                ..Default::default()
-            },
-            spec: TestSpec {
-                resources: vec![vm_resource_name.clone()],
-                depends_on: Default::default(),
-                agent: Agent {
-                    name: "vmware-sonobuoy-test-agent".to_string(),
-                    image: self.test_agent_image.clone(),
-                    pull_secret: self.test_agent_pull_secret.clone(),
-                    keep_running: self.keep_running,
-                    timeout: None,
-                    configuration: Some(
-                        SonobuoyConfig {
-                            kubeconfig_base64: encoded_kubeconfig,
-                            plugin: self.sonobuoy_plugin.clone(),
-                            mode: self.sonobuoy_mode,
-                            kubernetes_version: self.kubernetes_version,
-                            kube_conformance_image: self.kubernetes_conformance_image.clone(),
-                        }
-                        .into_map()
-                        .context(error::ConfigMapSnafu)?,
-                    ),
-                    secrets: Some(secret_map),
-                    capabilities: Some(self.capabilities.clone()),
-                },
-            },
-            status: None,
-        };
         let resource_client = ResourceClient::new_from_k8s_client(k8s_client.clone());
         let test_client = TestClient::new_from_k8s_client(k8s_client);
 
@@ -244,14 +291,159 @@ impl RunVmware {
             })?;
         println!("Created resource object '{}'", vm_resource_name);
 
-        let _ = test_client
-            .create(test)
-            .await
-            .context(error::ModelClientSnafu {
-                message: "Unable to create test object",
-            })?;
-        println!("Created test object '{}'", self.name);
+        for test in tests {
+            let name = test.name();
+            let _ = test_client
+                .create(test)
+                .await
+                .context(error::ModelClientSnafu {
+                    message: "Unable to create test object",
+                })?;
+            println!("Created test object '{}'", name);
+        }
 
         Ok(())
+    }
+
+    fn vm_resource(
+        &self,
+        name: &str,
+        secrets: Option<BTreeMap<String, SecretName>>,
+        encoded_kubeconfig: &str,
+    ) -> Result<Resource> {
+        let vm_config = VSphereVmConfig {
+            ova_name: self.ova_name.clone(),
+            vm_count: self.vm_count,
+            tuf_repo: TufRepoConfig {
+                metadata_url: self.tuf_repo_metadata_url.clone(),
+                targets_url: self.tuf_repo_targets_url.clone(),
+            },
+            vcenter_host_url: self.vcenter_url.clone(),
+            vcenter_datacenter: self.datacenter.clone(),
+            vcenter_datastore: self.datastore.clone(),
+            vcenter_network: self.network.clone(),
+            vcenter_resource_pool: self.resource_pool.clone(),
+            vcenter_workload_folder: self.workload_folder.clone(),
+            cluster: VSphereClusterInfo {
+                name: self.cluster_name.clone(),
+                control_plane_endpoint_ip: self.cluster_endpoint.clone(),
+                kubeconfig_base64: encoded_kubeconfig.to_string(),
+            },
+        }
+        .into_map()
+        .context(error::ConfigMapSnafu)?;
+
+        Ok(Resource {
+            metadata: ObjectMeta {
+                name: Some(name.to_string()),
+                namespace: Some(NAMESPACE.into()),
+                ..Default::default()
+            },
+            spec: ResourceSpec {
+                depends_on: None,
+                agent: Agent {
+                    name: "vsphere-vm-provider".to_string(),
+                    image: self.vm_provider_image.clone(),
+                    pull_secret: self.vm_provider_pull_secret.clone(),
+                    keep_running: false,
+                    timeout: None,
+                    configuration: Some(vm_config),
+                    secrets,
+                    capabilities: Some(self.capabilities.clone()),
+                },
+                destruction_policy: DestructionPolicy::OnDeletion,
+            },
+            status: None,
+        })
+    }
+
+    fn sonobuoy_test(
+        &self,
+        name: &str,
+        encoded_kubeconfig: &str,
+        secrets: BTreeMap<String, SecretName>,
+        vm_resource_name: &str,
+        depends_on: Option<Vec<String>>,
+    ) -> Result<Test> {
+        Ok(Test {
+            metadata: ObjectMeta {
+                name: Some(name.to_string()),
+                namespace: Some(NAMESPACE.into()),
+                ..Default::default()
+            },
+            spec: TestSpec {
+                resources: vec![vm_resource_name.to_string()],
+                depends_on,
+                agent: Agent {
+                    name: "vmware-sonobuoy-test-agent".to_string(),
+                    image: self.test_agent_image.clone(),
+                    pull_secret: self.test_agent_pull_secret.clone(),
+                    keep_running: self.keep_running,
+                    timeout: None,
+                    configuration: Some(
+                        SonobuoyConfig {
+                            kubeconfig_base64: encoded_kubeconfig.to_string(),
+                            plugin: self.sonobuoy_plugin.clone(),
+                            mode: self.sonobuoy_mode,
+                            kubernetes_version: self.kubernetes_version,
+                            kube_conformance_image: self.kubernetes_conformance_image.clone(),
+                        }
+                        .into_map()
+                        .context(error::ConfigMapSnafu)?,
+                    ),
+                    secrets: Some(secrets),
+                    capabilities: Some(self.capabilities.clone()),
+                },
+            },
+            status: None,
+        })
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn migration_test(
+        &self,
+        name: &str,
+        version: &str,
+        tuf_repo: Option<TufRepoConfig>,
+        secrets: BTreeMap<String, SecretName>,
+        vm_resource_name: &str,
+        depends_on: Option<Vec<String>>,
+        migration_agent_image: &str,
+        migration_agent_pull_secret: &Option<String>,
+    ) -> Result<Test> {
+        let mut migration_config = MigrationConfig {
+            aws_region: self.region.to_string(),
+            instance_ids: Default::default(),
+            migrate_to_version: version.to_string(),
+            tuf_repo,
+        }
+        .into_map()
+        .context(error::ConfigMapSnafu)?;
+        migration_config.insert(
+            "instanceIds".to_string(),
+            Value::String(format!("${{{}.instanceIds}}", vm_resource_name)),
+        );
+        Ok(Test {
+            metadata: ObjectMeta {
+                name: Some(name.to_string()),
+                namespace: Some(NAMESPACE.into()),
+                ..Default::default()
+            },
+            spec: TestSpec {
+                resources: vec![vm_resource_name.to_owned()],
+                depends_on,
+                agent: Agent {
+                    name: "vmware-migration-test-agent".to_string(),
+                    image: migration_agent_image.to_string(),
+                    pull_secret: migration_agent_pull_secret.clone(),
+                    keep_running: self.keep_running,
+                    timeout: None,
+                    configuration: Some(migration_config),
+                    secrets: Some(secrets),
+                    capabilities: Some(self.capabilities.clone()),
+                },
+            },
+            status: None,
+        })
     }
 }
