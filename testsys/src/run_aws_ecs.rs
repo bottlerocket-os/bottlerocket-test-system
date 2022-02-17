@@ -82,6 +82,10 @@ pub(crate) struct RunAwsEcs {
     #[structopt(long)]
     cluster_provider_pull_secret: Option<String>,
 
+    /// Keep the ECS cluster provider agent running after cluster creation.
+    #[structopt(long)]
+    keep_cluster_provider_running: bool,
+
     /// The EC2 AMI ID to use for cluster nodes.
     #[structopt(long)]
     ami: String,
@@ -105,6 +109,10 @@ pub(crate) struct RunAwsEcs {
     /// Name of the pull secret for the EC2 provider image.
     #[structopt(long)]
     ec2_provider_pull_secret: Option<String>,
+
+    /// Keep the EC2 instance provider running after instances are created.
+    #[structopt(long)]
+    keep_instance_provider_running: bool,
 
     /// Perform an upgrade downgrade test.
     #[structopt(long, requires_all(&["starting-version", "upgrade-version"]))]
@@ -305,7 +313,7 @@ impl RunAwsEcs {
                     name: "ecs-provider".to_string(),
                     image: self.cluster_provider_image.clone(),
                     pull_secret: self.cluster_provider_pull_secret.clone(),
-                    keep_running: false,
+                    keep_running: self.keep_cluster_provider_running,
                     timeout: None,
                     configuration: Some(
                         EcsClusterConfig {
@@ -361,7 +369,7 @@ impl RunAwsEcs {
                     name: "ec2-provider".to_string(),
                     image: self.ec2_provider_image.clone(),
                     pull_secret: self.ec2_provider_pull_secret.clone(),
-                    keep_running: false,
+                    keep_running: self.keep_instance_provider_running,
                     timeout: None,
                     configuration: Some(ec2_config),
                     secrets,
