@@ -4,8 +4,8 @@ use aws_sdk_ec2::{Region, SdkError};
 use aws_sdk_eks::error::{DescribeClusterError, DescribeClusterErrorKind};
 use aws_sdk_eks::output::DescribeClusterOutput;
 use bottlerocket_agents::{
-    impl_display_as_json, json_display, setup_resource_env, CreationPolicy, EksClusterConfig,
-    K8sVersion, AWS_CREDENTIALS_SECRET_NAME,
+    impl_display_as_json, json_display, provider_error_for_cmd_output, setup_resource_env,
+    CreationPolicy, EksClusterConfig, K8sVersion, AWS_CREDENTIALS_SECRET_NAME,
 };
 use log::{debug, info, trace};
 use model::{Configuration, SecretName};
@@ -302,13 +302,21 @@ fn cluster_iam_identity_mapping(cluster_name: &str, region: &str) -> ProviderRes
             "json",
         ])
         .output()
-        .context(Resources::Remaining, "Unable to get iam identity mapping.")?;
-
-    let iam_identity: serde_json::Value =
-        serde_json::from_str(&String::from_utf8_lossy(&iam_identity_output.stdout)).context(
+        .context(
             Resources::Remaining,
-            "Unable to deserialize iam identity mapping",
+            "Unable to run 'eksctl get iamidentitymapping'.",
         )?;
+
+    let stdout = provider_error_for_cmd_output(
+        iam_identity_output,
+        "eksctl get iamidentitymapping",
+        Resources::Remaining,
+    )?;
+
+    let iam_identity: serde_json::Value = serde_json::from_str(&stdout).context(
+        Resources::Remaining,
+        "Unable to deserialize iam identity mapping",
+    )?;
 
     iam_identity
         .get(0)
