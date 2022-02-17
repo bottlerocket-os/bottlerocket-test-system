@@ -25,6 +25,7 @@ pub(crate) struct Delete {
 }
 
 #[derive(Deserialize, Debug, PartialEq, Eq)]
+#[serde(rename_all = "lowercase")]
 enum ObjectType {
     Test,
     Resource,
