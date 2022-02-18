@@ -549,7 +549,7 @@ impl SubnetType {
             SubnetType::Public => "Public",
             SubnetType::Private => "Private",
         };
-        format!("eksctl-{}-cluster/Subnet{}*", cluster_name, subnet_type)
+        format!("eksctl-{}-cluster/*{}*", cluster_name, subnet_type)
     }
 }
 
