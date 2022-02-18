@@ -437,7 +437,7 @@ async fn created_cluster(
 
     let node_instance_role = cluster_iam_identity_mapping(cluster_name, region)?;
     let iam_instance_profile_arn =
-        instance_profile(&aws_clients.iam_client, cluster_name, &node_instance_role).await?;
+        instance_profile_arn(&aws_clients.iam_client, &node_instance_role).await?;
 
     Ok(CreatedCluster {
         cluster_name: cluster_name.to_string(),
@@ -644,53 +644,63 @@ async fn security_group(
     Ok(security_groups)
 }
 
-async fn instance_profile(
+async fn instance_profile_arn(
     iam_client: &aws_sdk_iam::Client,
-    cluster_name: &str,
-    node_instance_role: &str,
+    role_arn: &str,
 ) -> ProviderResult<String> {
-    let list_result = iam_client
-        .list_instance_profiles()
+    let role_name = role_name_from_arn(role_arn, Resources::Remaining)?;
+    let instance_profiles = iam_client
+        .list_instance_profiles_for_role()
+        .role_name(role_name)
         .send()
         .await
-        .context(Resources::Remaining, "Unable to list instance profiles")?;
-    let eksctl_prefix = format!("eksctl-{}", cluster_name);
-    list_result
-        .instance_profiles
-        .as_ref()
-        .context(Resources::Remaining, "No instance profiles found")?
-        .iter()
-        .filter(|x| {
-            x.instance_profile_name
-                .as_ref()
-                .unwrap_or(&"".to_string())
-                .contains("NodeInstanceProfile")
-        })
-        .filter(|x| {
-            x.instance_profile_name
-                .as_ref()
-                .unwrap_or(&"".to_string())
-                .contains(&eksctl_prefix)
-        })
-        .find(|instance_profile| {
-            instance_profile
-                .roles
-                .as_ref()
-                .map(|roles| {
-                    roles
-                        .iter()
-                        .any(|role| role.arn == Some(node_instance_role.to_string()))
-                })
-                .unwrap_or_default()
-        })
-        .context(Resources::Remaining, "Node instance profile not found")?
-        .arn
-        .as_ref()
         .context(
             Resources::Remaining,
-            "Node instance profile missing arn field",
+            format!("Unable to list instance profiles for role '{}'", role_arn),
+        )?
+        .instance_profiles
+        .ok_or_else(|| {
+            ProviderError::new_with_context(
+                Resources::Remaining,
+                "Instance profile list is missing from list_instance_profiles_for_role response",
+            )
+        })?;
+
+    if instance_profiles.len() > 1 {
+        return Err(ProviderError::new_with_context(
+            Resources::Remaining,
+            format!(
+                "More than one instance profile was found for role '{}'",
+                role_arn
+            ),
+        ));
+    }
+
+    let instance_profile = instance_profiles.into_iter().next().ok_or_else(|| {
+        ProviderError::new_with_context(
+            Resources::Remaining,
+            format!("No instance profile was found for role '{}'", role_arn),
         )
-        .map(|profile| profile.clone())
+    })?;
+
+    instance_profile.arn.ok_or_else(|| {
+        ProviderError::new_with_context(
+            Resources::Remaining,
+            format!(
+                "Received an instance profile object with no arn for role '{}'",
+                role_arn
+            ),
+        )
+    })
+}
+
+fn role_name_from_arn(arn: &str, error_resources: Resources) -> ProviderResult<&str> {
+    arn.split('/').nth(1).ok_or_else(|| {
+        ProviderError::new_with_context(
+            error_resources,
+            format!("Unable to parse role name from arn '{}'", arn),
+        )
+    })
 }
 
 async fn does_cluster_exist(name: &str, aws_clients: &AwsClients) -> ProviderResult<bool> {
@@ -786,4 +796,18 @@ impl Destroy for EksDestroyer {
 
         Ok(())
     }
+}
+
+#[test]
+fn test_role_name_from_arn() {
+    let result = role_name_from_arn("arn:aws:iam::123456789012:role/eksctl-testsys-nodegroup-testsys-NodeInstanceRole-1F52WG29KMPW6", Resources::Remaining).unwrap();
+    assert_eq!(
+        result,
+        "eksctl-testsys-nodegroup-testsys-NodeInstanceRole-1F52WG29KMPW6"
+    );
+}
+
+#[test]
+fn test_role_name_from_arn_error() {
+    assert!(role_name_from_arn("no-slash", Resources::Remaining).is_err());
 }
