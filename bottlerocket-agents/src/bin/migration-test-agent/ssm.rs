@@ -28,9 +28,7 @@ pub(crate) async fn wait_for_ssm_ready(
             .filters(
                 InstanceInformationStringFilter::builder()
                     .key("InstanceIds")
-                    .set_values(Some(
-                        instance_ids.to_owned().into_iter().collect::<Vec<_>>(),
-                    ))
+                    .set_values(Some(instance_ids.iter().cloned().collect::<Vec<_>>()))
                     .build(),
             )
             .send()
