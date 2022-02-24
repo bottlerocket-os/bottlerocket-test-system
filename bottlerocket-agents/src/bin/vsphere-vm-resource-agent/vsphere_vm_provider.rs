@@ -167,13 +167,7 @@ impl Create for VMCreator {
         info!("Downloading OVA '{}'", &spec.configuration.ova_name);
         let outdir = Path::new("/local/");
         tokio::task::spawn_blocking(move || -> ProviderResult<()> {
-            download_target(
-                resources,
-                &metadata_url,
-                &targets_url,
-                &outdir.to_owned(),
-                &ova_name,
-            )
+            download_target(resources, &metadata_url, &targets_url, outdir, &ova_name)
         })
         .await
         .context(resources, "Failed to join threads")??;
@@ -318,7 +312,7 @@ impl Create for VMCreator {
                 .arg("-e")
                 .arg(format!("guestinfo.userdata={}", userdata))
                 .arg("-e")
-                .arg("guestinfo.userdata.encoding=base64".to_string())
+                .arg("guestinfo.userdata.encoding=base64")
                 .output()
                 .context(resources, "Failed to start govc")?;
             if !vm_change_output.status.success() {

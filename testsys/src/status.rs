@@ -36,8 +36,7 @@ impl Status {
         let tests_api = TestClient::new_from_k8s_client(k8s_client.clone());
         let resources_api = ResourceClient::new_from_k8s_client(k8s_client.clone());
         let pod_api = Api::<Pod>::namespaced(k8s_client, NAMESPACE);
-        let mut status_results;
-        status_results = StatusResults::new();
+        let mut status_results = StatusResults::new();
         if self.controller {
             status_results.controller_is_running = Some(is_controller_running(&pod_api).await?);
         }
