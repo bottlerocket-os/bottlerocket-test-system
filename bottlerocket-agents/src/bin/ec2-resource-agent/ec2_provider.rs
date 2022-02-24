@@ -403,8 +403,9 @@ async fn wait_for_conforming_instances(
 ) -> ProviderResult<()> {
     loop {
         if !non_conforming_instances(ec2_client, instance_ids, &desired_instance_state, memo)
-            .await?
-            .is_empty()
+            .await
+            .map_err(|e| warn!("Error checking status of instances. Retrying: {}", e))
+            .map_or(true, |ids| ids.is_empty())
         {
             trace!("Some instances are not ready, sleeping and trying again");
             tokio::time::sleep(Duration::from_millis(1000)).await;
