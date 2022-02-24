@@ -15,6 +15,7 @@ use resource_agent::provider::{
     Create, Destroy, IntoProviderError, ProviderError, ProviderResult, Resources, Spec,
 };
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use std::env::temp_dir;
 use std::path::Path;
 use std::process::Command;
@@ -324,7 +325,15 @@ fn cluster_iam_identity_mapping(cluster_name: &str, region: &str) -> ProviderRes
     )?;
 
     iam_identity
-        .get(0)
+        .as_array()
+        .context(Resources::Remaining, "No profiles found.")?
+        .iter()
+        .find(|profile_value| {
+            profile_value.get("username")
+                == Some(&Value::String(
+                    "system:node:{{EC2PrivateDNSName}}".to_string(),
+                ))
+        })
         .context(Resources::Remaining, "No profiles found.")?
         .get("rolearn")
         .context(Resources::Remaining, "Profile does not contain rolearn.")?
