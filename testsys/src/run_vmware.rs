@@ -135,13 +135,17 @@ pub(crate) struct RunVmware {
     #[structopt(long, parse(from_os_str))]
     target_cluster_kubeconfig_path: PathBuf,
 
-    /// The ip for the cluster's control plane enedpoint ip.
+    /// The ip for the cluster's control plane endpoint ip.
     #[structopt(long)]
     cluster_endpoint: String,
 
     /// Capabilities that should be enabled in the resource provider and the test agent.
     #[structopt(long)]
     capabilities: Vec<String>,
+
+    /// Keep the VMWare instance provider running after instances are created.
+    #[structopt(long)]
+    keep_instance_provider_running: bool,
 
     /// Perform an upgrade downgrade test.
     #[structopt(long, requires_all(&["starting-version", "upgrade-version"]))]
@@ -345,7 +349,7 @@ impl RunVmware {
                     name: "vsphere-vm-provider".to_string(),
                     image: self.vm_provider_image.clone(),
                     pull_secret: self.vm_provider_pull_secret.clone(),
-                    keep_running: false,
+                    keep_running: self.keep_instance_provider_running,
                     timeout: None,
                     configuration: Some(vm_config),
                     secrets,

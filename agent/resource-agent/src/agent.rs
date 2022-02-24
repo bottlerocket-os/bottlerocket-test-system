@@ -11,6 +11,7 @@ use crate::provider::{Create, Destroy};
 use crate::{BootstrapData, Configuration, ResourceAction};
 use log::{debug, error, info, trace};
 use std::marker::PhantomData;
+use tokio::time::{sleep, Duration};
 
 /// The `Agent` drives the main program of a resource provider. It takes several injected types.
 ///
@@ -121,10 +122,19 @@ where
     /// was instantiated.
     pub async fn run(&self) -> AgentResult<()> {
         debug!("Agent::run starting");
-        match &self.action {
+        let result = match &self.action {
             ResourceAction::Create => self.create().await,
             ResourceAction::Destroy => self.destroy().await,
+        };
+        if self.keep_running().await {
+            match &result {
+                Ok(_) => info!("Resource action succeeded."),
+                Err(e) => error!("Resource action failed: {}", e),
+            }
+            info!("'keep_running' is true.");
+            self.loop_while_keep_running_is_true().await
         }
+        result
     }
 
     /// Create resources.
@@ -178,6 +188,32 @@ where
                 }
                 Err(e.into())
             }
+        }
+    }
+
+    /// Return the value of spec.agent.keep_running. Prints the `error` and returns `true` if the
+    /// value cannot be obtained.
+    async fn keep_running(&self) -> bool {
+        self.agent_client
+            .get_keep_running()
+            .await
+            .unwrap_or_else(|e| {
+                error!(
+                    "Unable to get keep_running value, assuming it is true: {}",
+                    e
+                );
+                true
+            })
+    }
+
+    async fn loop_while_keep_running_is_true(&self) {
+        loop {
+            sleep(Duration::from_secs(10)).await;
+            if !self.keep_running().await {
+                info!("'keep_running' has been set to false, exiting.");
+                return;
+            }
+            trace!("'keep_running' is still true");
         }
     }
 }
