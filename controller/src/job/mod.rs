@@ -109,7 +109,7 @@ pub(crate) async fn delete_job(k8s_client: kube::Client, name: &str) -> JobResul
             &DeleteParams {
                 dry_run: false,
                 grace_period_seconds: Some(0),
-                propagation_policy: Some(PropagationPolicy::Foreground),
+                propagation_policy: Some(PropagationPolicy::Background),
                 preconditions: None,
             },
         )
