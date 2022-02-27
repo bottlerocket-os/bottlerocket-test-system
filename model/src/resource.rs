@@ -38,6 +38,13 @@ pub struct ResourceSpec {
     #[serde(default)]
     #[schemars(schema_with = "crate::schema_utils::nullable_enum::<DestructionPolicy>")]
     pub destruction_policy: DestructionPolicy,
+    /// If the destruction pod fails with error it can be difficult to delete the resource from the
+    /// cluster. When you set this to `true` you are telling the controller that you understand the
+    /// physical resources were not destroyed, but you want the `Resource` CRD object delete from
+    /// the cluster anyway.
+    #[serde(deserialize_with = "crate::schema_utils::null_to_default")]
+    #[serde(default)]
+    pub ignore_destruction_failure: Option<bool>,
 }
 
 impl Resource {

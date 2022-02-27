@@ -2,7 +2,7 @@ use crate::error::Result;
 use crate::job::{JobState, TEST_START_TIME_LIMIT};
 use crate::resource_controller::context::ResourceInterface;
 use kube::ResourceExt;
-use log::{debug, trace};
+use log::{debug, trace, warn};
 use model::clients::CrdClient;
 use model::constants::{FINALIZER_CREATION_JOB, FINALIZER_MAIN, FINALIZER_RESOURCE};
 use model::{CrdExt, DestructionPolicy, ResourceAction, TaskState};
@@ -202,7 +202,23 @@ async fn destruction_action_with_resources(r: &ResourceInterface) -> Result<Dest
                 Ok(DestructionAction::RemoveResourceFinalizer)
             }
         }
-        TaskState::Error => Ok(DestructionAction::Error(ErrorState::TaskFailed)),
+        TaskState::Error => {
+            if r.resource()
+                .spec
+                .ignore_destruction_failure
+                .unwrap_or_default()
+            {
+                warn!(
+                    "Resource destruction failed for resource '{}' but 'ignoreDestructionFailure' \
+                    is 'true' so we are deleting the Resource object anyway",
+                    r.name()
+                );
+                Ok(DestructionAction::RemoveResourceFinalizer)
+            } else {
+                // TODO - check ignoreDestructionFailure
+                Ok(DestructionAction::Error(ErrorState::TaskFailed))
+            }
+        }
     }
 }
 
@@ -213,6 +229,7 @@ async fn destruction_not_done_action(
     let job_state = r.get_job_state(ResourceAction::Destroy).await?;
     match job_state {
         JobState::None if !is_task_state_running => Ok(DestructionAction::StartDestructionJob),
+        // TODO - check ignoreDestructionFailure
         JobState::None => Ok(DestructionAction::Error(ErrorState::JobRemoved)),
         JobState::Unknown => Ok(DestructionAction::Wait),
         JobState::Running(None) => Ok(DestructionAction::Wait),
@@ -227,17 +244,21 @@ async fn destruction_not_done_action(
                     .unwrap_or(Ok(false))
                     .unwrap_or(false)
                 {
+                    // TODO - check ignoreDestructionFailure
                     return Ok(DestructionAction::Error(ErrorState::JobTimeout));
                 }
             }
             if r.resource().destruction_task_state() == TaskState::Unknown
                 && duration >= *TEST_START_TIME_LIMIT
             {
+                // TODO - check ignoreDestructionFailure
                 return Ok(DestructionAction::Error(ErrorState::JobStart));
             }
             Ok(DestructionAction::Wait)
         }
+        // TODO - check ignoreDestructionFailure
         JobState::Failed => Ok(DestructionAction::Error(ErrorState::JobFailed)),
+        // TODO - check ignoreDestructionFailure
         JobState::Exited => Ok(DestructionAction::Error(ErrorState::JobExited)),
     }
 }
@@ -250,6 +271,7 @@ async fn destruction_action_without_resources(r: &ResourceInterface) -> Result<D
     } else if r.resource().has_finalizer(FINALIZER_MAIN) {
         Ok(DestructionAction::RemoveMainFinalizer)
     } else {
+        // TODO - check ignoreDestructionFailure
         Ok(DestructionAction::Error(ErrorState::Zombie))
     }
 }
