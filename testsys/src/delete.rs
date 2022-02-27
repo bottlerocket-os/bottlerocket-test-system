@@ -1,6 +1,7 @@
 use crate::error::{self, Result};
+use http::StatusCode;
 use kube::Client;
-use model::clients::{CrdClient, ResourceClient, TestClient};
+use model::clients::{CrdClient, HttpStatusCode, IsFound, ResourceClient, TestClient};
 use serde::Deserialize;
 use serde_plain::derive_fromstr_from_deserialize;
 use snafu::ResultExt;
@@ -72,21 +73,26 @@ async fn delete_test(k8s_client: Client, test_name: &str, include_resources: boo
     } else {
         None
     };
-    test_client
+
+    // We assign this bool because clippy prefers it, see `blocks_in_if_conditions`.
+    let existed = test_client
         .delete(test_name)
         .await
+        // Returns `true` if the item existed, `false` if it was not found.
+        .is_found(|_| println!("The test '{}' was not found", test_name))
         .context(error::DeleteSnafu {
             what: test_name.to_string(),
         })?;
 
-    println!("Deleting test '{}'", test_name);
-    test_client.wait_for_deletion(test_name).await;
-    println!("Test '{}' has been deleted", test_name);
-    if let Some(delete_order) = delete_order {
-        delete_resources_in_order(&k8s_client, delete_order).await
-    } else {
-        Ok(())
+    if existed {
+        println!("Deleting test '{}'", test_name);
+        test_client.wait_for_deletion(test_name).await;
+        println!("Test '{}' has been deleted", test_name);
+        if let Some(delete_order) = delete_order {
+            return delete_resources_in_order(&k8s_client, delete_order).await;
+        }
     }
+    Ok(())
 }
 
 /// Delete all resources in a `TopologicalSort` in order. The function will wait
@@ -98,18 +104,23 @@ async fn delete_resources_in_order(
     let resource_client = ResourceClient::new_from_k8s_client(k8s_client.clone());
     while !topo_sort.is_empty() {
         if let Some(independent_resource) = topo_sort.pop() {
-            resource_client
+            // We assign this bool because clippy prefers it, see `blocks_in_if_conditions`.
+            let existed = resource_client
                 .delete(&independent_resource)
                 .await
+                // Returns `true` if the item existed, `false` if it was not found.
+                .is_found(|_| println!("The resource '{}' was not found", independent_resource))
                 .context(error::DeleteSnafu {
                     what: independent_resource.to_string(),
                 })?;
 
-            println!("Deleting resource '{}'", independent_resource);
-            resource_client
-                .wait_for_deletion(&independent_resource)
-                .await;
-            println!("Resource '{}' has been deleted", independent_resource);
+            if existed {
+                println!("Deleting resource '{}'", independent_resource);
+                resource_client
+                    .wait_for_deletion(&independent_resource)
+                    .await;
+                println!("Resource '{}' has been deleted", independent_resource);
+            }
         }
     }
 
@@ -123,9 +134,17 @@ async fn resource_deletion_order_for_test(
     test_name: &str,
 ) -> Result<TopologicalSort<String>> {
     let test_client = TestClient::new_from_k8s_client(k8s_client.clone());
-    let test = test_client.get(test_name).await.context(error::GetSnafu {
+    let get_test_result = test_client.get(test_name).await;
+
+    if get_test_result.is_status_code(StatusCode::NOT_FOUND) {
+        println!("Test '{}' does not exist, nothing to do.", test_name);
+        return Ok(TopologicalSort::new());
+    }
+
+    let test = get_test_result.context(error::GetSnafu {
         what: test_name.to_string(),
     })?;
+
     resource_dependency_delete_order(&k8s_client, test.spec.resources).await
 }
 
@@ -142,12 +161,16 @@ async fn resource_dependency_delete_order(
     let mut topo_sort = TopologicalSort::new();
 
     while let Some(resource_name) = to_be_visited.pop() {
-        let resource = resource_client
-            .get(&resource_name)
-            .await
-            .context(error::GetSnafu {
-                what: resource_name.to_string(),
-            })?;
+        let get_resource_result = resource_client.get(&resource_name).await;
+        if get_resource_result.is_status_code(StatusCode::NOT_FOUND) {
+            println!("Resource '{}' does not exist. Skipping.", resource_name);
+            continue;
+        }
+
+        let resource = get_resource_result.context(error::GetSnafu {
+            what: resource_name.to_string(),
+        })?;
+
         if let Some(depended_resources) = resource.spec.depends_on {
             for depended_resource in depended_resources {
                 topo_sort.add_dependency(resource_name.clone(), depended_resource.clone());
