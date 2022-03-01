@@ -1,5 +1,5 @@
-use crate::{error, SonobuoyConfig};
-use log::{info, trace};
+use crate::{error, SonobuoyConfig, SONOBUOY_RESULTS_FILENAME};
+use log::{error, info, trace};
 use model::{Outcome, TestResults};
 use serde::{Deserialize, Serialize};
 use serde_plain::{derive_display_from_serialize, derive_fromstr_from_deserialize};
@@ -74,13 +74,29 @@ pub async fn run_sonobuoy(
     ensure!(status.success(), error::SonobuoyRunSnafu);
 
     info!("Running sonobuoy retrieve");
+    let results_filepath = results_dir.join(SONOBUOY_RESULTS_FILENAME);
     let status = Command::new("/usr/bin/sonobuoy")
-        .current_dir(results_dir.to_str().context(error::ResultsLocationSnafu)?)
         .args(kubeconfig_arg.to_owned())
         .arg("retrieve")
+        .arg("--filename")
+        .arg(results_filepath.as_os_str())
         .status()
         .context(error::SonobuoyProcessSnafu)?;
     ensure!(status.success(), error::SonobuoyRunSnafu);
+
+    info!("Sonobuoy testing has completed, printing results");
+    let sonobuoy_results_exist_status = Command::new("/usr/bin/sonobuoy")
+        .arg("results")
+        .arg(results_filepath.as_os_str())
+        .status()
+        .context(error::SonobuoyProcessSnafu)?;
+
+    if !sonobuoy_results_exist_status.success() {
+        error!(
+            "Bad exit code from 'sonobuoy results': exit {}",
+            sonobuoy_results_exist_status.code().unwrap_or(1)
+        )
+    }
 
     info!("Getting Sonobuoy status");
     let run_result = Command::new("/usr/bin/sonobuoy")
@@ -123,6 +139,7 @@ pub async fn run_sonobuoy(
         .context(error::MissingSonobuoyStatusFieldSnafu {
             field: format!("plugins.{}.result-status", sonobuoy_config.plugin),
         })?;
+
     let result_counts = run_status
         .get("plugins")
         .context(error::MissingSonobuoyStatusFieldSnafu { field: "plugins" })?
@@ -136,14 +153,17 @@ pub async fn run_sonobuoy(
         .context(error::MissingSonobuoyStatusFieldSnafu {
             field: format!("plugins.{}.result-counts", sonobuoy_config.plugin),
         })?;
+
     let num_passed = result_counts
         .get("passed")
         .map(|v| v.as_u64().unwrap_or(0))
         .unwrap_or(0);
+
     let num_failed = result_counts
         .get("failed")
         .map(|v| v.as_u64().unwrap_or(0))
         .unwrap_or(0);
+
     let num_skipped = result_counts
         .get("skipped")
         .map(|v| v.as_u64().unwrap_or(0))

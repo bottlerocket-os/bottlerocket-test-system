@@ -361,7 +361,7 @@ impl RunAwsK8s {
             cluster_name: self.cluster_name.clone(),
             region: self.region.clone(),
             instance_profile_arn: format!("${{{}.iamInstanceProfileArn}}", cluster_resource_name),
-            subnet_id: format!("${{{}.publicSubnetId}}", cluster_resource_name),
+            subnet_id: format!("${{{}.privateSubnetId}}", cluster_resource_name),
             cluster_type: ClusterType::Eks,
             endpoint: Some(format!("${{{}.endpoint}}", cluster_resource_name)),
             certificate: Some(format!("${{{}.certificate}}", cluster_resource_name)),

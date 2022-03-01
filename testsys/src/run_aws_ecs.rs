@@ -350,7 +350,7 @@ impl RunAwsEcs {
                 .iam_instance_profile_arn
                 .clone()
                 .unwrap_or_else(|| format!("${{{}.iamInstanceProfileArn}}", cluster_resource_name)),
-            subnet_id: format!("${{{}.publicSubnetId}}", cluster_resource_name),
+            subnet_id: format!("${{{}.privateSubnetId}}", cluster_resource_name),
             cluster_type: ClusterType::Ecs,
             ..Default::default()
         }
@@ -412,7 +412,7 @@ impl RunAwsEcs {
                             region: Some(format!("${{{}.region}}", cluster_resource_name)),
                             cluster_name: format!("${{{}.clusterName}}", cluster_resource_name),
                             task_count: self.task_count,
-                            subnet: format!("${{{}.publicSubnetId}}", cluster_resource_name),
+                            subnet: format!("${{{}.privateSubnetId}}", cluster_resource_name),
                             task_definition_name_and_revision: self
                                 .task_definition_name_and_revision
                                 .clone(),
