@@ -13,6 +13,8 @@ mod error;
 mod install;
 mod k8s;
 mod logs;
+mod restart;
+mod restart_test;
 mod results;
 mod run;
 mod run_aws_ecs;
@@ -62,6 +64,8 @@ enum Command {
     Logs(logs::Logs),
     /// Delete a testsys object.
     Delete(delete::Delete),
+    /// Restart a testsys test.
+    Restart(restart::Restart),
 }
 
 #[tokio::main]
@@ -85,6 +89,7 @@ async fn run(args: Args) -> Result<()> {
         Command::Results(results) => results.run(k8s_client).await,
         Command::Logs(logs) => logs.run(k8s_client).await,
         Command::Delete(delete) => delete.run(k8s_client).await,
+        Command::Restart(restart) => restart.run(k8s_client).await,
     }
 }
 
