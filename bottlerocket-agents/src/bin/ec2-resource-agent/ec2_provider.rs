@@ -182,7 +182,7 @@ impl Create for Ec2Creator {
         // Ensure the instances reach a running state.
         info!("Waiting for instances to reach the running state");
         tokio::time::timeout(
-            Duration::from_secs(60),
+            Duration::from_secs(300),
             wait_for_conforming_instances(
                 &ec2_client,
                 &instance_ids,
@@ -532,7 +532,7 @@ impl Destroy for Ec2Destroyer {
 
         // Ensure the instances reach a terminated state.
         tokio::time::timeout(
-            Duration::from_secs(300),
+            Duration::from_secs(600),
             wait_for_conforming_instances(
                 &ec2_client,
                 &ids,
