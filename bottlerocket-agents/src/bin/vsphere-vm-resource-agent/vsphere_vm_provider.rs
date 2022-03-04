@@ -1,7 +1,9 @@
 use crate::aws::{create_ssm_activation, ensure_ssm_service_role, wait_for_ssm_ready};
 use crate::tuf::download_target;
 use aws_config::meta::region::RegionProviderChain;
+use aws_config::RetryConfig;
 use aws_sdk_ssm::Region;
+use aws_smithy_types::retry::RetryMode;
 use bottlerocket_agents::wireguard::{setup_wireguard, WIREGUARD_SECRET_NAME};
 use bottlerocket_agents::{
     decode_write_kubeconfig, setup_resource_env, TufRepoConfig, VSphereVmConfig,
@@ -124,7 +126,15 @@ impl Create for VMCreator {
         }
 
         let region_provider = RegionProviderChain::first_try(Region::new("us-west-2"));
-        let shared_config = aws_config::from_env().region(region_provider).load().await;
+        let shared_config = aws_config::from_env()
+            .region(region_provider)
+            .retry_config(
+                RetryConfig::new()
+                    .with_retry_mode(RetryMode::Adaptive)
+                    .with_max_attempts(15),
+            )
+            .load()
+            .await;
         let ssm_client = aws_sdk_ssm::Client::new(&shared_config);
         let iam_client = aws_sdk_iam::Client::new(&shared_config);
 
@@ -505,7 +515,15 @@ impl Destroy for VMDestroyer {
         }
 
         let region_provider = RegionProviderChain::first_try(Region::new("us-west-2"));
-        let shared_config = aws_config::from_env().region(region_provider).load().await;
+        let shared_config = aws_config::from_env()
+            .region(region_provider)
+            .retry_config(
+                RetryConfig::new()
+                    .with_retry_mode(RetryMode::Adaptive)
+                    .with_max_attempts(15),
+            )
+            .load()
+            .await;
         let ssm_client = aws_sdk_ssm::Client::new(&shared_config);
 
         // Get vSphere credentials to authenticate to vCenter via govmomi

@@ -43,7 +43,9 @@ use crate::ssm::{
 };
 use async_trait::async_trait;
 use aws_config::meta::region::RegionProviderChain;
+use aws_config::RetryConfig;
 use aws_sdk_ssm::Region;
+use aws_smithy_types::retry::RetryMode;
 use bottlerocket_agents::error;
 use bottlerocket_agents::error::Error;
 use bottlerocket_agents::{
@@ -87,7 +89,15 @@ impl test_agent::Runner for MigrationTestRunner {
         }
         let region_provider =
             RegionProviderChain::first_try(Region::new(self.config.aws_region.clone()));
-        let shared_config = aws_config::from_env().region(region_provider).load().await;
+        let shared_config = aws_config::from_env()
+            .region(region_provider)
+            .retry_config(
+                RetryConfig::new()
+                    .with_retry_mode(RetryMode::Adaptive)
+                    .with_max_attempts(15),
+            )
+            .load()
+            .await;
         let ssm_client = aws_sdk_ssm::Client::new(&shared_config);
 
         // Ensure the SSM agents on the instances are ready, wait up to 5 minutes

@@ -1,4 +1,5 @@
 use aws_config::meta::region::RegionProviderChain;
+use aws_config::RetryConfig;
 use aws_sdk_ec2::client::fluent_builders::RunInstances;
 use aws_sdk_ec2::error::RunInstancesError;
 use aws_sdk_ec2::model::{
@@ -6,7 +7,9 @@ use aws_sdk_ec2::model::{
     TagSpecification,
 };
 use aws_sdk_ec2::output::RunInstancesOutput;
-use aws_sdk_ec2::{Region, SdkError};
+use aws_sdk_ec2::types::SdkError;
+use aws_sdk_ec2::Region;
+use aws_smithy_types::retry::RetryMode;
 use bottlerocket_agents::{
     json_display, setup_resource_env, ClusterType, Ec2Config, AWS_CREDENTIALS_SECRET_NAME,
 };
@@ -106,7 +109,15 @@ impl Create for Ec2Creator {
         // Setup aws_sdk_config and clients.
         let region_provider =
             RegionProviderChain::first_try(Some(Region::new(spec.configuration.region.clone())));
-        let shared_config = aws_config::from_env().region(region_provider).load().await;
+        let shared_config = aws_config::from_env()
+            .region(region_provider)
+            .retry_config(
+                RetryConfig::new()
+                    .with_retry_mode(RetryMode::Adaptive)
+                    .with_max_attempts(15),
+            )
+            .load()
+            .await;
         let ec2_client = aws_sdk_ec2::Client::new(&shared_config);
 
         // Determine the instance type to use. If provided use that one. Otherwise, for `x86_64` use `m5.large`

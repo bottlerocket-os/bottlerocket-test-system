@@ -1,3 +1,4 @@
+use aws_sdk_ec2::types::SdkError;
 use aws_sdk_ecs::error::{
     DeleteServiceError, DeregisterTaskDefinitionError, DescribeClustersError,
     DescribeTaskDefinitionError, DescribeTasksError, RegisterTaskDefinitionError, RunTaskError,
@@ -7,7 +8,6 @@ use aws_sdk_ssm::error::{
     CreateDocumentError, DescribeInstanceInformationError, ListCommandInvocationsError,
     SendCommandError, UpdateDocumentError,
 };
-use aws_sdk_ssm::SdkError;
 use snafu::Snafu;
 use std::string::FromUtf8Error;
 use tokio::time::error::Elapsed;

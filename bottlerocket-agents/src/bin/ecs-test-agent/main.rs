@@ -6,10 +6,12 @@ Tests whether an ECS task runs successfully.
 
 use async_trait::async_trait;
 use aws_config::meta::region::RegionProviderChain;
-use aws_sdk_ec2::{Region, SdkError};
+use aws_config::RetryConfig;
+use aws_sdk_ec2::{types::SdkError, Region};
 use aws_sdk_ecs::error::{DescribeTaskDefinitionError, DescribeTaskDefinitionErrorKind};
 use aws_sdk_ecs::model::{Compatibility, ContainerDefinition, LaunchType, TaskStopCode};
 use aws_sdk_ecs::output::DescribeTaskDefinitionOutput;
+use aws_smithy_types::retry::RetryMode;
 use bottlerocket_agents::error::{self, Error};
 use bottlerocket_agents::{
     init_agent_logger, setup_test_env, EcsTestConfig, AWS_CREDENTIALS_SECRET_NAME,
@@ -53,7 +55,15 @@ impl Runner for EcsTestRunner {
                 .clone()
                 .unwrap_or_else(|| DEFAULT_REGION.to_string()),
         )));
-        let config = aws_config::from_env().region(region_provider).load().await;
+        let config = aws_config::from_env()
+            .region(region_provider)
+            .retry_config(
+                RetryConfig::new()
+                    .with_retry_mode(RetryMode::Adaptive)
+                    .with_max_attempts(15),
+            )
+            .load()
+            .await;
         let ecs_client = aws_sdk_ecs::Client::new(&config);
 
         info!("Waiting for registered container instances...");
