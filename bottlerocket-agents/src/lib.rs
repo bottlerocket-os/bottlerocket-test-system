@@ -52,6 +52,11 @@ pub struct SonobuoyConfig {
     pub kubeconfig_base64: String,
     pub plugin: String,
     pub mode: Mode,
+    /// This will be passed to `sonobuoy run` as `--kubernetes-version` if `kube_conformance_image`
+    /// is `None`. **Caution**: if you provide `kubernetes_version`, it must precisely match the
+    /// control plane version. If it is off by even a patch-level from the control plane, some tests
+    /// may fail. Unless you have a specific reason to pass `kubernetes_version`, it is best to
+    /// leave this as `None` and let the sonobuoy binary choose the right value.
     pub kubernetes_version: Option<K8sVersion>,
     pub kube_conformance_image: Option<String>,
 }

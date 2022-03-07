@@ -47,10 +47,6 @@ pub(crate) struct RunAwsK8s {
     #[structopt(long, default_value = "quick")]
     sonobuoy_mode: Mode,
 
-    /// The kubernetes version (with or without the v prefix). Examples: v1.21, 1.21.3, v1.20.1
-    #[structopt(long)]
-    kubernetes_version: Option<K8sVersion>,
-
     /// The kubernetes conformance image used for the sonobuoy test.
     #[structopt(long)]
     kubernetes_conformance_image: Option<String>,
@@ -73,6 +69,12 @@ pub(crate) struct RunAwsK8s {
     /// you desire a specific resource name, then you do not need to supply a resource name here.
     #[structopt(long)]
     cluster_resource_name: Option<String>,
+
+    /// The version of the EKS cluster that is to be created (with or without the 'v', e.g. 1.20 or
+    /// v1.21, etc.) *This only affects EKS cluster creation!* If the cluster already exists, this
+    /// option will have no affect.
+    #[structopt(long)]
+    cluster_version: Option<K8sVersion>,
 
     /// Whether or not we want the EKS cluster to be created. The possible values are:
     /// - `create`: the cluster will be created, it is an error for the cluster to pre-exist
@@ -333,7 +335,7 @@ impl RunAwsK8s {
                             creation_policy: Some(self.cluster_creation_policy),
                             region: Some(self.region.clone()),
                             zones: None,
-                            version: self.kubernetes_version,
+                            version: self.cluster_version,
                         }
                         .into_map()
                         .context(error::ConfigMapSnafu)?,
@@ -438,7 +440,7 @@ impl RunAwsK8s {
                             ),
                             plugin: self.sonobuoy_plugin.clone(),
                             mode: self.sonobuoy_mode,
-                            kubernetes_version: self.kubernetes_version,
+                            kubernetes_version: None,
                             kube_conformance_image: self.kubernetes_conformance_image.clone(),
                         }
                         .into_map()
