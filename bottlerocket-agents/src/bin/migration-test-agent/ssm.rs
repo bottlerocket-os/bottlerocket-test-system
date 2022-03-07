@@ -1,4 +1,4 @@
-use aws_sdk_ec2::SdkError;
+use aws_sdk_ec2::types::SdkError;
 use aws_sdk_ssm::error::DescribeDocumentErrorKind;
 use aws_sdk_ssm::model::{
     CommandInvocation, CommandInvocationStatus, DocumentFormat, DocumentType,

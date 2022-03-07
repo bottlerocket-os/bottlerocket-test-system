@@ -1,4 +1,4 @@
-use aws_sdk_iam::SdkError;
+use aws_sdk_iam::types::SdkError;
 use aws_sdk_ssm::model::{InstanceInformation, InstanceInformationStringFilter, Tag};
 use log::info;
 use resource_agent::provider::{IntoProviderError, ProviderError, ProviderResult, Resources};

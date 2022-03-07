@@ -1,9 +1,11 @@
 use aws_config::meta::region::RegionProviderChain;
+use aws_config::RetryConfig;
 use aws_sdk_ec2::model::Filter;
-use aws_sdk_ec2::SdkError;
+use aws_sdk_ec2::types::SdkError;
 use aws_sdk_ecs::Region;
 use aws_sdk_iam::error::{GetInstanceProfileError, GetInstanceProfileErrorKind};
 use aws_sdk_iam::output::GetInstanceProfileOutput;
+use aws_smithy_types::retry::RetryMode;
 use bottlerocket_agents::{setup_resource_env, EcsClusterConfig, AWS_CREDENTIALS_SECRET_NAME};
 use model::{Configuration, SecretName};
 use resource_agent::clients::InfoClient;
@@ -90,7 +92,15 @@ impl Create for EcsCreator {
         }
 
         let region_provider = RegionProviderChain::first_try(Some(Region::new(region.to_string())));
-        let config = aws_config::from_env().region(region_provider).load().await;
+        let config = aws_config::from_env()
+            .region(region_provider)
+            .retry_config(
+                RetryConfig::new()
+                    .with_retry_mode(RetryMode::Adaptive)
+                    .with_max_attempts(15),
+            )
+            .load()
+            .await;
         let ecs_client = aws_sdk_ecs::Client::new(&config);
         let iam_client = aws_sdk_iam::Client::new(&config);
 
@@ -211,7 +221,15 @@ async fn created_cluster(
     iam_instance_profile_arn: String,
 ) -> ProviderResult<CreatedCluster> {
     let region_provider = RegionProviderChain::first_try(Some(Region::new(region.clone())));
-    let shared_config = aws_config::from_env().region(region_provider).load().await;
+    let shared_config = aws_config::from_env()
+        .retry_config(
+            RetryConfig::new()
+                .with_retry_mode(RetryMode::Adaptive)
+                .with_max_attempts(15),
+        )
+        .region(region_provider)
+        .load()
+        .await;
     let ec2_client = aws_sdk_ec2::Client::new(&shared_config);
 
     let vpc = match vpc {
@@ -310,7 +328,15 @@ impl Destroy for EcsDestroyer {
             .unwrap_or_else(|| DEFAULT_REGION.to_string());
 
         let region_provider = RegionProviderChain::first_try(Some(Region::new(region.to_string())));
-        let config = aws_config::from_env().region(region_provider).load().await;
+        let config = aws_config::from_env()
+            .retry_config(
+                RetryConfig::new()
+                    .with_retry_mode(RetryMode::Adaptive)
+                    .with_max_attempts(15),
+            )
+            .region(region_provider)
+            .load()
+            .await;
         let ecs_client = aws_sdk_ecs::Client::new(&config);
 
         if let Some(cluster_name) = &memo.cluster_name {

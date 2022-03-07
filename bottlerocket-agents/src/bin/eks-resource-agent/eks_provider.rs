@@ -1,9 +1,11 @@
 use aws_config::meta::region::RegionProviderChain;
+use aws_config::RetryConfig;
 use aws_sdk_ec2::model::{Filter, SecurityGroup, Subnet};
-use aws_sdk_ec2::{Region, SdkError};
+use aws_sdk_ec2::{types::SdkError, Region};
 use aws_sdk_eks::error::{DescribeClusterError, DescribeClusterErrorKind};
 use aws_sdk_eks::model::IpFamily;
 use aws_sdk_eks::output::DescribeClusterOutput;
+use aws_smithy_types::retry::RetryMode;
 use bottlerocket_agents::{
     impl_display_as_json, json_display, provider_error_for_cmd_output, setup_resource_env,
     CreationPolicy, EksClusterConfig, K8sVersion, AWS_CREDENTIALS_SECRET_NAME,
@@ -97,7 +99,15 @@ struct AwsClients {
 impl AwsClients {
     async fn new(region: String) -> Self {
         let region_provider = RegionProviderChain::first_try(Some(Region::new(region)));
-        let shared_config = aws_config::from_env().region(region_provider).load().await;
+        let shared_config = aws_config::from_env()
+            .region(region_provider)
+            .retry_config(
+                RetryConfig::new()
+                    .with_retry_mode(RetryMode::Adaptive)
+                    .with_max_attempts(15),
+            )
+            .load()
+            .await;
         Self {
             eks_client: aws_sdk_eks::Client::new(&shared_config),
             ec2_client: aws_sdk_ec2::Client::new(&shared_config),
