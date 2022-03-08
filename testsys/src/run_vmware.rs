@@ -2,8 +2,8 @@ use crate::error::{self, Result};
 use bottlerocket_agents::sonobuoy::Mode;
 use bottlerocket_agents::wireguard::WIREGUARD_SECRET_NAME;
 use bottlerocket_agents::{
-    K8sVersion, MigrationConfig, SonobuoyConfig, TufRepoConfig, VSphereClusterInfo,
-    VSphereVmConfig, AWS_CREDENTIALS_SECRET_NAME, VSPHERE_CREDENTIALS_SECRET_NAME,
+    MigrationConfig, SonobuoyConfig, TufRepoConfig, VSphereClusterInfo, VSphereVmConfig,
+    AWS_CREDENTIALS_SECRET_NAME, VSPHERE_CREDENTIALS_SECRET_NAME,
 };
 use kube::ResourceExt;
 use kube::{api::ObjectMeta, Client};
@@ -49,10 +49,6 @@ pub(crate) struct RunVmware {
     /// `non-disruptive-conformance`, we default to `quick` to make a quick test the most ergonomic.
     #[structopt(long, default_value = "quick")]
     sonobuoy_mode: Mode,
-
-    /// The kubernetes version (with or without the v prefix). Examples: v1.21, 1.21.3, v1.20.1
-    #[structopt(long)]
-    kubernetes_version: Option<K8sVersion>,
 
     /// The kubernetes conformance image used for the sonobuoy test.
     #[structopt(long)]
@@ -389,7 +385,7 @@ impl RunVmware {
                             kubeconfig_base64: encoded_kubeconfig.to_string(),
                             plugin: self.sonobuoy_plugin.clone(),
                             mode: self.sonobuoy_mode,
-                            kubernetes_version: self.kubernetes_version,
+                            kubernetes_version: None,
                             kube_conformance_image: self.kubernetes_conformance_image.clone(),
                         }
                         .into_map()
