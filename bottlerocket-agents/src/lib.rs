@@ -48,7 +48,6 @@ pub struct VSphereClusterInfo {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SonobuoyConfig {
-    // FIXME: need a better way of passing test cluster information
     pub kubeconfig_base64: String,
     pub plugin: String,
     pub mode: Mode,
