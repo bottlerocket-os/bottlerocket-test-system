@@ -1,5 +1,5 @@
 use crate::error::{self, Result};
-use bottlerocket_agents::{
+use bottlerocket_types::agent_config::{
     ClusterType, Ec2Config, EcsClusterConfig, EcsTestConfig, MigrationConfig, TufRepoConfig,
     AWS_CREDENTIALS_SECRET_NAME,
 };

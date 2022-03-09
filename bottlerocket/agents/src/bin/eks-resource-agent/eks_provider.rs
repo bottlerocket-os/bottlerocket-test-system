@@ -8,6 +8,8 @@ use aws_sdk_eks::output::DescribeClusterOutput;
 use aws_smithy_types::retry::RetryMode;
 use bottlerocket_agents::{
     impl_display_as_json, json_display, provider_error_for_cmd_output, setup_resource_env,
+};
+use bottlerocket_types::agent_config::{
     CreationPolicy, EksClusterConfig, K8sVersion, AWS_CREDENTIALS_SECRET_NAME,
 };
 use log::{debug, info, trace};

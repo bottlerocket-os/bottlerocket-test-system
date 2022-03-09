@@ -4,6 +4,7 @@ members = [
     "agent/resource-agent",
     "agent/test-agent",
     "bottlerocket/agents",
+    "bottlerocket/types",
     "controller",
     "model",
     "selftest",

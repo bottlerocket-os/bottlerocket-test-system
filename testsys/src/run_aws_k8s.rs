@@ -1,8 +1,7 @@
 use crate::error::{self, Result};
-use bottlerocket_agents::sonobuoy::Mode;
-use bottlerocket_agents::{
+use bottlerocket_types::agent_config::{
     ClusterType, CreationPolicy, Ec2Config, EksClusterConfig, K8sVersion, MigrationConfig,
-    SonobuoyConfig, TufRepoConfig, AWS_CREDENTIALS_SECRET_NAME,
+    SonobuoyConfig, SonobuoyMode, TufRepoConfig, AWS_CREDENTIALS_SECRET_NAME,
 };
 use kube::ResourceExt;
 use kube::{api::ObjectMeta, Client};
@@ -45,7 +44,7 @@ pub(crate) struct RunAwsK8s {
     /// `certified-conformance`, `quick`. Although the Sonobuoy binary defaults to
     /// `non-disruptive-conformance`, we default to `quick` to make a quick test the most ergonomic.
     #[structopt(long, default_value = "quick")]
-    sonobuoy_mode: Mode,
+    sonobuoy_mode: SonobuoyMode,
 
     /// The kubernetes conformance image used for the sonobuoy test.
     #[structopt(long)]

@@ -7,7 +7,7 @@ license = "MIT OR Apache-2.0"
 
 [dependencies]
 base64 = "0.13.0"
-bottlerocket-agents = { path = "../bottlerocket/agents" }
+bottlerocket-types = { path = "../bottlerocket/types" }
 env_logger = "0.9"
 futures = "0.3.8"
 http = "0"

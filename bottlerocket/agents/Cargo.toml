@@ -7,6 +7,7 @@ license = "MIT OR Apache-2.0"
 
 [dependencies]
 agent-common = { path = "../../agent/agent-common" }
+bottlerocket-types = { path = "../types" }
 async-trait = "0.1"
 aws-config = "0.8"
 aws-sdk-ec2 = "0.8"

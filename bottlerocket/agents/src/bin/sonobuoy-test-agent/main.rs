@@ -35,10 +35,12 @@ spec:
 use async_trait::async_trait;
 use bottlerocket_agents::error::Error;
 use bottlerocket_agents::sonobuoy::{delete_sonobuoy, run_sonobuoy};
-use bottlerocket_agents::wireguard::{setup_wireguard, WIREGUARD_SECRET_NAME};
+use bottlerocket_agents::wireguard::setup_wireguard;
 use bottlerocket_agents::{
-    decode_write_kubeconfig, error, init_agent_logger, setup_test_env, SonobuoyConfig,
-    AWS_CREDENTIALS_SECRET_NAME, TEST_CLUSTER_KUBECONFIG_PATH,
+    decode_write_kubeconfig, error, init_agent_logger, setup_test_env, TEST_CLUSTER_KUBECONFIG_PATH,
+};
+use bottlerocket_types::agent_config::{
+    SonobuoyConfig, AWS_CREDENTIALS_SECRET_NAME, WIREGUARD_SECRET_NAME,
 };
 use log::info;
 use model::{SecretName, TestResults};
