@@ -3,7 +3,7 @@ members = [
     "agent/agent-common",
     "agent/resource-agent",
     "agent/test-agent",
-    "bottlerocket",
+    "bottlerocket/agents",
     "controller",
     "model",
     "selftest",
