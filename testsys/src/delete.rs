@@ -1,7 +1,10 @@
 use crate::error::{self, Result};
 use http::StatusCode;
-use kube::{Client, ResourceExt};
-use model::clients::{CrdClient, HttpStatusCode, IsFound, ResourceClient, TestClient};
+use kube::{core::object::HasStatus, Client, ResourceExt};
+use model::{
+    clients::{AllowNotFound, CrdClient, HttpStatusCode, ResourceClient, TestClient},
+    TaskState,
+};
 use serde::Deserialize;
 use serde_plain::derive_fromstr_from_deserialize;
 use snafu::ResultExt;
@@ -15,9 +18,18 @@ pub(crate) struct Delete {
     /// Delete all tests and resources from a testsys cluster.
     #[structopt(
         long,
-        conflicts_with_all(&["object-type", "object-name", "include-resources"])
+        conflicts_with_all(&["object-type", "object-name", "include-resources", "force"])
     )]
     all: bool,
+
+    /// Delete the resource object after a failed deletion attempt.
+    /// Warning: the resources created must be manually removed.
+    #[structopt(
+        long,
+        conflicts_with = "include-resources",
+        requires_if("object-type", "resource")
+    )]
+    force: bool,
 
     /// The type of object that is being delete must be either `test` or `resource`.
     #[structopt(required_unless = "all")]
@@ -43,15 +55,23 @@ derive_fromstr_from_deserialize!(ObjectType);
 
 impl Delete {
     pub(crate) async fn run(&self, k8s_client: Client) -> Result<()> {
-        match (self.all, self.object_type, self.object_name.as_ref()) {
-            (true, _, _) => delete_all(k8s_client).await,
-            (false, Some(ObjectType::Test), Some(object_name)) => {
+        match (
+            self.all,
+            self.force,
+            self.object_type,
+            self.object_name.as_ref(),
+        ) {
+            (true, _, _, _) => delete_all(k8s_client).await,
+            (false, false, Some(ObjectType::Test), Some(object_name)) => {
                 delete_test(k8s_client, object_name, self.include_resources).await
             }
-            (false, Some(ObjectType::Resource), Some(object_name)) => {
+            (false, false, Some(ObjectType::Resource), Some(object_name)) => {
                 delete_resource(k8s_client, object_name, self.include_resources).await
             }
-            (_, _, _) => Err(error::Error::InvalidArguments {
+            (false, true, Some(ObjectType::Resource), Some(object_name)) => {
+                force_delete_resource(k8s_client, object_name).await
+            }
+            (_, _, _, _) => Err(error::Error::InvalidArguments {
                 why: "Either `all` must be set, or both of `object-type` and `object-name`"
                     .to_string(),
             }),
@@ -60,6 +80,7 @@ impl Delete {
 }
 
 async fn delete_all(k8s_client: Client) -> Result<()> {
+    let mut failures = 0;
     let test_client = TestClient::new_from_k8s_client(k8s_client.clone());
     let resource_client = ResourceClient::new_from_k8s_client(k8s_client.clone());
 
@@ -84,16 +105,29 @@ async fn delete_all(k8s_client: Client) -> Result<()> {
     while !deletion_order.is_empty() || !awaiting_deletion.is_empty() {
         // Check for all resources that have been deleted for completion.
         let mut still_awaiting = Vec::new();
-        for resource in &awaiting_deletion {
-            if resource_client
-                .get(resource)
+        for resource_name in &awaiting_deletion {
+            if let Some(resource) = resource_client
+                .get(resource_name)
                 .await
-                .is_found(|_| ())
-                .context(error::GetSnafu { what: resource })?
+                .allow_not_found(|_| ())
+                .context(error::GetSnafu {
+                    what: resource_name,
+                })?
             {
-                still_awaiting.push(resource.to_string());
+                // If the resource errored during deletion alert the user that a problem occured
+                if resource
+                    .status()
+                    .map(|status| status.destruction.task_state == TaskState::Error)
+                    .unwrap_or_default()
+                {
+                    failures += 1;
+                    eprintln!("Resource '{}' failed to delete.", resource_name);
+                    println!("Use `testsys delete resource {} --force` to manually clean up the resource.", resource_name);
+                } else {
+                    still_awaiting.push(resource_name.to_string());
+                }
             } else {
-                println!("Resource '{}' has been deleted", resource);
+                println!("Resource '{}' has been deleted", resource_name);
             }
         }
         awaiting_deletion = still_awaiting;
@@ -107,17 +141,20 @@ async fn delete_all(k8s_client: Client) -> Result<()> {
                 resource_client
                     .delete(resource)
                     .await
-                    // Returns `true` if the item existed, `false` if it was not found.
-                    .is_found(|_| println!("The resource '{}' was not found", resource))
+                    .allow_not_found(|_| println!("The resource '{}' was not found", resource))
                     .context(error::DeleteSnafu {
                         what: resource.to_string(),
                     })?;
             }
         }
     }
-    println!("All resources have been deleted.");
-
-    Ok(())
+    if failures == 0 {
+        println!("All resources have been deleted.");
+        Ok(())
+    } else {
+        eprintln!("Some resources failed to be deleted.");
+        Err(error::Error::DeleteCommand { count: failures })
+    }
 }
 
 /// Delete a testsys resource. If `include_resources`, all resources that this resource
@@ -147,17 +184,15 @@ async fn delete_test(k8s_client: Client, test_name: &str, include_resources: boo
         None
     };
 
-    // We assign this bool because clippy prefers it, see `blocks_in_if_conditions`.
-    let existed = test_client
+    if test_client
         .delete(test_name)
         .await
-        // Returns `true` if the item existed, `false` if it was not found.
-        .is_found(|_| println!("The test '{}' was not found", test_name))
+        .allow_not_found(|_| println!("The test '{}' was not found", test_name))
         .context(error::DeleteSnafu {
             what: test_name.to_string(),
-        })?;
-
-    if existed {
+        })?
+        .is_some()
+    {
         println!("Deleting test '{}'", test_name);
         test_client.wait_for_deletion(test_name).await;
         println!("Test '{}' has been deleted", test_name);
@@ -174,30 +209,42 @@ async fn delete_resources_in_order(
     k8s_client: &Client,
     mut topo_sort: TopologicalSort<String>,
 ) -> Result<()> {
+    let mut failures = 0;
     let resource_client = ResourceClient::new_from_k8s_client(k8s_client.clone());
     while !topo_sort.is_empty() {
         if let Some(independent_resource) = topo_sort.pop() {
-            // We assign this bool because clippy prefers it, see `blocks_in_if_conditions`.
-            let existed = resource_client
+            if resource_client
                 .delete(&independent_resource)
                 .await
-                // Returns `true` if the item existed, `false` if it was not found.
-                .is_found(|_| println!("The resource '{}' was not found", independent_resource))
+                .allow_not_found(|_| {
+                    println!("The resource '{}' was not found", independent_resource)
+                })
                 .context(error::DeleteSnafu {
                     what: independent_resource.to_string(),
-                })?;
-
-            if existed {
+                })?
+                .is_some()
+            {
                 println!("Deleting resource '{}'", independent_resource);
-                resource_client
+                if resource_client
                     .wait_for_deletion(&independent_resource)
-                    .await;
-                println!("Resource '{}' has been deleted", independent_resource);
+                    .await
+                    .is_err()
+                {
+                    failures += 1;
+                    eprintln!("Resource '{}' failed to delete.", independent_resource);
+                    println!("Use `testsys delete resource {} --force` to manually clean up the resource.", independent_resource);
+                } else {
+                    println!("Resource '{}' has been deleted", independent_resource);
+                }
             }
         }
     }
-
-    Ok(())
+    if failures == 0 {
+        Ok(())
+    } else {
+        eprintln!("Some resources failed to be deleted.");
+        Err(error::Error::DeleteCommand { count: failures })
+    }
 }
 
 /// Creates a `TopologicalSort` containing all resources that `test_name` depends on
@@ -276,4 +323,19 @@ async fn all_resources_deletion_order(k8s_client: &Client) -> Result<Topological
         }
     }
     Ok(topo_sort)
+}
+
+/// Delete a resource from a testsys cluster by force.
+/// The finalizers will be removed from the resource and the resource will be deleted.
+/// The job for resource deletion will also be deleted.
+/// This should only be used if a resource has already failed to delete.
+async fn force_delete_resource(k8s_client: Client, resource_name: &str) -> Result<()> {
+    let resource_client = ResourceClient::new_from_k8s_client(k8s_client.clone());
+    resource_client
+        .force_delete(resource_name)
+        .await
+        .context(error::DeleteSnafu {
+            what: resource_name,
+        })?;
+    Ok(())
 }

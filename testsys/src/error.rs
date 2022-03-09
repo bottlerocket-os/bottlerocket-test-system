@@ -42,6 +42,9 @@ pub(crate) enum Error {
         source: model::clients::Error,
     },
 
+    #[snafu(display("{} objects failed to be deleted.", count))]
+    DeleteCommand { count: i32 },
+
     #[snafu(display("Error deleting {} '{}': {}", what, name, source))]
     DeleteObject {
         what: String,

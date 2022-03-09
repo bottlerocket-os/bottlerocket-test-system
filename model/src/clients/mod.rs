@@ -9,4 +9,4 @@ mod resource_client;
 mod test_client;
 
 pub use crd_client::CrdClient;
-pub use http_status_code::{HttpStatusCode, IsFound, StatusCode};
+pub use http_status_code::{AllowNotFound, HttpStatusCode, StatusCode};
