@@ -1,31 +1,38 @@
 use crate::error::{self, Result};
 use http::StatusCode;
-use kube::Client;
+use kube::{Client, ResourceExt};
 use model::clients::{CrdClient, HttpStatusCode, IsFound, ResourceClient, TestClient};
 use serde::Deserialize;
 use serde_plain::derive_fromstr_from_deserialize;
 use snafu::ResultExt;
-use std::collections::HashSet;
+use std::{collections::HashSet, time::Duration};
 use structopt::StructOpt;
 use topological_sort::TopologicalSort;
 
 /// Delete an object from a testsys cluster.
 #[derive(Debug, StructOpt)]
 pub(crate) struct Delete {
+    /// Delete all tests and resources from a testsys cluster.
+    #[structopt(
+        long,
+        conflicts_with_all(&["object-type", "object-name", "include-resources"])
+    )]
+    all: bool,
+
     /// The type of object that is being delete must be either `test` or `resource`.
-    #[structopt()]
-    object_type: ObjectType,
+    #[structopt(required_unless = "all")]
+    object_type: Option<ObjectType>,
 
     /// The name of the test/resource that should be deleted.
-    #[structopt()]
-    object_name: String,
+    #[structopt(required_unless = "all")]
+    object_name: Option<String>,
 
     /// Include this flag if all resources this object depends on should be deleted as well.
     #[structopt(long)]
     include_resources: bool,
 }
 
-#[derive(Deserialize, Debug, PartialEq, Eq)]
+#[derive(Deserialize, Debug, PartialEq, Eq, Clone, Copy)]
 #[serde(rename_all = "lowercase")]
 enum ObjectType {
     Test,
@@ -36,15 +43,81 @@ derive_fromstr_from_deserialize!(ObjectType);
 
 impl Delete {
     pub(crate) async fn run(&self, k8s_client: Client) -> Result<()> {
-        match self.object_type {
-            ObjectType::Test => {
-                delete_test(k8s_client, &self.object_name, self.include_resources).await
+        match (self.all, self.object_type, self.object_name.as_ref()) {
+            (true, _, _) => delete_all(k8s_client).await,
+            (false, Some(ObjectType::Test), Some(object_name)) => {
+                delete_test(k8s_client, object_name, self.include_resources).await
             }
-            ObjectType::Resource => {
-                delete_resource(k8s_client, &self.object_name, self.include_resources).await
+            (false, Some(ObjectType::Resource), Some(object_name)) => {
+                delete_resource(k8s_client, object_name, self.include_resources).await
+            }
+            (_, _, _) => Err(error::Error::InvalidArguments {
+                why: "Either `all` must be set, or both of `object-type` and `object-name`"
+                    .to_string(),
+            }),
+        }
+    }
+}
+
+async fn delete_all(k8s_client: Client) -> Result<()> {
+    let test_client = TestClient::new_from_k8s_client(k8s_client.clone());
+    let resource_client = ResourceClient::new_from_k8s_client(k8s_client.clone());
+
+    // Start by deleting all tests and waiting for their completion.
+    println!("Deleting all tests...");
+    test_client.delete_all().await.context(error::DeleteSnafu {
+        what: "all tests".to_string(),
+    })?;
+    while !test_client
+        .get_all()
+        .await
+        .context(error::GetSnafu { what: "all tests" })?
+        .is_empty()
+    {
+        tokio::time::sleep(Duration::from_secs(5)).await;
+    }
+    println!("Test deletion complete.");
+    // Build a topological sort with all resources in the cluster
+    let mut deletion_order = all_resources_deletion_order(&k8s_client).await?;
+    let mut awaiting_deletion = Vec::<String>::new();
+    println!("Deleting all resources following dependencies...");
+    while !deletion_order.is_empty() || !awaiting_deletion.is_empty() {
+        // Check for all resources that have been deleted for completion.
+        let mut still_awaiting = Vec::new();
+        for resource in &awaiting_deletion {
+            if resource_client
+                .get(resource)
+                .await
+                .is_found(|_| ())
+                .context(error::GetSnafu { what: resource })?
+            {
+                still_awaiting.push(resource.to_string());
+            } else {
+                println!("Resource '{}' has been deleted", resource);
+            }
+        }
+        awaiting_deletion = still_awaiting;
+
+        // If all resources awaiting deletion have been deleted we can get a new
+        // set of resources to delete.
+        if awaiting_deletion.is_empty() {
+            awaiting_deletion = deletion_order.pop_all();
+            for resource in &awaiting_deletion {
+                println!("Deleting resource '{}' ...", resource);
+                resource_client
+                    .delete(resource)
+                    .await
+                    // Returns `true` if the item existed, `false` if it was not found.
+                    .is_found(|_| println!("The resource '{}' was not found", resource))
+                    .context(error::DeleteSnafu {
+                        what: resource.to_string(),
+                    })?;
             }
         }
     }
+    println!("All resources have been deleted.");
+
+    Ok(())
 }
 
 /// Delete a testsys resource. If `include_resources`, all resources that this resource
@@ -183,5 +256,24 @@ async fn resource_dependency_delete_order(
         }
     }
 
+    Ok(topo_sort)
+}
+
+/// Creates a `TopologicalSort` containing all resources in a testsys cluster.
+async fn all_resources_deletion_order(k8s_client: &Client) -> Result<TopologicalSort<String>> {
+    let mut topo_sort = TopologicalSort::new();
+    let resource_client = ResourceClient::new_from_k8s_client(k8s_client.clone());
+    let resources = resource_client.get_all().await.context(error::GetSnafu {
+        what: "all resources",
+    })?;
+    for resource in resources {
+        if let Some(depended_resources) = &resource.spec.depends_on {
+            for depended_resource in depended_resources {
+                topo_sort.add_dependency(resource.name(), depended_resource.clone());
+            }
+        } else {
+            topo_sort.insert(resource.name());
+        }
+    }
     Ok(topo_sort)
 }

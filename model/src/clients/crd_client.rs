@@ -105,6 +105,20 @@ pub trait CrdClient: Sized {
             .into_inner())
     }
 
+    async fn delete_all(&self) -> Result<Option<Vec<Self::Crd>>> {
+        Ok(self
+            .api()
+            .delete_collection(&Default::default(), &Default::default())
+            .await
+            .context(error::KubeApiCallSnafu {
+                method: "delete_collection",
+                what: self.kind(),
+            })?
+            .map_right(|_| None)
+            .map_left(|deleted_test| Some(deleted_test.items))
+            .into_inner())
+    }
+
     /// Loop until `get(name)` returns `StatusCode::NOT_FOUND`
     async fn wait_for_deletion<S>(&self, name: S) -> ()
     where
