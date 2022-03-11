@@ -5,23 +5,18 @@ Tests whether an ECS task runs successfully.
 !*/
 
 use async_trait::async_trait;
-use aws_config::meta::region::RegionProviderChain;
-use aws_config::RetryConfig;
-use aws_sdk_ec2::{types::SdkError, Region};
+use aws_sdk_ec2::types::SdkError;
 use aws_sdk_ecs::error::{DescribeTaskDefinitionError, DescribeTaskDefinitionErrorKind};
 use aws_sdk_ecs::model::{Compatibility, ContainerDefinition, LaunchType, TaskStopCode};
 use aws_sdk_ecs::output::DescribeTaskDefinitionOutput;
-use aws_smithy_types::retry::RetryMode;
 use bottlerocket_agents::error::{self, Error};
-use bottlerocket_agents::{init_agent_logger, setup_test_env, DEFAULT_TASK_DEFINITION};
+use bottlerocket_agents::{aws_test_config, init_agent_logger, DEFAULT_TASK_DEFINITION};
 use bottlerocket_types::agent_config::{EcsTestConfig, AWS_CREDENTIALS_SECRET_NAME};
 use log::info;
 use model::{Outcome, SecretName, TestResults};
 use snafu::{OptionExt, ResultExt};
 use std::time::Duration;
 use test_agent::{BootstrapData, ClientError, DefaultClient, Runner, Spec, TestAgent};
-
-const DEFAULT_REGION: &str = "us-west-2";
 
 struct EcsTestRunner {
     config: EcsTestConfig,
@@ -42,26 +37,13 @@ impl Runner for EcsTestRunner {
     }
 
     async fn run(&mut self) -> Result<TestResults, Self::E> {
-        // Set up the aws credentials if they were provided.
-        if let Some(aws_secret_name) = &self.aws_secret_name {
-            setup_test_env(self, aws_secret_name).await?;
-        }
-
-        let region_provider = RegionProviderChain::first_try(Some(Region::new(
-            self.config
-                .region
-                .clone()
-                .unwrap_or_else(|| DEFAULT_REGION.to_string()),
-        )));
-        let config = aws_config::from_env()
-            .region(region_provider)
-            .retry_config(
-                RetryConfig::new()
-                    .with_retry_mode(RetryMode::Adaptive)
-                    .with_max_attempts(15),
-            )
-            .load()
-            .await;
+        let config = aws_test_config(
+            self,
+            &self.aws_secret_name,
+            &self.config.assume_role,
+            &self.config.region,
+        )
+        .await?;
         let ecs_client = aws_sdk_ecs::Client::new(&config);
 
         info!("Waiting for registered container instances...");

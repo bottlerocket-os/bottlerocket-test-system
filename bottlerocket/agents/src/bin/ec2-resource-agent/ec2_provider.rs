@@ -1,5 +1,3 @@
-use aws_config::meta::region::RegionProviderChain;
-use aws_config::RetryConfig;
 use aws_sdk_ec2::client::fluent_builders::RunInstances;
 use aws_sdk_ec2::error::RunInstancesError;
 use aws_sdk_ec2::model::{
@@ -8,9 +6,7 @@ use aws_sdk_ec2::model::{
 };
 use aws_sdk_ec2::output::RunInstancesOutput;
 use aws_sdk_ec2::types::SdkError;
-use aws_sdk_ec2::Region;
-use aws_smithy_types::retry::RetryMode;
-use bottlerocket_agents::{json_display, setup_resource_env};
+use bottlerocket_agents::{aws_resource_config, json_display, setup_resource_env};
 use bottlerocket_types::agent_config::{ClusterType, Ec2Config, AWS_CREDENTIALS_SECRET_NAME};
 use log::{debug, info, trace, warn};
 use model::{Configuration, SecretName};
@@ -47,6 +43,9 @@ pub struct ProductionMemo {
 
     /// A UUID that was used to tag the instances in case we lose our created instance IDs.
     pub uuid_tag: Option<String>,
+
+    /// The role that is assumed.
+    pub assume_role: Option<String>,
 }
 
 impl Configuration for ProductionMemo {}
@@ -105,18 +104,17 @@ impl Create for Ec2Creator {
             memo.aws_secret_name = Some(aws_secret_name.clone());
         }
 
-        // Setup aws_sdk_config and clients.
-        let region_provider =
-            RegionProviderChain::first_try(Some(Region::new(spec.configuration.region.clone())));
-        let shared_config = aws_config::from_env()
-            .region(region_provider)
-            .retry_config(
-                RetryConfig::new()
-                    .with_retry_mode(RetryMode::Adaptive)
-                    .with_max_attempts(15),
-            )
-            .load()
-            .await;
+        memo.aws_secret_name = spec.secrets.get(AWS_CREDENTIALS_SECRET_NAME).cloned();
+        memo.assume_role = spec.configuration.assume_role.clone();
+
+        let shared_config = aws_resource_config(
+            client,
+            &spec.secrets.get(AWS_CREDENTIALS_SECRET_NAME),
+            &spec.configuration.assume_role,
+            &Some(spec.configuration.region.clone()),
+            Resources::Clear,
+        )
+        .await?;
         let ec2_client = aws_sdk_ec2::Client::new(&shared_config);
 
         // Determine the instance type to use. If provided use that one. Otherwise, for `x86_64` use `m5.large`
@@ -492,14 +490,14 @@ impl Destroy for Ec2Destroyer {
             memo.clone().instance_ids
         };
 
-        // Write aws credentials if we need them so we can run eksctl
-        if let Some(aws_secret_name) = &memo.aws_secret_name {
-            setup_resource_env(client, aws_secret_name, memo.as_resources()).await?;
-        }
-
-        let region_provider =
-            RegionProviderChain::first_try(Some(Region::new(memo.region.clone())));
-        let shared_config = aws_config::from_env().region(region_provider).load().await;
+        let shared_config = aws_resource_config(
+            client,
+            &memo.aws_secret_name.as_ref(),
+            &memo.assume_role,
+            &Some(memo.region.clone()),
+            Resources::Clear,
+        )
+        .await?;
         let ec2_client = aws_sdk_ec2::Client::new(&shared_config);
 
         // If we don't have any instances to delete make sure there weren't any instances

@@ -142,6 +142,10 @@ pub(crate) struct RunAwsEcs {
     /// Name of the pull secret for the ecs migration image (if needed).
     #[structopt(long)]
     migration_agent_pull_secret: Option<String>,
+
+    /// The arn for the role that should be assumed by the agents.
+    #[structopt(long)]
+    assume_role: Option<String>,
 }
 
 impl RunAwsEcs {
@@ -320,6 +324,7 @@ impl RunAwsEcs {
                             cluster_name: self.cluster_name.to_owned(),
                             region: Some(self.region.clone()),
                             vpc: self.vpc.clone(),
+                            assume_role: self.assume_role.clone(),
                         }
                         .into_map()
                         .context(error::ConfigMapSnafu)?,
@@ -350,8 +355,9 @@ impl RunAwsEcs {
                 .iam_instance_profile_arn
                 .clone()
                 .unwrap_or_else(|| format!("${{{}.iamInstanceProfileArn}}", cluster_resource_name)),
-            subnet_id: format!("${{{}.privateSubnetId}}", cluster_resource_name),
+            subnet_id: format!("${{{}.publicSubnetId}}", cluster_resource_name),
             cluster_type: ClusterType::Ecs,
+            assume_role: self.assume_role.clone(),
             ..Default::default()
         }
         .into_map()
@@ -412,10 +418,11 @@ impl RunAwsEcs {
                             region: Some(format!("${{{}.region}}", cluster_resource_name)),
                             cluster_name: format!("${{{}.clusterName}}", cluster_resource_name),
                             task_count: self.task_count,
-                            subnet: format!("${{{}.privateSubnetId}}", cluster_resource_name),
+                            subnet: format!("${{{}.publicSubnetId}}", cluster_resource_name),
                             task_definition_name_and_revision: self
                                 .task_definition_name_and_revision
                                 .clone(),
+                            assume_role: self.assume_role.clone(),
                         }
                         .into_map()
                         .context(error::ConfigMapSnafu)?,
@@ -446,6 +453,7 @@ impl RunAwsEcs {
             instance_ids: Default::default(),
             migrate_to_version: version.to_string(),
             tuf_repo,
+            assume_role: self.assume_role.clone(),
         }
         .into_map()
         .context(error::ConfigMapSnafu)?;

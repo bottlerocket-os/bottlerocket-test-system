@@ -63,6 +63,10 @@ pub(crate) struct RunSonobuoy {
     /// The resources required by the sonobuoy test.
     #[structopt(long)]
     resource: Vec<String>,
+
+    /// The arn for the role that should be assumed by the agent.
+    #[structopt(long)]
+    assume_role: Option<String>,
 }
 
 impl RunSonobuoy {
@@ -99,6 +103,7 @@ impl RunSonobuoy {
                             mode: self.mode,
                             kubernetes_version: None,
                             kube_conformance_image: self.kubernetes_conformance_image.clone(),
+                            assume_role: self.assume_role.clone(),
                         }
                         .into_map()
                         .context(error::ConfigMapSnafu)?,
