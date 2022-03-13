@@ -6,7 +6,8 @@ use aws_sdk_ecs::Region;
 use aws_sdk_iam::error::{GetInstanceProfileError, GetInstanceProfileErrorKind};
 use aws_sdk_iam::output::GetInstanceProfileOutput;
 use aws_smithy_types::retry::RetryMode;
-use bottlerocket_agents::{setup_resource_env, EcsClusterConfig, AWS_CREDENTIALS_SECRET_NAME};
+use bottlerocket_agents::setup_resource_env;
+use bottlerocket_types::agent_config::{EcsClusterConfig, AWS_CREDENTIALS_SECRET_NAME};
 use model::{Configuration, SecretName};
 use resource_agent::clients::InfoClient;
 use resource_agent::provider::{

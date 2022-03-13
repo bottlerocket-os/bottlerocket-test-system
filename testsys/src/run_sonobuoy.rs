@@ -1,6 +1,5 @@
 use crate::error::{self, Result};
-use bottlerocket_agents::sonobuoy::Mode;
-use bottlerocket_agents::{SonobuoyConfig, AWS_CREDENTIALS_SECRET_NAME};
+use bottlerocket_types::agent_config::{SonobuoyConfig, SonobuoyMode, AWS_CREDENTIALS_SECRET_NAME};
 use kube::{api::ObjectMeta, Client};
 use model::clients::CrdClient;
 use model::constants::NAMESPACE;
@@ -51,7 +50,7 @@ pub(crate) struct RunSonobuoy {
     /// `certified-conformance`, `quick`. Although the Sonobuoy binary defaults to
     /// `non-disruptive-conformance`, we default to `quick` to make a quick test the most ergonomic.
     #[structopt(long, default_value = "quick")]
-    mode: Mode,
+    mode: SonobuoyMode,
 
     /// The kubernetes conformance image used for the sonobuoy test.
     #[structopt(long)]

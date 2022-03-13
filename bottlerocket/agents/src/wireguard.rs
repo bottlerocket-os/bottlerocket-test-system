@@ -7,7 +7,6 @@ use std::fs;
 use std::path::Path;
 use std::process::Command;
 
-pub const WIREGUARD_SECRET_NAME: &str = "wireguardSecrets";
 pub const WIREGUARD_CONF_PATH: &str = "/local/wg0.conf";
 
 /// Sets up the wireguard connection with a given wireguard configuration stored as a K8s secret

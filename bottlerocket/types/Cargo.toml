@@ -1,0 +1,11 @@
+[package]
+name = "bottlerocket-types"
+version = "0.1.0"
+edition = "2018"
+publish = false
+license = "MIT OR Apache-2.0"
+
+[dependencies]
+model = { path = "../../model" }
+serde = "1"
+serde_plain = "1"

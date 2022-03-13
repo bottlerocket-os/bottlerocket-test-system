@@ -4,10 +4,13 @@ use aws_config::meta::region::RegionProviderChain;
 use aws_config::RetryConfig;
 use aws_sdk_ssm::Region;
 use aws_smithy_types::retry::RetryMode;
-use bottlerocket_agents::wireguard::{setup_wireguard, WIREGUARD_SECRET_NAME};
+use bottlerocket_agents::wireguard::setup_wireguard;
 use bottlerocket_agents::{
-    decode_write_kubeconfig, setup_resource_env, TufRepoConfig, VSphereVmConfig,
-    AWS_CREDENTIALS_SECRET_NAME, TEST_CLUSTER_KUBECONFIG_PATH, VSPHERE_CREDENTIALS_SECRET_NAME,
+    decode_write_kubeconfig, setup_resource_env, TEST_CLUSTER_KUBECONFIG_PATH,
+};
+use bottlerocket_types::agent_config::{
+    TufRepoConfig, VSphereVmConfig, AWS_CREDENTIALS_SECRET_NAME, VSPHERE_CREDENTIALS_SECRET_NAME,
+    WIREGUARD_SECRET_NAME,
 };
 use k8s_openapi::api::core::v1::Service;
 use kube::api::ListParams;

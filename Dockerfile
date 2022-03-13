@@ -32,8 +32,8 @@ ENV PKG_CONFIG_ALLOW_CROSS=1
 ENV CARGO_HOME=/src/.cargo
 ENV OPENSSL_STATIC=true
 
-# Build bottlerocket-agents
-WORKDIR /src/bottlerocket-agents/
+# Build bottlerocket agents
+WORKDIR /src/bottlerocket/agents/
 RUN cp -p /src/LICENSE-APACHE /src/LICENSE-MIT /usr/share/licenses/testsys && \
     /usr/libexec/tools/bottlerocket-license-scan \
       --clarify /src/clarify.toml \
@@ -216,7 +216,7 @@ FROM scratch as ec2-resource-agent
 COPY --from=build /etc/ssl /etc/ssl
 COPY --from=build /etc/pki /etc/pki
 # Copy binary
-COPY --from=build-src /src/bottlerocket-agents/bin/ec2-resource-agent ./
+COPY --from=build-src /src/bottlerocket/agents/bin/ec2-resource-agent ./
 # Copy licenses
 COPY --from=build-src /usr/share/licenses/testsys /licenses/testsys
 
@@ -243,10 +243,10 @@ COPY --from=wireguard-build /usr/bin/wg /usr/bin/wg
 COPY --from=wireguard-build /usr/bin/wg-quick /usr/bin/wg-quick
 
 # Copy boringtun binary
-COPY --from=build-src /src/bottlerocket-agents/bin/boringtun /usr/bin/boringtun
+COPY --from=build-src /src/bottlerocket/agents/bin/boringtun /usr/bin/boringtun
 
 # Copy binary
-COPY --from=build-src /src/bottlerocket-agents/bin/vsphere-vm-resource-agent ./
+COPY --from=build-src /src/bottlerocket/agents/bin/vsphere-vm-resource-agent ./
 # Copy licenses
 COPY --from=build-src /usr/share/licenses/testsys /licenses/testsys
 
@@ -266,7 +266,7 @@ COPY --from=eksctl-build /tmp/eksctl /usr/bin/eksctl
 COPY --from=build /etc/ssl /etc/ssl
 COPY --from=build /etc/pki /etc/pki
 # Copy binary
-COPY --from=build-src /src/bottlerocket-agents/bin/eks-resource-agent ./
+COPY --from=build-src /src/bottlerocket/agents/bin/eks-resource-agent ./
 # Copy licenses
 COPY --from=build-src /usr/share/licenses/testsys /licenses/testsys
 
@@ -279,7 +279,7 @@ FROM scratch as ecs-resource-agent
 COPY --from=build /etc/ssl /etc/ssl
 COPY --from=build /etc/pki /etc/pki
 # Copy binary
-COPY --from=build-src /src/bottlerocket-agents/bin/ecs-resource-agent ./
+COPY --from=build-src /src/bottlerocket/agents/bin/ecs-resource-agent ./
 # Copy licenses
 COPY --from=build-src /usr/share/licenses/testsys /licenses/testsys
 
@@ -289,7 +289,7 @@ ENTRYPOINT ["./ecs-resource-agent"]
 # Builds the ECS test agent image
 FROM public.ecr.aws/amazonlinux/amazonlinux:2 as ecs-test-agent
 # Copy binary
-COPY --from=build-src /src/bottlerocket-agents/bin/ecs-test-agent ./
+COPY --from=build-src /src/bottlerocket/agents/bin/ecs-test-agent ./
 # Copy licenses
 COPY --from=build-src /usr/share/licenses/testsys /licenses/testsys
 
@@ -326,10 +326,10 @@ COPY --from=wireguard-build /usr/bin/wg /usr/bin/wg
 COPY --from=wireguard-build /usr/bin/wg-quick /usr/bin/wg-quick
 
 # Copy boringtun
-COPY --from=build-src /src/bottlerocket-agents/bin/boringtun /usr/bin/boringtun
+COPY --from=build-src /src/bottlerocket/agents/bin/boringtun /usr/bin/boringtun
 
 # Copy binary
-COPY --from=build-src /src/bottlerocket-agents/bin/sonobuoy-test-agent ./
+COPY --from=build-src /src/bottlerocket/agents/bin/sonobuoy-test-agent ./
 # Copy licenses
 COPY --from=build-src /usr/share/licenses/testsys /licenses/testsys
 
@@ -338,9 +338,9 @@ ENTRYPOINT ["./sonobuoy-test-agent"]
 # =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^=
 FROM public.ecr.aws/amazonlinux/amazonlinux:2 as migration-test-agent
 # Copy binary
-COPY --from=build-src /src/bottlerocket-agents/bin/migration-test-agent ./
+COPY --from=build-src /src/bottlerocket/agents/bin/migration-test-agent ./
 # Copy SSM documents
-COPY --from=build-src /src/bottlerocket-agents/src/bin/migration-test-agent/ssm-documents/ /local/ssm-documents/
+COPY --from=build-src /src/bottlerocket/agents/src/bin/migration-test-agent/ssm-documents/ /local/ssm-documents/
 # Copy licenses
 COPY --from=build-src /usr/share/licenses/testsys /licenses/testsys
 

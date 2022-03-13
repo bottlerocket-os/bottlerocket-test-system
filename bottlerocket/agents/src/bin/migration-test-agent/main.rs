@@ -48,9 +48,8 @@ use aws_sdk_ssm::Region;
 use aws_smithy_types::retry::RetryMode;
 use bottlerocket_agents::error;
 use bottlerocket_agents::error::Error;
-use bottlerocket_agents::{
-    init_agent_logger, setup_test_env, MigrationConfig, AWS_CREDENTIALS_SECRET_NAME,
-};
+use bottlerocket_agents::{init_agent_logger, setup_test_env};
+use bottlerocket_types::agent_config::{MigrationConfig, AWS_CREDENTIALS_SECRET_NAME};
 use log::{error, info};
 use maplit::hashmap;
 use model::{Outcome, SecretName, TestResults};

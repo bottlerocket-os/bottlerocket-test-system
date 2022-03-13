@@ -10,9 +10,8 @@ use aws_sdk_ec2::output::RunInstancesOutput;
 use aws_sdk_ec2::types::SdkError;
 use aws_sdk_ec2::Region;
 use aws_smithy_types::retry::RetryMode;
-use bottlerocket_agents::{
-    json_display, setup_resource_env, ClusterType, Ec2Config, AWS_CREDENTIALS_SECRET_NAME,
-};
+use bottlerocket_agents::{json_display, setup_resource_env};
+use bottlerocket_types::agent_config::{ClusterType, Ec2Config, AWS_CREDENTIALS_SECRET_NAME};
 use log::{debug, info, trace, warn};
 use model::{Configuration, SecretName};
 use resource_agent::clients::InfoClient;

@@ -13,10 +13,8 @@ use aws_sdk_ecs::model::{Compatibility, ContainerDefinition, LaunchType, TaskSto
 use aws_sdk_ecs::output::DescribeTaskDefinitionOutput;
 use aws_smithy_types::retry::RetryMode;
 use bottlerocket_agents::error::{self, Error};
-use bottlerocket_agents::{
-    init_agent_logger, setup_test_env, EcsTestConfig, AWS_CREDENTIALS_SECRET_NAME,
-    DEFAULT_TASK_DEFINITION,
-};
+use bottlerocket_agents::{init_agent_logger, setup_test_env, DEFAULT_TASK_DEFINITION};
+use bottlerocket_types::agent_config::{EcsTestConfig, AWS_CREDENTIALS_SECRET_NAME};
 use log::info;
 use model::{Outcome, SecretName, TestResults};
 use snafu::{OptionExt, ResultExt};

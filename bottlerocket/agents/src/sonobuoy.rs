@@ -1,37 +1,10 @@
-use crate::{error, SonobuoyConfig, SONOBUOY_RESULTS_FILENAME};
+use crate::error;
+use bottlerocket_types::agent_config::{SonobuoyConfig, SONOBUOY_RESULTS_FILENAME};
 use log::{error, info, trace};
 use model::{Outcome, TestResults};
-use serde::{Deserialize, Serialize};
-use serde_plain::{derive_display_from_serialize, derive_fromstr_from_deserialize};
 use snafu::{ensure, OptionExt, ResultExt};
 use std::path::Path;
 use std::process::Command;
-
-/// What mode to run the e2e plugin in. Valid modes are `non-disruptive-conformance`,
-/// `certified-conformance` and `quick`.
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
-// For most things we match Kubernetes style and use camelCase, but for this we want kebab case to
-// match the format in which the argument is passed to Sonobuoy.
-#[serde(rename_all = "kebab-case")]
-pub enum Mode {
-    /// This is the default mode and will run all the tests in the e2e plugin which are marked
-    /// `Conformance` which are known to not be disruptive to other workloads in your cluster.
-    NonDisruptiveConformance,
-    //// This mode runs all of the Conformance tests.
-    CertifiedConformance,
-    /// This mode will run a single test from the e2e test suite which is known to be simple and
-    /// fast. Use this mode as a quick check that the cluster is responding and reachable.
-    Quick,
-}
-
-impl Default for Mode {
-    fn default() -> Self {
-        Self::NonDisruptiveConformance
-    }
-}
-
-derive_display_from_serialize!(Mode);
-derive_fromstr_from_deserialize!(Mode);
 
 /// Runs the sonobuoy conformance tests according to the provided configuration and returns a test
 /// result at the end.
