@@ -46,6 +46,42 @@ pub async fn run_sonobuoy(
     // TODO - log something or check what happened?
     ensure!(status.success(), error::SonobuoyRunSnafu);
 
+    results_sonobuoy(kubeconfig_path, sonobuoy_config, results_dir)
+}
+
+/// Reruns the the failed tests from sonobuoy conformance that has already run in this agent.
+pub async fn rerun_failed_sonobuoy(
+    kubeconfig_path: &str,
+    sonobuoy_config: &SonobuoyConfig,
+    results_dir: &Path,
+) -> Result<TestResults, error::Error> {
+    let kubeconfig_arg = vec!["--kubeconfig", kubeconfig_path];
+    let results_filepath = results_dir.join(SONOBUOY_RESULTS_FILENAME);
+    info!("Rerunning sonobuoy");
+    let status = Command::new("/usr/bin/sonobuoy")
+        .args(kubeconfig_arg.to_owned())
+        .arg("e2e")
+        .arg("--wait")
+        .arg("--rerun-failed")
+        .arg(results_filepath.as_os_str())
+        .status()
+        .context(error::SonobuoyProcessSnafu)?;
+    info!("Sonobuoy testing has completed, checking results");
+
+    // TODO - log something or check what happened?
+    ensure!(status.success(), error::SonobuoyRunSnafu);
+
+    results_sonobuoy(kubeconfig_path, sonobuoy_config, results_dir)
+}
+
+/// Retrieve the results from a sonobuoy test and convert them into `TestResults`.
+pub fn results_sonobuoy(
+    kubeconfig_path: &str,
+    sonobuoy_config: &SonobuoyConfig,
+    results_dir: &Path,
+) -> Result<TestResults, error::Error> {
+    let kubeconfig_arg = vec!["--kubeconfig", kubeconfig_path];
+
     info!("Running sonobuoy retrieve");
     let results_filepath = results_dir.join(SONOBUOY_RESULTS_FILENAME);
     let status = Command::new("/usr/bin/sonobuoy")

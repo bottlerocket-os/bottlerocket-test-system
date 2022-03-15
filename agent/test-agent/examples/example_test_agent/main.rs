@@ -82,24 +82,6 @@ impl test_agent::Runner for ExampleTestRunner {
             println!("Nested Data:\n {:?}", nested.data);
         }
         Ok(TestResults {
-            outcome: Outcome::Fail,
-            ..TestResults::default()
-        })
-    }
-
-    async fn rerun_failed(&mut self, _prev_result: &TestResults) -> Result<TestResults, Self::E> {
-        println!("ExampleTestRunner::run");
-        for i in 1..=self.config.hello_count {
-            println!("hello #{} to {}", i, self.config.person);
-            sleep(Duration::from_millis(
-                self.config.hello_duration_milliseconds.into(),
-            ))
-            .await
-        }
-        if let Some(nested) = &self.config.nested {
-            println!("Nested Data:\n {:?}", nested.data);
-        }
-        Ok(TestResults {
             outcome: Outcome::Pass,
             ..TestResults::default()
         })

@@ -142,6 +142,10 @@ pub(crate) struct RunVmware {
     #[structopt(long)]
     keep_instance_provider_running: bool,
 
+    /// Allow the sonobuoy test agent to rerun failed test.
+    #[structopt(long)]
+    allow_retries: Option<u32>,
+
     /// Perform an upgrade downgrade test.
     #[structopt(long, requires_all(&["starting-version", "upgrade-version"]))]
     upgrade_downgrade: bool,
@@ -378,7 +382,7 @@ impl RunVmware {
             spec: TestSpec {
                 resources: vec![vm_resource_name.to_string()],
                 depends_on,
-                retries: None,
+                retries: self.allow_retries,
                 agent: Agent {
                     name: "vmware-sonobuoy-test-agent".to_string(),
                     image: self.test_agent_image.clone(),
