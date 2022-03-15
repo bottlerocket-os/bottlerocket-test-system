@@ -95,18 +95,7 @@ impl test_agent::Runner for SonobuoyTestRunner {
 
     async fn rerun_failed(&mut self, _prev_results: &TestResults) -> Result<TestResults, Self::E> {
         // Set up the aws credentials if they were provided.
-        if let Some(aws_secret_name) = &self.aws_secret_name {
-            setup_test_env(self, aws_secret_name).await?;
-        }
-
-        if let Some(wireguard_secret_name) = &self.wireguard_secret_name {
-            // If a wireguard secret is specified, try to set up an wireguard connection with the
-            // wireguard configuration stored in the secret.
-            let wireguard_secret = self
-                .get_secret(wireguard_secret_name)
-                .context(error::SecretMissingSnafu)?;
-            setup_wireguard(&wireguard_secret).await?;
-        }
+        aws_test_config(self, &self.aws_secret_name, &self.config.assume_role, &None).await?;
 
         delete_sonobuoy(TEST_CLUSTER_KUBECONFIG_PATH).await?;
 

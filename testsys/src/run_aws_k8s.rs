@@ -131,7 +131,7 @@ pub(crate) struct RunAwsK8s {
 
     /// Allow the sonobuoy test agent to rerun failed test.
     #[structopt(long)]
-    allow_retries: Option<u32>,
+    retry_failed_attempts: Option<u32>,
 
     /// Perform an upgrade downgrade test.
     #[structopt(long, requires_all(&["starting-version", "upgrade-version", "migration-agent-image"]))]
@@ -435,7 +435,7 @@ impl RunAwsK8s {
                     cluster_resource_name.to_string(),
                 ],
                 depends_on,
-                retries: self.allow_retries,
+                retries: self.retry_failed_attempts,
                 agent: Agent {
                     name: "sonobuoy-test-agent".to_string(),
                     image: self.test_agent_image.clone(),

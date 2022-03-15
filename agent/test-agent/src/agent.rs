@@ -99,7 +99,11 @@ where
         let retries = self.client.retries().await.unwrap_or_default();
         let mut retry_count = 0;
         while test_results.outcome != Outcome::Pass && retry_count < retries {
-            info!("Test did not pass, retrying ...");
+            info!(
+                "Test did not pass, retrying ({} of {})...",
+                retry_count + 1,
+                retries
+            );
             if let Err(e) = self
                 .client
                 .send_test_done(test_results.clone())
