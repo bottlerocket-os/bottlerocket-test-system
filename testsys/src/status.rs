@@ -218,7 +218,7 @@ impl TestResult {
         let mut failed = None;
         let mut skipped = None;
         let test_user_state = test.test_user_state();
-        if let Some(results) = &test.agent_status().results {
+        if let Some(results) = test.agent_status().results.last() {
             passed = Some(results.num_passed);
             failed = Some(results.num_failed);
             skipped = Some(results.num_skipped);

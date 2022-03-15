@@ -52,6 +52,11 @@ impl Client for DefaultClient {
         Ok(test_data.spec.agent.keep_running)
     }
 
+    async fn retries(&self) -> Result<u32, Self::E> {
+        let test_data = self.client.get(&self.name).await.context(K8sSnafu)?;
+        Ok(test_data.spec.retries.unwrap_or_default())
+    }
+
     async fn spec<C>(&self) -> Result<Spec<C>, Self::E>
     where
         C: Configuration,
@@ -85,6 +90,14 @@ impl Client for DefaultClient {
     async fn send_test_starting(&self) -> Result<(), Self::E> {
         self.client
             .send_agent_task_state(&self.name, TaskState::Running)
+            .await
+            .context(K8sSnafu)?;
+        Ok(())
+    }
+
+    async fn send_test_results(&self, results: TestResults) -> Result<(), Self::E> {
+        self.client
+            .send_test_results(&self.name, results)
             .await
             .context(K8sSnafu)?;
         Ok(())

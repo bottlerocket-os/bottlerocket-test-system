@@ -378,6 +378,7 @@ impl RunVmware {
             spec: TestSpec {
                 resources: vec![vm_resource_name.to_string()],
                 depends_on,
+                retries: None,
                 agent: Agent {
                     name: "vmware-sonobuoy-test-agent".to_string(),
                     image: self.test_agent_image.clone(),
@@ -438,6 +439,7 @@ impl RunVmware {
             spec: TestSpec {
                 resources: vec![vm_resource_name.to_owned()],
                 depends_on,
+                retries: None,
                 agent: Agent {
                     name: "vmware-migration-test-agent".to_string(),
                     image: migration_agent_image.to_string(),

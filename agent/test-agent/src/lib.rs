@@ -16,6 +16,7 @@ use agent_common::secrets::{Result as SecretsResult, SecretData, SecretsReader};
 use async_trait::async_trait;
 pub use bootstrap::{BootstrapData, BootstrapError};
 pub use k8s_client::ClientError;
+use log::info;
 use model::clients::TestClient;
 pub use model::{Configuration, TestResults};
 use model::{SecretName, SecretType};
@@ -47,7 +48,7 @@ pub struct Spec<C: Configuration> {
 /// TestSys Test CRD is created.
 ///
 #[async_trait]
-pub trait Runner: Sized {
+pub trait Runner: Sized + Send {
     /// Input that you need to initialize your test run.
     type C: Configuration;
 
@@ -60,6 +61,15 @@ pub trait Runner: Sized {
     /// Runs the test(s) and returns when they are done. If the tests cannot be completed, returns
     /// an error.
     async fn run(&mut self) -> Result<TestResults, Self::E>;
+
+    /// Rerun a failed test.
+    async fn rerun_failed(
+        &mut self,
+        prev_test_result: &TestResults,
+    ) -> Result<TestResults, Self::E> {
+        info!("Tried to rerun test, but no retry method was defined.");
+        Ok(prev_test_result.clone())
+    }
 
     /// Cleans up prior to program exit.
     async fn terminate(&mut self) -> Result<(), Self::E>;
@@ -100,8 +110,14 @@ pub trait Client: Sized {
     /// Determine if the pod should keep running after it has finished or encountered and error.
     async fn keep_running(&self) -> Result<bool, Self::E>;
 
+    /// Determine the number of retries the agent is expected to perform for failed tests.
+    async fn retries(&self) -> Result<u32, Self::E>;
+
     /// Set the appropriate status field to represent that the test has started.
     async fn send_test_starting(&self) -> Result<(), Self::E>;
+
+    /// Set the appropriate status fields once the test has `TestResults` available.
+    async fn send_test_results(&self, results: TestResults) -> Result<(), Self::E>;
 
     /// Set the appropriate status fields once the test has finished.
     async fn send_test_done(&self, results: TestResults) -> Result<(), Self::E>;

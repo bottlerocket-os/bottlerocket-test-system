@@ -90,6 +90,12 @@ spec:
                   items:
                     type: string
                   type: array
+                retries:
+                  description: The number of retries the agent is allowed to perform after a failed test.
+                  format: uint32
+                  minimum: 0.0
+                  nullable: true
+                  type: integer
               required:
                 - agent
                 - resources
@@ -106,37 +112,38 @@ spec:
                       nullable: true
                       type: string
                     results:
-                      nullable: true
-                      properties:
-                        numFailed:
-                          format: uint64
-                          minimum: 0.0
-                          type: integer
-                        numPassed:
-                          format: uint64
-                          minimum: 0.0
-                          type: integer
-                        numSkipped:
-                          format: uint64
-                          minimum: 0.0
-                          type: integer
-                        otherInfo:
-                          nullable: true
-                          type: string
-                        outcome:
-                          description: "The `Outcome` of a test run, reported by the test agent."
-                          enum:
-                            - pass
-                            - fail
-                            - timeout
-                            - unknown
-                          type: string
-                      required:
-                        - numFailed
-                        - numPassed
-                        - numSkipped
-                        - outcome
-                      type: object
+                      items:
+                        properties:
+                          numFailed:
+                            format: uint64
+                            minimum: 0.0
+                            type: integer
+                          numPassed:
+                            format: uint64
+                            minimum: 0.0
+                            type: integer
+                          numSkipped:
+                            format: uint64
+                            minimum: 0.0
+                            type: integer
+                          otherInfo:
+                            nullable: true
+                            type: string
+                          outcome:
+                            description: "The `Outcome` of a test run, reported by the test agent."
+                            enum:
+                              - pass
+                              - fail
+                              - timeout
+                              - unknown
+                            type: string
+                        required:
+                          - numFailed
+                          - numPassed
+                          - numSkipped
+                          - outcome
+                        type: object
+                      type: array
                     taskState:
                       description: The states that an agent declares about its task (e.g. running tests or creating/destroying resources).
                       enum:
@@ -146,6 +153,7 @@ spec:
                         - error
                       type: string
                   required:
+                    - results
                     - taskState
                   type: object
                 controller:

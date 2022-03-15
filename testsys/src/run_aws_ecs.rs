@@ -407,6 +407,7 @@ impl RunAwsEcs {
                     cluster_resource_name.to_owned(),
                 ],
                 depends_on,
+                retries: None,
                 agent: Agent {
                     name: "ecs-test-agent".to_string(),
                     image: self.test_agent_image.clone(),
@@ -473,6 +474,7 @@ impl RunAwsEcs {
                     cluster_resource_name.to_owned(),
                 ],
                 depends_on,
+                retries: None,
                 agent: Agent {
                     name: "ecs-test-agent".to_string(),
                     image: migration_agent_image.to_string(),
