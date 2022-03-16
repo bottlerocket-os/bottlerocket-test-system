@@ -31,7 +31,7 @@ where
     }
 }
 
-pub trait IsFound<T, E>
+pub trait AllowNotFound<T, E>
 where
     E: HttpStatusCode + Display,
 {
@@ -49,25 +49,25 @@ where
     /// do so in `handle_not_found`.
     ///
     #[allow(clippy::wrong_self_convention)]
-    fn is_found<O>(self, handle_not_found: O) -> std::result::Result<bool, E>
+    fn allow_not_found<O>(self, handle_not_found: O) -> std::result::Result<Option<T>, E>
     where
         O: FnOnce(E);
 }
 
-impl<T, E> IsFound<T, E> for std::result::Result<T, E>
+impl<T, E> AllowNotFound<T, E> for std::result::Result<T, E>
 where
     E: HttpStatusCode + Display,
 {
-    fn is_found<O>(self, handle_not_found: O) -> Result<bool, E>
+    fn allow_not_found<O>(self, handle_not_found: O) -> Result<Option<T>, E>
     where
         O: FnOnce(E),
     {
         match self {
-            Ok(_) => Ok(true),
+            Ok(obj) => Ok(Some(obj)),
             Err(e) => {
                 if e.is_status_code(StatusCode::NOT_FOUND) {
                     handle_not_found(e);
-                    Ok(false)
+                    Ok(None)
                 } else {
                     Err(e)
                 }

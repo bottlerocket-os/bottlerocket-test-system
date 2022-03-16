@@ -56,6 +56,9 @@ pub(crate) enum InnerError {
         finalizer,
     ))]
     DeleteMissingFinalizer { finalizer: String },
+
+    #[snafu(display("A resource errored during deletion '{}'", name))]
+    DeleteFail { name: String },
 }
 
 impl From<ModelError> for Error {
@@ -81,9 +84,9 @@ impl HttpStatusCode for InnerError {
                 name: _,
                 source: e,
             } => e.status_code(),
-            InnerError::DuplicateFinalizer { .. } | InnerError::DeleteMissingFinalizer { .. } => {
-                None
-            }
+            InnerError::DuplicateFinalizer { .. }
+            | InnerError::DeleteMissingFinalizer { .. }
+            | InnerError::DeleteFail { .. } => None,
         }
     }
 }

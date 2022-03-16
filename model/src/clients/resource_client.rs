@@ -1,15 +1,20 @@
 use super::error::{self, Result};
+use super::HttpStatusCode;
 use crate::clients::crd_client::JsonPatch;
 use crate::clients::CrdClient;
+use crate::constants::FINALIZER_RESOURCE;
 use crate::resource::{ResourceAction, ResourceError};
 use crate::{Configuration, Resource, ResourceStatus, TaskState};
 use async_recursion::async_recursion;
 use futures::stream::{self, StreamExt};
-use kube::Api;
+use http::StatusCode;
+use kube::core::object::HasStatus;
+use kube::{Api, ResourceExt};
 use log::trace;
 use regex::Regex;
 use serde_json::{Map, Value};
-use snafu::{OptionExt, ResultExt};
+use snafu::{ensure, OptionExt, ResultExt};
+use std::time::Duration;
 
 const TEMPLATE_PATTERN_REGEX: &str = r"^\$\{(.+)\.(.+)\}$";
 
@@ -178,6 +183,50 @@ impl ResourceClient {
             "send task state",
         )
         .await
+    }
+
+    /// Force delete a resource that has an errored destruction pod.
+    /// The created resource will need to be cleaned up by the user.
+    /// The finalizers for the resource will be deleted and then the resource will be deleted.
+    pub async fn force_delete<S>(&self, name: S) -> Result<Option<Resource>>
+    where
+        S: AsRef<str> + Send,
+    {
+        let name: &str = name.as_ref();
+        let resource = self.get(name).await?;
+        // Remove the `resource-exist` finalizers from the resource
+        self.remove_finalizer(FINALIZER_RESOURCE, &resource).await?;
+        // Delete the resource
+        let delete = self.delete(name).await?;
+        Ok(delete)
+    }
+
+    /// Loop until `get(name)` returns `StatusCode::NOT_FOUND` or the destruction process failed.
+    pub async fn wait_for_deletion<S>(&self, name: S) -> Result<()>
+    where
+        S: AsRef<str> + Send,
+    {
+        let name: &str = name.as_ref();
+        loop {
+            match self.api().get(name).await {
+                Ok(resource) => {
+                    if let Some(status) = resource.status() {
+                        ensure!(
+                            status.destruction.task_state != TaskState::Error,
+                            error::DeleteFailSnafu {
+                                name: resource.name()
+                            }
+                        );
+                    }
+                }
+                Err(err) => {
+                    if err.status_code() == Some(StatusCode::NOT_FOUND) {
+                        return Ok(());
+                    }
+                }
+            };
+            tokio::time::sleep(Duration::from_secs(2)).await;
+        }
     }
 
     /// Get the `status` field of the `Resource`. Returns a default-constructed `ResourceStatus` if
