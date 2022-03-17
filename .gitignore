@@ -2,3 +2,4 @@
 /.cargo/*
 !.cargo/config.toml
 /bin/kind
+*.tar.*

@@ -3,9 +3,15 @@
 # =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^=
 # Shared build stage used to build the testsys agent binary
 ARG BUILDER_IMAGE
+ARG TOOLS_IMAGE
 FROM ${BUILDER_IMAGE} as build
 
-ADD ./ /src
+COPY ./ /src
+
+# =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^=
+# It appears that the syntax `--from=$TOOLS_IMAGE /foo /bar` does not work. As a workaround
+# we cache $TOOLS_IMAGE as a build layer.
+FROM ${TOOLS_IMAGE} as tools
 
 # =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^=
 FROM build as build-go
@@ -46,12 +52,6 @@ RUN --mount=type=cache,mode=0777,target=/src/target \
       --path . \
       --root .
 
-# TODO get licenses for boringtun
-# Install boringtun
-RUN cargo install boringtun \
-    --target ${ARCH}-bottlerocket-linux-musl \
-    --root .
-
 # =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^=
 # TODO figure out how to build this in the Bottlerocket SDK
 # Builds wireguard tools
@@ -67,148 +67,6 @@ RUN temp_dir="$(mktemp -d --suffix wireguard-tools-setup)" && \
     cd "${temp_dir}/wireguard-tools-${WIREGUARD_TOOLS_VERSION}/src" && \
     make && WITH_BASHCOMPLETION=no WITH_SYSTEMDUNITS=no make install && \
     rm -rf ${temp_dir}
-
-# =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^=
-FROM build-go as eksctl-build
-
-USER root
-RUN mkdir -p /usr/share/licenses/eksctl && \
-    chown -R builder:builder /usr/share/licenses/eksctl
-
-ARG EKSCTL_VERSION=0.82.0
-ARG EKSCTL_SOURCE_URL="https://github.com/weaveworks/eksctl/archive/refs/tags/v${EKSCTL_VERSION}.tar.gz"
-
-ARG GOARCH
-ARG EKSCTL_BINARY_URL="https://github.com/weaveworks/eksctl/releases/download/v${EKSCTL_VERSION}/eksctl_Linux_${GOARCH}.tar.gz"
-
-USER builder
-WORKDIR /home/builder/
-RUN mkdir eksctl && curl -L ${EKSCTL_SOURCE_URL} \
-      -o eksctl_${EKSCTL_VERSION}.tar.gz && \
-    grep eksctl_${EKSCTL_VERSION}.tar.gz \
-      /src/hashes/eksctl | sha512sum --check - && \
-    tar -xf eksctl_${EKSCTL_VERSION}.tar.gz --strip-components 1 -C eksctl && \
-    rm eksctl_${EKSCTL_VERSION}.tar.gz
-
-WORKDIR /home/builder/eksctl/
-# TODO - restore this with a fix for https://github.com/bottlerocket-os/bottlerocket-test-system/issues/288
-# For reasons not yet understood, this can take an hour or more in certain environments. For now we need
-# to skip it until we can figure out what is happening.
-#RUN go mod vendor
-#RUN cp -p LICENSE /usr/share/licenses/eksctl && \
-#    /usr/libexec/tools/bottlerocket-license-scan \
-#      --clarify /src/clarify.toml \
-#      --spdx-data /usr/libexec/tools/spdx-data \
-#      --out-dir /usr/share/licenses/eksctl/vendor \
-#      go-vendor ./vendor
-RUN curl -L "${EKSCTL_BINARY_URL}" \
-      -o eksctl_${EKSCTL_VERSION}_${GOOS}_${GOARCH}.tar.gz && \
-    grep eksctl_${EKSCTL_VERSION}_${GOOS}_${GOARCH}.tar.gz \
-      /src/hashes/eksctl | sha512sum --check - && \
-    tar -xf eksctl_${EKSCTL_VERSION}_${GOOS}_${GOARCH}.tar.gz -C /tmp && \
-    rm eksctl_${EKSCTL_VERSION}_${GOOS}_${GOARCH}.tar.gz
-
-# =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^=
-FROM build-go as kubernetes-build
-
-USER root
-RUN mkdir -p /usr/share/licenses/kubernetes && \
-    chown -R builder:builder /usr/share/licenses/kubernetes
-
-ARG K8S_VERSION=1.21.6
-ARG K8S_SOURCE_URL="https://github.com/kubernetes/kubernetes/archive/refs/tags/v${K8S_VERSION}.tar.gz"
-
-ARG GOARCH
-ARG KUBEADM_BINARY_URL="https://dl.k8s.io/release/v${K8S_VERSION}/bin/linux/${GOARCH}/kubeadm"
-
-USER builder
-WORKDIR /home/builder/
-RUN mkdir kubernetes && \
-    curl -L "${K8S_SOURCE_URL}" -o kubernetes_${K8S_VERSION}.tar.gz && \
-    grep kubernetes_${K8S_VERSION}.tar.gz \
-      /src/hashes/kubernetes | sha512sum --check - && \
-    tar -xf kubernetes_${K8S_VERSION}.tar.gz \
-      --strip-components 1 -C kubernetes && \
-    rm kubernetes_${K8S_VERSION}.tar.gz
-
-WORKDIR /home/builder/kubernetes/
-RUN go mod vendor
-RUN cp -p LICENSE /usr/share/licenses/kubernetes && \
-    /usr/libexec/tools/bottlerocket-license-scan \
-      --clarify /src/clarify.toml \
-      --spdx-data /usr/libexec/tools/spdx-data \
-      --out-dir /usr/share/licenses/kubernetes/vendor \
-      go-vendor ./vendor
-RUN curl -L ${KUBEADM_BINARY_URL} \
-      -o kubeadm_${K8S_VERSION}_${GOOS}_${GOARCH} && \
-    grep kubeadm_${K8S_VERSION}_${GOOS}_${GOARCH} \
-      /src/hashes/kubernetes | sha512sum --check - && \
-    install -m 0755 kubeadm_${K8S_VERSION}_${GOOS}_${GOARCH} /tmp/kubeadm
-
-# =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^=
-FROM build-go as sonobuoy-build
-
-USER root
-RUN mkdir -p /usr/share/licenses/sonobuoy && \
-    chown -R builder:builder /usr/share/licenses/sonobuoy
-
-ARG SONOBUOY_VERSION=0.53.2
-ARG SONOBUOY_SOURCE_URL="https://github.com/vmware-tanzu/sonobuoy/archive/refs/tags/v${SONOBUOY_VERSION}.tar.gz"
-
-ARG GOARCH
-ARG SONOBUOY_BINARY_URL="https://github.com/vmware-tanzu/sonobuoy/releases/download/v${SONOBUOY_VERSION}/sonobuoy_${SONOBUOY_VERSION}_linux_${GOARCH}.tar.gz"
-
-USER builder
-WORKDIR /home/builder/
-RUN mkdir sonobuoy && \
-    curl -L "${SONOBUOY_SOURCE_URL}" -o sonobuoy_${SONOBUOY_VERSION}.tar.gz && \
-    grep sonobuoy_${SONOBUOY_VERSION}.tar.gz \
-      /src/hashes/sonobuoy | sha512sum --check - && \
-    tar -xf sonobuoy_${SONOBUOY_VERSION}.tar.gz \
-      --strip-components 1 -C sonobuoy && \
-    rm sonobuoy_${SONOBUOY_VERSION}.tar.gz
-
-WORKDIR /home/builder/sonobuoy/
-RUN go mod vendor
-RUN cp -p LICENSE /usr/share/licenses/sonobuoy && \
-    /usr/libexec/tools/bottlerocket-license-scan \
-      --clarify /src/clarify.toml \
-      --spdx-data /usr/libexec/tools/spdx-data \
-      --out-dir /usr/share/licenses/sonobuoy/vendor \
-      go-vendor ./vendor
-RUN curl -OL ${SONOBUOY_BINARY_URL} && \
-    grep sonobuoy_${SONOBUOY_VERSION}_${GOOS}_${GOARCH}.tar.gz \
-      /src/hashes/sonobuoy | sha512sum --check - && \
-    tar -xf sonobuoy_${SONOBUOY_VERSION}_${GOOS}_${GOARCH}.tar.gz -C /tmp && \
-    chmod 0755 /tmp/sonobuoy && \
-    rm sonobuoy_${SONOBUOY_VERSION}_${GOOS}_${GOARCH}.tar.gz
-
-# =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^=
-FROM build-go as aws-iam-authenticator-build
-
-USER root
-RUN mkdir -p /usr/share/licenses/aws-iam-authenticator && \
-    chown -R builder:builder /usr/share/licenses/aws-iam-authenticator
-
-ARG AWS_IAM_AUTHENTICATOR_VERSION=0.5.3
-ARG AWS_IAM_AUTHENTICATOR_SHA512_SUM=430af9fd04b9a94205a485281fb668f5bc18cdac569de0232fa98e08ebb0e08a8d233537bd3373a5f1e53cf529bc2050aebc34a4a53c8b29a831070e34213210
-ARG AWS_IAM_AUTHENTICATOR_SOURCE_URL="https://cache.bottlerocket.aws/aws-iam-authenticator-${AWS_IAM_AUTHENTICATOR_VERSION}.tar.gz/${AWS_IAM_AUTHENTICATOR_SHA512_SUM}/aws-iam-authenticator-${AWS_IAM_AUTHENTICATOR_VERSION}.tar.gz"
-
-USER builder
-WORKDIR /home/builder/
-RUN mkdir aws-iam-authenticator && \
-    curl -L ${AWS_IAM_AUTHENTICATOR_SOURCE_URL} \
-      -o aws-iam-authenticator_${AWS_IAM_AUTHENTICATOR_VERSION}.tar.gz && \
-    grep aws-iam-authenticator_${AWS_IAM_AUTHENTICATOR_VERSION}.tar.gz \
-      /src/hashes/aws-iam-authenticator | sha512sum --check - && \
-    tar -xf aws-iam-authenticator_${AWS_IAM_AUTHENTICATOR_VERSION}.tar.gz \
-      --strip-components 1 -C aws-iam-authenticator && \
-    rm aws-iam-authenticator_${AWS_IAM_AUTHENTICATOR_VERSION}.tar.gz
-
-WORKDIR /home/builder/aws-iam-authenticator/
-RUN go mod vendor
-RUN CGO_ENABLED=0 go build -mod=vendor -o /tmp/aws-iam-authenticator \
-      ./cmd/aws-iam-authenticator
 
 # =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^=
 # Builds the EC2 resource agent image
@@ -229,22 +87,20 @@ FROM public.ecr.aws/amazonlinux/amazonlinux:2 as vsphere-vm-resource-agent
 
 RUN yum install -y iproute && yum clean all
 
-# Copy govc binary
+# Copy govc
 COPY --from=build /usr/libexec/tools/govc /usr/local/bin/govc
-# Copy govc licenses
 COPY --from=build /usr/share/licenses/govmomi /licenses/govmomi
 
-# Copy kubeadm binary
-COPY --from=kubernetes-build /tmp/kubeadm /usr/local/bin/kubeadm
-# Copy kubeadm licenses
-COPY --from=kubernetes-build /usr/share/licenses/kubernetes /licenses/kubernetes
+# Copy kubeadm
+COPY --from=tools /kubeadm /usr/local/bin/kubeadm
+COPY --from=tools /licenses/kubernetes /licenses/kubernetes
 
 # Copy wireguard-tools binaries
 COPY --from=wireguard-build /usr/bin/wg /usr/bin/wg
 COPY --from=wireguard-build /usr/bin/wg-quick /usr/bin/wg-quick
 
 # Copy boringtun binary
-COPY --from=build-src /src/bottlerocket/agents/bin/boringtun /usr/bin/boringtun
+COPY --from=tools /boringtun /usr/bin/boringtun
 
 # Copy binary
 COPY --from=build-src /src/bottlerocket/agents/bin/vsphere-vm-resource-agent ./
@@ -257,18 +113,16 @@ ENTRYPOINT ["./vsphere-vm-resource-agent"]
 # Builds the EKS resource agent image
 FROM scratch as eks-resource-agent
 
-# Copy eksctl binary
-COPY --from=eksctl-build /tmp/eksctl /usr/bin/eksctl
-# TODO - restore this with a fix for https://github.com/bottlerocket-os/bottlerocket-test-system/issues/288
-# Copy eksctl licenses
-#COPY --from=eksctl-build /usr/share/licenses/eksctl /licenses/eksctl
+# Copy eksctl
+COPY --from=tools /eksctl /usr/bin/eksctl
+COPY --from=tools /licenses/eksctl /licenses/eksctl
 
 # Copy CA certificates store
 COPY --from=build /etc/ssl /etc/ssl
 COPY --from=build /etc/pki /etc/pki
-# Copy binary
+
+# Copy eks-resource-agent
 COPY --from=build-src /src/bottlerocket/agents/bin/eks-resource-agent ./
-# Copy licenses
 COPY --from=build-src /usr/share/licenses/testsys /licenses/testsys
 
 ENTRYPOINT ["./eks-resource-agent"]
@@ -300,14 +154,14 @@ ENTRYPOINT ["./ecs-test-agent"]
 # Builds the Sonobuoy test agent image
 FROM public.ecr.aws/amazonlinux/amazonlinux:2 AS sonobuoy-test-agent
 ARG ARCH
+
 # TODO remove unzip once aws-cli moves out
 RUN yum install -y unzip iproute && yum clean all
 ARG AWS_CLI_URL=https://awscli.amazonaws.com/awscli-exe-linux-${ARCH}.zip
 
-# Copy aws-iam-authenticator binary
-COPY --from=aws-iam-authenticator-build /tmp/aws-iam-authenticator /usr/bin/aws-iam-authenticator
-# Copy aws-iam-authenticator licenses
-COPY --from=aws-iam-authenticator-build /usr/share/licenses/aws-iam-authenticator /licenses/aws-iam-authenticator
+# Copy aws-iam-authenticator
+COPY --from=tools /aws-iam-authenticator /usr/bin/aws-iam-authenticator
+COPY --from=tools /licenses/aws-iam-authenticator /licenses/aws-iam-authenticator
 
 # TODO move this out, get hashes, and attribute licenses
 # Download aws-cli
@@ -317,21 +171,19 @@ RUN temp_dir="$(mktemp -d --suffix aws-cli)" && \
     ${temp_dir}/aws/install && \
     rm -rf ${temp_dir}
 
-# Copy sonobuoy binary
-COPY --from=sonobuoy-build /tmp/sonobuoy /usr/bin/sonobuoy
-# Copy sonobuoy licenses
-COPY --from=sonobuoy-build /usr/share/licenses/sonobuoy /licenses/sonobuoy
+# Copy sonobuoy
+COPY --from=tools /sonobuoy /usr/bin/sonobuoy
+COPY --from=tools /licenses/sonobuoy /licenses/sonobuoy
 
 # Copy wireguard-tools
 COPY --from=wireguard-build /usr/bin/wg /usr/bin/wg
 COPY --from=wireguard-build /usr/bin/wg-quick /usr/bin/wg-quick
 
 # Copy boringtun
-COPY --from=build-src /src/bottlerocket/agents/bin/boringtun /usr/bin/boringtun
+COPY --from=tools /boringtun /usr/bin/boringtun
 
-# Copy binary
+# Copy sonobuoy-test-agent
 COPY --from=build-src /src/bottlerocket/agents/bin/sonobuoy-test-agent ./
-# Copy licenses
 COPY --from=build-src /usr/share/licenses/testsys /licenses/testsys
 
 ENTRYPOINT ["./sonobuoy-test-agent"]

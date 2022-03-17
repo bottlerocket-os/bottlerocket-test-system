@@ -1,0 +1,99 @@
+[clarify."github.com/caarlos0/go-reddit/v3"]
+expression = "MIT AND BSD-3-Clause"
+license-files = [
+    { path = "LICENSE", hash = 0x709001e3 },
+]
+
+[clarify."github.com/dave/dst"]
+expression = "MIT AND BSD-3-Clause"
+license-files = [
+    { path = "LICENSE", hash = 0x8f288482},
+]
+
+[clarify."github.com/JeffAshton/win_pdh"]
+expression = "BSD-3-Clause"
+license-files = [
+    { path = "LICENSE", hash = 0xb221dcc9 },
+]
+
+[clarify."github.com/daviddengcn/go-colortext"]
+expression = "MIT AND BSD-3-Clause"
+license-files = [
+    { path = "LICENSE", hash = 0x9769fae1 },
+]
+
+[clarify."github.com/fatih/structtag"]
+expression = "BSD-3-Clause"
+license-files = [
+    { path = "LICENSE", hash = 0x47b38429 },
+]
+
+[clarify."github.com/ghodss/yaml"]
+expression = "MIT AND BSD-3-Clause"
+license-files = [
+    { path = "LICENSE", hash = 0xcdf3ae00 },
+]
+
+[clarify."github.com/go-bindata/go-bindata"]
+expression = "CC0-1.0"
+license-files = [
+    { path = "LICENSE", hash = 0x393fafd6 },
+]
+
+[clarify."github.com/golangci/go-misc"]
+expression = "BSD-3-Clause"
+license-files = [
+    { path = "LICENSE", hash = 0x14727692 },
+]
+
+[clarify."github.com/heketi/heketi"]
+expression = "(Apache-2.0 OR LGPL-3.0-or-later) AND (LGPL-3.0-or-later OR GPL-2.0)"
+license-files = [
+    { path = "COPYING-GPLV2", hash = 0xeaa66bfd },
+    { path = "COPYING-LGPLV3", hash = 0xf0bccb3a },
+    { path = "LICENSE", hash = 0x3c4b96d1 },
+    { path = "LICENSE-APACHE2", hash = 0x438c8616 },
+]
+
+[clarify."github.com/miekg/dns"]
+expression = "BSD-3-Clause"
+license-files = [
+    { path = "COPYRIGHT", hash = 0xe41dd36c },
+    { path = "LICENSE", hash = 0xfc8f12ff },
+]
+
+[clarify."github.com/sanathkr/yaml"]
+expression = "BSD-3-Clause"
+license-files = [
+    { path = "LICENSE", hash = 0xcdf3ae00 },
+]
+
+[clarify."github.com/storageos/go-api"]
+expression = "MIT"
+license-files = [
+    { path = "LICENCE", hash = 0x67a6861e },
+]
+skip-files = [
+    "licence.go",
+    "types/licence.go",
+]
+
+[clarify."github.com/vartanbeno/go-reddit/v2"]
+expression = "BSD-3-Clause"
+license-files = [
+    { path = "LICENSE", hash = 0x709001e3 },
+]
+
+[clarify."honnef.co/go/tools"]
+expression = "MIT AND BSD-3-Clause"
+license-files = [
+    { path = "LICENSE", hash = 0xad378ed2 },
+    { path = "LICENSE-THIRD-PARTY", hash = 0xac406a4d },
+    { path = "go/ir/LICENSE", hash = 0xe656fb62 },
+]
+
+[clarify."sigs.k8s.io/yaml"]
+expression = "MIT AND BSD-3-Clause"
+license-files = [
+    { path = "LICENSE", hash = 0xcdf3ae00 },
+]

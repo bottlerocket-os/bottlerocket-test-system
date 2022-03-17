@@ -8,14 +8,16 @@ TESTSYS_BUILD_GOPROXY ?= direct
 
 BOTTLEROCKET_SDK_VERSION = v0.25.1
 BOTTLEROCKET_SDK_ARCH = $(TESTSYS_BUILD_HOST_UNAME_ARCH)
+BOTTLEROCKET_TOOLS_VERSION ?= v0.1.0
 
 BUILDER_IMAGE = public.ecr.aws/bottlerocket/bottlerocket-sdk-$(BOTTLEROCKET_SDK_ARCH):$(BOTTLEROCKET_SDK_VERSION)
+TOOLS_IMAGE ?= public.ecr.aws/bottlerocket/bottlerocket-test-tools:$(BOTTLEROCKET_TOOLS_VERSION)
 
 IMAGES = controller sonobuoy-test-agent ec2-resource-agent eks-resource-agent ecs-resource-agent \
 	migration-test-agent vsphere-vm-resource-agent ecs-test-agent
 
 .PHONY: build sdk-openssl example-test-agent example-resource-agent \
-	images fetch integ-test show-variables cargo-deny $(IMAGES)
+	images fetch integ-test show-variables cargo-deny tools $(IMAGES)
 
 export DOCKER_BUILDKIT=1
 export CARGO_HOME = $(TOP)/.cargo
@@ -25,6 +27,8 @@ show-variables:
 	$(info TESTSYS_BUILD_HOST_GOARCH=$(TESTSYS_BUILD_HOST_GOARCH))
 	$(info TESTSYS_BUILD_HOST_PLATFORM=$(TESTSYS_BUILD_HOST_PLATFORM))
 	$(info TESTSYS_BUILD_GOPROXY=$(TESTSYS_BUILD_GOPROXY))
+	$(info BUILDER_IMAGE=$(BUILDER_IMAGE))
+	$(info TOOLS_IMAGE=$(TOOLS_IMAGE))
 	@echo > /dev/null
 
 # Fetches crates from upstream
@@ -75,19 +79,36 @@ controller: show-variables fetch
 	docker build $(DOCKER_BUILD_FLAGS) \
 		--build-arg ARCH="$(TESTSYS_BUILD_HOST_UNAME_ARCH)" \
 		--build-arg BUILDER_IMAGE="$(BUILDER_IMAGE)" \
+		--build-arg TOOLS_IMAGE="$(TOOLS_IMAGE)" \
 		--tag "controller" \
 		-f controller/Dockerfile .
 
-# Build the container image for a testsys agent
-eks-resource-agent ec2-resource-agent ecs-resource-agent vsphere-vm-resource-agent sonobuoy-test-agent migration-test-agent ecs-test-agent: show-variables fetch
+# Build the 3rd-party tools that we use in our agent containers.
+tools:
 	docker build $(DOCKER_BUILD_FLAGS) \
 		--build-arg ARCH="$(TESTSYS_BUILD_HOST_UNAME_ARCH)" \
 		--build-arg BUILDER_IMAGE="$(BUILDER_IMAGE)" \
 		--build-arg GOARCH="$(TESTSYS_BUILD_HOST_GOARCH)" \
 		--build-arg GOPROXY="$(TESTSYS_BUILD_GOPROXY)" \
 		--network=host \
+		-f ./tools/Dockerfile \
+		-t bottlerocket-test-tools \
+		-t $(TOOLS_IMAGE) \
+		--progress=plain \
+		./tools
+
+# Build the container image for a testsys agent
+eks-resource-agent ec2-resource-agent ecs-resource-agent vsphere-vm-resource-agent sonobuoy-test-agent migration-test-agent ecs-test-agent: show-variables fetch
+	docker build $(DOCKER_BUILD_FLAGS) \
+		--build-arg ARCH="$(TESTSYS_BUILD_HOST_UNAME_ARCH)" \
+		--build-arg BUILDER_IMAGE="$(BUILDER_IMAGE)" \
+		--build-arg TOOLS_IMAGE="$(TOOLS_IMAGE)" \
+		--build-arg GOARCH="$(TESTSYS_BUILD_HOST_GOARCH)" \
+		--build-arg GOPROXY="$(TESTSYS_BUILD_GOPROXY)" \
+		--network=host \
 		--target $@ \
 		--tag $@ \
+		--progress=plain \
 		.
 
 # TESTSYS_SELFTEST_SKIP_IMAGE_BUILDS - If this is set to a non-zero-length string, the container images will will be
