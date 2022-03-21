@@ -8,6 +8,7 @@ use aws_sdk_ssm::error::{
     CreateDocumentError, DescribeInstanceInformationError, ListCommandInvocationsError,
     SendCommandError, UpdateDocumentError,
 };
+use aws_sdk_sts::error::AssumeRoleError;
 use snafu::Snafu;
 use std::string::FromUtf8Error;
 use tokio::time::error::Elapsed;
@@ -15,6 +16,12 @@ use tokio::time::error::Elapsed;
 #[derive(Debug, Snafu)]
 #[snafu(visibility(pub))]
 pub enum Error {
+    #[snafu(display("Failed to generate credentials for role '{}': {}", role_arn, source))]
+    AssumeRole {
+        role_arn: String,
+        source: SdkError<AssumeRoleError>,
+    },
+
     #[snafu(display("Failed to base64-decode '{}' for test cluster: {}", what, source))]
     Base64Decode {
         what: String,
@@ -23,6 +30,9 @@ pub enum Error {
 
     #[snafu(display("Could not convert '{}' secret to string: {}", what, source))]
     Conversion { what: String, source: FromUtf8Error },
+
+    #[snafu(display("Credentials were missing for assumed role '{}'", role_arn))]
+    CredentialsMissing { role_arn: String },
 
     #[snafu(display("Failed to setup environment variables: {}", what))]
     EnvSetup { what: String },

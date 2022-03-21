@@ -157,6 +157,10 @@ pub(crate) struct RunAwsK8s {
     /// Name of the pull secret for the eks migration image (if needed).
     #[structopt(long)]
     migration_agent_pull_secret: Option<String>,
+
+    /// The arn for the role that should be assumed by the agents.
+    #[structopt(long)]
+    assume_role: Option<String>,
 }
 
 impl RunAwsK8s {
@@ -335,6 +339,7 @@ impl RunAwsK8s {
                             region: Some(self.region.clone()),
                             zones: None,
                             version: self.cluster_version,
+                            assume_role: self.assume_role.clone(),
                         }
                         .into_map()
                         .context(error::ConfigMapSnafu)?,
@@ -368,6 +373,7 @@ impl RunAwsK8s {
             certificate: Some(format!("${{{}.certificate}}", cluster_resource_name)),
             cluster_dns_ip: Some(format!("${{{}.clusterDnsIp}}", cluster_resource_name)),
             security_groups: vec![],
+            assume_role: self.assume_role.clone(),
         }
         .into_map()
         .context(error::ConfigMapSnafu)?;
@@ -441,6 +447,7 @@ impl RunAwsK8s {
                             mode: self.sonobuoy_mode,
                             kubernetes_version: None,
                             kube_conformance_image: self.kubernetes_conformance_image.clone(),
+                            assume_role: self.assume_role.clone(),
                         }
                         .into_map()
                         .context(error::ConfigMapSnafu)?,
@@ -472,6 +479,7 @@ impl RunAwsK8s {
             instance_ids: Default::default(),
             migrate_to_version: version.to_string(),
             tuf_repo,
+            assume_role: self.assume_role.clone(),
         }
         .into_map()
         .context(error::ConfigMapSnafu)?;

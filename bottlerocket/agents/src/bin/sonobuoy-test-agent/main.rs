@@ -37,7 +37,8 @@ use bottlerocket_agents::error::Error;
 use bottlerocket_agents::sonobuoy::{delete_sonobuoy, run_sonobuoy};
 use bottlerocket_agents::wireguard::setup_wireguard;
 use bottlerocket_agents::{
-    decode_write_kubeconfig, error, init_agent_logger, setup_test_env, TEST_CLUSTER_KUBECONFIG_PATH,
+    aws_test_config, decode_write_kubeconfig, error, init_agent_logger,
+    TEST_CLUSTER_KUBECONFIG_PATH,
 };
 use bottlerocket_types::agent_config::{
     SonobuoyConfig, AWS_CREDENTIALS_SECRET_NAME, WIREGUARD_SECRET_NAME,
@@ -71,10 +72,7 @@ impl test_agent::Runner for SonobuoyTestRunner {
     }
 
     async fn run(&mut self) -> Result<TestResults, Self::E> {
-        // Set up the aws credentials if they were provided.
-        if let Some(aws_secret_name) = &self.aws_secret_name {
-            setup_test_env(self, aws_secret_name).await?;
-        }
+        aws_test_config(self, &self.aws_secret_name, &self.config.assume_role, &None).await?;
 
         if let Some(wireguard_secret_name) = &self.wireguard_secret_name {
             // If a wireguard secret is specified, try to set up an wireguard connection with the

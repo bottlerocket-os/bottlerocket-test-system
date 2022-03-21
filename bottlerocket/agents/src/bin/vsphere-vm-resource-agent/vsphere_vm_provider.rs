@@ -1,12 +1,8 @@
 use crate::aws::{create_ssm_activation, ensure_ssm_service_role, wait_for_ssm_ready};
 use crate::tuf::download_target;
-use aws_config::meta::region::RegionProviderChain;
-use aws_config::RetryConfig;
-use aws_sdk_ssm::Region;
-use aws_smithy_types::retry::RetryMode;
 use bottlerocket_agents::wireguard::setup_wireguard;
 use bottlerocket_agents::{
-    decode_write_kubeconfig, setup_resource_env, TEST_CLUSTER_KUBECONFIG_PATH,
+    aws_resource_config, decode_write_kubeconfig, TEST_CLUSTER_KUBECONFIG_PATH,
 };
 use bottlerocket_types::agent_config::{
     TufRepoConfig, VSphereVmConfig, AWS_CREDENTIALS_SECRET_NAME, VSPHERE_CREDENTIALS_SECRET_NAME,
@@ -69,6 +65,9 @@ pub struct ProductionMemo {
 
     /// The name of the secret containing vCenter credentials.
     pub vcenter_secret_name: Option<SecretName>,
+
+    /// The role that is being assumed.
+    pub assume_role: Option<String>,
 }
 
 impl Configuration for ProductionMemo {}
@@ -108,11 +107,6 @@ impl Create for VMCreator {
         let mut resources = Resources::Clear;
         let (metadata_url, targets_url) = tuf_repo_urls(&spec.configuration.tuf_repo, &resources)?;
 
-        // Set up the aws credentials if they were provided.
-        if let Some(aws_secret_name) = spec.secrets.get(AWS_CREDENTIALS_SECRET_NAME) {
-            setup_resource_env(client, aws_secret_name, resources).await?;
-            memo.aws_secret_name = Some(aws_secret_name.clone());
-        }
         if let Some(wireguard_secret_name) = spec.secrets.get(WIREGUARD_SECRET_NAME) {
             // If a wireguard secret is specified, try to set up an wireguard connection with the
             // wireguard configuration stored in the secret.
@@ -128,16 +122,18 @@ impl Create for VMCreator {
             )?;
         }
 
-        let region_provider = RegionProviderChain::first_try(Region::new("us-west-2"));
-        let shared_config = aws_config::from_env()
-            .region(region_provider)
-            .retry_config(
-                RetryConfig::new()
-                    .with_retry_mode(RetryMode::Adaptive)
-                    .with_max_attempts(15),
-            )
-            .load()
-            .await;
+        memo.aws_secret_name = spec.secrets.get(AWS_CREDENTIALS_SECRET_NAME).cloned();
+        memo.assume_role = spec.configuration.assume_role.clone();
+
+        let shared_config = aws_resource_config(
+            client,
+            &spec.secrets.get(AWS_CREDENTIALS_SECRET_NAME),
+            &spec.configuration.assume_role,
+            &None,
+            Resources::Clear,
+        )
+        .await?;
+
         let ssm_client = aws_sdk_ssm::Client::new(&shared_config);
         let iam_client = aws_sdk_iam::Client::new(&shared_config);
 
@@ -498,10 +494,6 @@ impl Destroy for VMDestroyer {
         };
         let spec = spec.context(resources, "Missing vSphere resource agent spec")?;
 
-        // Set up the aws credentials if they were provided.
-        if let Some(aws_secret_name) = spec.secrets.get(AWS_CREDENTIALS_SECRET_NAME) {
-            setup_resource_env(client, aws_secret_name, resources).await?;
-        }
         if let Some(wireguard_secret_name) = spec.secrets.get(WIREGUARD_SECRET_NAME) {
             // If a wireguard secret is specified, try to set up an wireguard connection with the
             // wireguard configuration stored in the secret.
@@ -517,16 +509,14 @@ impl Destroy for VMDestroyer {
             )?;
         }
 
-        let region_provider = RegionProviderChain::first_try(Region::new("us-west-2"));
-        let shared_config = aws_config::from_env()
-            .region(region_provider)
-            .retry_config(
-                RetryConfig::new()
-                    .with_retry_mode(RetryMode::Adaptive)
-                    .with_max_attempts(15),
-            )
-            .load()
-            .await;
+        let shared_config = aws_resource_config(
+            client,
+            &memo.aws_secret_name.as_ref(),
+            &memo.assume_role,
+            &None,
+            Resources::Clear,
+        )
+        .await?;
         let ssm_client = aws_sdk_ssm::Client::new(&shared_config);
 
         // Get vSphere credentials to authenticate to vCenter via govmomi

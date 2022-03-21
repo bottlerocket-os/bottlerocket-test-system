@@ -166,6 +166,10 @@ pub(crate) struct RunVmware {
     /// Name of the pull secret for the ecs migration image (if needed).
     #[structopt(long)]
     migration_agent_pull_secret: Option<String>,
+
+    /// The arn for the role that should be assumed by the agents.
+    #[structopt(long)]
+    assume_role: Option<String>,
 }
 
 impl RunVmware {
@@ -328,6 +332,7 @@ impl RunVmware {
                 control_plane_endpoint_ip: self.cluster_endpoint.clone(),
                 kubeconfig_base64: encoded_kubeconfig.to_string(),
             },
+            assume_role: self.assume_role.clone(),
         }
         .into_map()
         .context(error::ConfigMapSnafu)?;
@@ -386,6 +391,7 @@ impl RunVmware {
                             mode: self.sonobuoy_mode,
                             kubernetes_version: None,
                             kube_conformance_image: self.kubernetes_conformance_image.clone(),
+                            assume_role: self.assume_role.clone(),
                         }
                         .into_map()
                         .context(error::ConfigMapSnafu)?,
@@ -415,6 +421,7 @@ impl RunVmware {
             instance_ids: Default::default(),
             migrate_to_version: version.to_string(),
             tuf_repo,
+            assume_role: self.assume_role.clone(),
         }
         .into_map()
         .context(error::ConfigMapSnafu)?;

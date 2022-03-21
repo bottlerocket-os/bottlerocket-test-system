@@ -42,13 +42,8 @@ use crate::ssm::{
     create_or_update_ssm_document, ssm_run_command, wait_for_os_version_change, wait_for_ssm_ready,
 };
 use async_trait::async_trait;
-use aws_config::meta::region::RegionProviderChain;
-use aws_config::RetryConfig;
-use aws_sdk_ssm::Region;
-use aws_smithy_types::retry::RetryMode;
-use bottlerocket_agents::error;
-use bottlerocket_agents::error::Error;
-use bottlerocket_agents::{init_agent_logger, setup_test_env};
+use bottlerocket_agents::error::{self, Error};
+use bottlerocket_agents::{aws_test_config, init_agent_logger};
 use bottlerocket_types::agent_config::{MigrationConfig, AWS_CREDENTIALS_SECRET_NAME};
 use log::{error, info};
 use maplit::hashmap;
@@ -82,21 +77,13 @@ impl test_agent::Runner for MigrationTestRunner {
     }
 
     async fn run(&mut self) -> Result<TestResults, Self::E> {
-        // Set up the aws credentials if they were provided.
-        if let Some(aws_secret_name) = &self.aws_secret_name {
-            setup_test_env(self, aws_secret_name).await?;
-        }
-        let region_provider =
-            RegionProviderChain::first_try(Region::new(self.config.aws_region.clone()));
-        let shared_config = aws_config::from_env()
-            .region(region_provider)
-            .retry_config(
-                RetryConfig::new()
-                    .with_retry_mode(RetryMode::Adaptive)
-                    .with_max_attempts(15),
-            )
-            .load()
-            .await;
+        let shared_config = aws_test_config(
+            self,
+            &self.aws_secret_name,
+            &self.config.assume_role,
+            &Some(self.config.aws_region.clone()),
+        )
+        .await?;
         let ssm_client = aws_sdk_ssm::Client::new(&shared_config);
 
         // Ensure the SSM agents on the instances are ready, wait up to 5 minutes

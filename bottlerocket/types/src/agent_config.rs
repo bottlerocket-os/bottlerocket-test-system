@@ -60,6 +60,7 @@ pub struct SonobuoyConfig {
     /// leave this as `None` and let the sonobuoy binary choose the right value.
     pub kubernetes_version: Option<K8sVersion>,
     pub kube_conformance_image: Option<String>,
+    pub assume_role: Option<String>,
 }
 
 impl Configuration for SonobuoyConfig {}
@@ -78,6 +79,7 @@ pub struct MigrationConfig {
     pub instance_ids: HashSet<String>,
     pub migrate_to_version: String,
     pub tuf_repo: Option<TufRepoConfig>,
+    pub assume_role: Option<String>,
 }
 
 impl Configuration for MigrationConfig {}
@@ -101,6 +103,9 @@ pub struct EksClusterConfig {
     /// The eks version of the the cluster (e.g. "1.14", "1.15", "1.16"). Make sure this is
     /// quoted so that it is interpreted as a JSON/YAML string (not a number).
     pub version: Option<K8sVersion>,
+
+    /// The role that should be assumed when creating the cluster.
+    pub assume_role: Option<String>,
 }
 
 impl Configuration for EksClusterConfig {}
@@ -165,6 +170,9 @@ pub struct Ec2Config {
     /// The cluster DNS IP for the K8s cluster. This is used to determine the IP family of the node IP.
     pub cluster_dns_ip: Option<String>,
 
+    /// The role that should be assumed when launching instances.
+    pub assume_role: Option<String>,
+
     // Eks specific instance information.
     /// The security groups that should be attached to the instances.
     #[serde(default)]
@@ -198,6 +206,9 @@ pub struct EcsClusterConfig {
 
     /// The vpc to use for this clusters subnet ids. If no value is provided the default vpc will be used.
     pub vpc: Option<String>,
+
+    /// The role that should be assumed when creating the ecs cluster.
+    pub assume_role: Option<String>,
 }
 
 impl Configuration for EcsClusterConfig {}
@@ -336,6 +347,9 @@ pub struct EcsTestConfig {
     /// definition named `testsys-bottlerocket-aws-default-ecs-smoke-test-v1` or create a new task
     /// definition by that name if it hasn't been created yet.
     pub task_definition_name_and_revision: Option<String>,
+
+    /// The role that should be assumed for this test agent.
+    pub assume_role: Option<String>,
 }
 
 fn default_count() -> i32 {
@@ -376,6 +390,9 @@ pub struct VSphereVmConfig {
 
     /// vSphere cluster information
     pub cluster: VSphereClusterInfo,
+
+    /// The role that should be assumed when creating the vms.
+    pub assume_role: Option<String>,
 }
 
 impl Configuration for VSphereVmConfig {}

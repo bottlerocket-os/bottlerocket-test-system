@@ -1,13 +1,11 @@
-use aws_config::meta::region::RegionProviderChain;
-use aws_config::RetryConfig;
 use aws_sdk_ec2::model::{Filter, SecurityGroup, Subnet};
-use aws_sdk_ec2::{types::SdkError, Region};
+use aws_sdk_ec2::types::SdkError;
 use aws_sdk_eks::error::{DescribeClusterError, DescribeClusterErrorKind};
 use aws_sdk_eks::model::IpFamily;
 use aws_sdk_eks::output::DescribeClusterOutput;
-use aws_smithy_types::retry::RetryMode;
 use bottlerocket_agents::{
-    impl_display_as_json, json_display, provider_error_for_cmd_output, setup_resource_env,
+    aws_resource_config, impl_display_as_json, json_display, provider_error_for_cmd_output,
+    setup_resource_env,
 };
 use bottlerocket_types::agent_config::{
     CreationPolicy, EksClusterConfig, K8sVersion, AWS_CREDENTIALS_SECRET_NAME,
@@ -45,6 +43,9 @@ pub struct ProductionMemo {
 
     // The region the cluster is in.
     pub region: Option<String>,
+
+    // The role arn that is being assumed.
+    pub assume_role: Option<String>,
 }
 
 impl Configuration for ProductionMemo {}
@@ -99,21 +100,11 @@ struct AwsClients {
 }
 
 impl AwsClients {
-    async fn new(region: String) -> Self {
-        let region_provider = RegionProviderChain::first_try(Some(Region::new(region)));
-        let shared_config = aws_config::from_env()
-            .region(region_provider)
-            .retry_config(
-                RetryConfig::new()
-                    .with_retry_mode(RetryMode::Adaptive)
-                    .with_max_attempts(15),
-            )
-            .load()
-            .await;
+    async fn new(shared_config: &aws_config::Config) -> Self {
         Self {
-            eks_client: aws_sdk_eks::Client::new(&shared_config),
-            ec2_client: aws_sdk_ec2::Client::new(&shared_config),
-            iam_client: aws_sdk_iam::Client::new(&shared_config),
+            eks_client: aws_sdk_eks::Client::new(shared_config),
+            ec2_client: aws_sdk_ec2::Client::new(shared_config),
+            iam_client: aws_sdk_iam::Client::new(shared_config),
         }
     }
 }
@@ -157,7 +148,19 @@ impl Create for EksCreator {
             setup_resource_env(client, aws_secret_name, Resources::Clear).await?;
             memo.aws_secret_name = Some(aws_secret_name.clone());
         }
-        let aws_clients = AwsClients::new(region.clone()).await;
+
+        memo.aws_secret_name = spec.secrets.get(AWS_CREDENTIALS_SECRET_NAME).cloned();
+        memo.assume_role = spec.configuration.assume_role.clone();
+
+        let shared_config = aws_resource_config(
+            client,
+            &spec.secrets.get(AWS_CREDENTIALS_SECRET_NAME),
+            &spec.configuration.assume_role,
+            &spec.configuration.region.clone(),
+            Resources::Clear,
+        )
+        .await?;
+        let aws_clients = AwsClients::new(&shared_config).await;
 
         let (do_create, message) = is_cluster_creation_required(
             &spec.configuration.cluster_name,
@@ -888,10 +891,15 @@ impl Destroy for EksDestroyer {
             }
         };
 
-        // Write aws credentials if we need them so we can run eksctl
-        if let Some(aws_secret_name) = &memo.aws_secret_name {
-            setup_resource_env(client, aws_secret_name, Resources::Remaining).await?;
-        }
+        let _ = aws_resource_config(
+            client,
+            &memo.aws_secret_name.as_ref(),
+            &memo.assume_role,
+            &memo.region.clone(),
+            Resources::Clear,
+        )
+        .await?;
+
         let region = memo
             .clone()
             .region

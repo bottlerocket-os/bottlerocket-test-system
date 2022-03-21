@@ -1,12 +1,8 @@
-use aws_config::meta::region::RegionProviderChain;
-use aws_config::RetryConfig;
 use aws_sdk_ec2::model::Filter;
 use aws_sdk_ec2::types::SdkError;
-use aws_sdk_ecs::Region;
 use aws_sdk_iam::error::{GetInstanceProfileError, GetInstanceProfileErrorKind};
 use aws_sdk_iam::output::GetInstanceProfileOutput;
-use aws_smithy_types::retry::RetryMode;
-use bottlerocket_agents::setup_resource_env;
+use bottlerocket_agents::aws_resource_config;
 use bottlerocket_types::agent_config::{EcsClusterConfig, AWS_CREDENTIALS_SECRET_NAME};
 use model::{Configuration, SecretName};
 use resource_agent::clients::InfoClient;
@@ -27,6 +23,9 @@ pub struct Memo {
 
     /// The name of the secret containing aws credentials.
     pub aws_secret_name: Option<SecretName>,
+
+    /// What role the agent is assuming.
+    pub assume_role: Option<String>,
 
     /// The name of the cluster we created.
     pub cluster_name: Option<String>,
@@ -86,22 +85,17 @@ impl Create for EcsCreator {
             .unwrap_or(&DEFAULT_REGION.to_string())
             .to_string();
 
-        // Write aws credentials if we have them so we can use AWS APIs.
-        if let Some(aws_secret_name) = spec.secrets.get(AWS_CREDENTIALS_SECRET_NAME) {
-            setup_resource_env(client, aws_secret_name, Resources::Clear).await?;
-            memo.aws_secret_name = Some(aws_secret_name.clone());
-        }
+        memo.aws_secret_name = spec.secrets.get(AWS_CREDENTIALS_SECRET_NAME).cloned();
+        memo.assume_role = spec.configuration.assume_role.clone();
 
-        let region_provider = RegionProviderChain::first_try(Some(Region::new(region.to_string())));
-        let config = aws_config::from_env()
-            .region(region_provider)
-            .retry_config(
-                RetryConfig::new()
-                    .with_retry_mode(RetryMode::Adaptive)
-                    .with_max_attempts(15),
-            )
-            .load()
-            .await;
+        let config = aws_resource_config(
+            client,
+            &spec.secrets.get(AWS_CREDENTIALS_SECRET_NAME),
+            &spec.configuration.assume_role,
+            &spec.configuration.region,
+            Resources::Clear,
+        )
+        .await?;
         let ecs_client = aws_sdk_ecs::Client::new(&config);
         let iam_client = aws_sdk_iam::Client::new(&config);
 
@@ -115,6 +109,7 @@ impl Create for EcsCreator {
         let iam_arn = create_iam_instance_profile(&iam_client).await?;
 
         let created_cluster = created_cluster(
+            &config,
             &spec.configuration.cluster_name,
             region.clone(),
             spec.configuration.vpc,
@@ -216,22 +211,13 @@ async fn instance_profile_arn(iam_client: &aws_sdk_iam::Client) -> ProviderResul
 }
 
 async fn created_cluster(
+    shared_config: &aws_config::Config,
     cluster_name: &str,
     region: String,
     vpc: Option<String>,
     iam_instance_profile_arn: String,
 ) -> ProviderResult<CreatedCluster> {
-    let region_provider = RegionProviderChain::first_try(Some(Region::new(region.clone())));
-    let shared_config = aws_config::from_env()
-        .retry_config(
-            RetryConfig::new()
-                .with_retry_mode(RetryMode::Adaptive)
-                .with_max_attempts(15),
-        )
-        .region(region_provider)
-        .load()
-        .await;
-    let ec2_client = aws_sdk_ec2::Client::new(&shared_config);
+    let ec2_client = aws_sdk_ec2::Client::new(shared_config);
 
     let vpc = match vpc {
         Some(vpc) => vpc,
@@ -319,25 +305,14 @@ impl Destroy for EcsDestroyer {
             .await
             .context(Resources::Remaining, "Unable to get info from client")?;
 
-        // Write aws credentials if we need them
-        if let Some(aws_secret_name) = &memo.aws_secret_name {
-            setup_resource_env(client, aws_secret_name, Resources::Remaining).await?;
-        }
-        let region = memo
-            .clone()
-            .region
-            .unwrap_or_else(|| DEFAULT_REGION.to_string());
-
-        let region_provider = RegionProviderChain::first_try(Some(Region::new(region.to_string())));
-        let config = aws_config::from_env()
-            .retry_config(
-                RetryConfig::new()
-                    .with_retry_mode(RetryMode::Adaptive)
-                    .with_max_attempts(15),
-            )
-            .region(region_provider)
-            .load()
-            .await;
+        let config = aws_resource_config(
+            client,
+            &memo.aws_secret_name.as_ref(),
+            &memo.assume_role,
+            &memo.region,
+            Resources::Clear,
+        )
+        .await?;
         let ecs_client = aws_sdk_ecs::Client::new(&config);
 
         if let Some(cluster_name) = &memo.cluster_name {
