@@ -1,7 +1,7 @@
 use aws_sdk_ec2::model::{Filter, SecurityGroup, Subnet};
 use aws_sdk_ec2::types::SdkError;
 use aws_sdk_eks::error::{DescribeClusterError, DescribeClusterErrorKind};
-use aws_sdk_eks::model::IpFamily;
+use aws_sdk_eks::model::{Cluster, IpFamily};
 use aws_sdk_eks::output::DescribeClusterOutput;
 use bottlerocket_agents::{
     aws_resource_config, impl_display_as_json, json_display, provider_error_for_cmd_output,
@@ -393,10 +393,21 @@ async fn created_cluster(
     region: &str,
     aws_clients: &AwsClients,
 ) -> ProviderResult<CreatedCluster> {
-    let eks_subnet_ids = eks_subnet_ids(&aws_clients.eks_client, cluster_name).await?;
-    let endpoint = endpoint(&aws_clients.eks_client, cluster_name).await?;
-    let certificate = certificate(&aws_clients.eks_client, cluster_name).await?;
-    let cluster_dns_ip = cluster_dns_ip(&aws_clients.eks_client, cluster_name).await?;
+    let cluster = aws_clients
+        .eks_client
+        .describe_cluster()
+        .name(cluster_name)
+        .send()
+        .await
+        .context(Resources::Remaining, "Unable to get eks describe cluster")?
+        .cluster
+        .as_ref()
+        .context(Resources::Remaining, "Response missing cluster field")?
+        .clone();
+    let eks_subnet_ids = eks_subnet_ids(&cluster).await?;
+    let endpoint = endpoint(&cluster).await?;
+    let certificate = certificate(&cluster).await?;
+    let cluster_dns_ip = cluster_dns_ip(&cluster).await?;
 
     info!("Getting public subnet ids");
     let public_subnet_ids: Vec<String> = subnet_ids(
@@ -486,22 +497,8 @@ async fn created_cluster(
     })
 }
 
-async fn eks_subnet_ids(
-    eks_client: &aws_sdk_eks::Client,
-    cluster_name: &str,
-) -> ProviderResult<Vec<String>> {
-    let describe_results = eks_client
-        .describe_cluster()
-        .name(cluster_name)
-        .send()
-        .await
-        .context(Resources::Remaining, "Unable to get eks describe cluster")?;
-
-    // Extract the subnet ids from the cluster.
-    describe_results
-        .cluster
-        .as_ref()
-        .context(Resources::Remaining, "Response missing cluster field")?
+async fn eks_subnet_ids(cluster: &Cluster) -> ProviderResult<Vec<String>> {
+    cluster
         .resources_vpc_config
         .as_ref()
         .context(
@@ -517,40 +514,16 @@ async fn eks_subnet_ids(
         .map(|ids| ids.clone())
 }
 
-async fn endpoint(eks_client: &aws_sdk_eks::Client, cluster_name: &str) -> ProviderResult<String> {
-    let describe_results = eks_client
-        .describe_cluster()
-        .name(cluster_name)
-        .send()
-        .await
-        .context(Resources::Remaining, "Unable to get eks describe cluster")?;
-    // Extract the apiserver endpoint from the cluster.
-    describe_results
-        .cluster
-        .as_ref()
-        .context(Resources::Remaining, "Results missing cluster field")?
+async fn endpoint(cluster: &Cluster) -> ProviderResult<String> {
+    cluster
         .endpoint
         .as_ref()
         .context(Resources::Remaining, "Cluster missing endpoint field")
         .map(|ids| ids.clone())
 }
 
-async fn certificate(
-    eks_client: &aws_sdk_eks::Client,
-    cluster_name: &str,
-) -> ProviderResult<String> {
-    let describe_results = eks_client
-        .describe_cluster()
-        .name(cluster_name)
-        .send()
-        .await
-        .context(Resources::Remaining, "Unable to get eks describe cluster")?;
-
-    // Extract the certificate authority from the cluster.
-    describe_results
-        .cluster
-        .as_ref()
-        .context(Resources::Remaining, "Results missing cluster field")?
+async fn certificate(cluster: &Cluster) -> ProviderResult<String> {
+    cluster
         .certificate_authority
         .as_ref()
         .context(
@@ -563,27 +536,16 @@ async fn certificate(
         .map(|ids| ids.clone())
 }
 
-async fn cluster_dns_ip(
-    eks_client: &aws_sdk_eks::Client,
-    cluster_name: &str,
-) -> ProviderResult<String> {
-    let kubernetes_network_config = eks_client
-        .describe_cluster()
-        .name(cluster_name)
-        .send()
-        .await
-        .context(Resources::Remaining, "Unable to get eks describe cluster")?
-        .cluster
-        .and_then(|c| c.kubernetes_network_config)
-        .context(
-            Resources::Remaining,
-            "DescribeCluster missing KubernetesNetworkConfig field",
-        )?;
+async fn cluster_dns_ip(cluster: &Cluster) -> ProviderResult<String> {
+    let kubernetes_network_config = cluster.kubernetes_network_config.as_ref().context(
+        Resources::Remaining,
+        "DescribeCluster missing KubernetesNetworkConfig field",
+    )?;
 
     service_ip_cidr_to_cluster_dns_ip(
-        kubernetes_network_config.ip_family,
-        kubernetes_network_config.service_ipv4_cidr,
-        kubernetes_network_config.service_ipv6_cidr,
+        kubernetes_network_config.ip_family.clone(),
+        kubernetes_network_config.service_ipv4_cidr.clone(),
+        kubernetes_network_config.service_ipv6_cidr.clone(),
     )
 }
 
