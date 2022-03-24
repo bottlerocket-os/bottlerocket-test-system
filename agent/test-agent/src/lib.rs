@@ -16,9 +16,10 @@ use agent_common::secrets::{Result as SecretsResult, SecretData, SecretsReader};
 use async_trait::async_trait;
 pub use bootstrap::{BootstrapData, BootstrapError};
 pub use k8s_client::ClientError;
+use log::info;
 use model::clients::TestClient;
 pub use model::{Configuration, TestResults};
-use model::{SecretName, SecretType};
+use model::{Outcome, SecretName, SecretType};
 use std::collections::BTreeMap;
 use std::fmt::{Debug, Display};
 use std::path::PathBuf;
@@ -47,7 +48,7 @@ pub struct Spec<C: Configuration> {
 /// TestSys Test CRD is created.
 ///
 #[async_trait]
-pub trait Runner: Sized {
+pub trait Runner: Sized + Send {
     /// Input that you need to initialize your test run.
     type C: Configuration;
 
@@ -60,6 +61,21 @@ pub trait Runner: Sized {
     /// Runs the test(s) and returns when they are done. If the tests cannot be completed, returns
     /// an error.
     async fn run(&mut self) -> Result<TestResults, Self::E>;
+
+    /// Rerun a failed test.
+    async fn rerun_failed(
+        &mut self,
+        _prev_test_result: &TestResults,
+    ) -> Result<TestResults, Self::E> {
+        info!("Tried to rerun test, but no retry method was defined.");
+        Ok(TestResults {
+            outcome: Outcome::Fail,
+            num_failed: 1,
+            num_passed: 0,
+            num_skipped: 0,
+            other_info: Some("No retry_failed method defined".to_string()),
+        })
+    }
 
     /// Cleans up prior to program exit.
     async fn terminate(&mut self) -> Result<(), Self::E>;
@@ -100,10 +116,19 @@ pub trait Client: Sized {
     /// Determine if the pod should keep running after it has finished or encountered and error.
     async fn keep_running(&self) -> Result<bool, Self::E>;
 
+    /// Determine the number of retries the agent is expected to perform for failed tests.
+    async fn retries(&self) -> Result<u32, Self::E>;
+
     /// Set the appropriate status field to represent that the test has started.
     async fn send_test_starting(&self) -> Result<(), Self::E>;
 
-    /// Set the appropriate status fields once the test has finished.
+    /// Add a TestResults object to the CRDs array of TestResults without signaling that the test
+    /// is complete. This is used to send TestResults when some failures have occured and we are
+    /// going to re-run the failed test cases.
+    async fn send_test_results(&self, results: TestResults) -> Result<(), Self::E>;
+
+    /// Add a TestResults object to the array of TestResults in the test CRD and set the task state
+    /// as `Done` indicating that no more retries or testing will occur.
     async fn send_test_done(&self, results: TestResults) -> Result<(), Self::E>;
 
     /// Send an error to the k8s API.

@@ -103,6 +103,11 @@ impl Client for MockClient {
         Ok(())
     }
 
+    async fn send_test_results(&self, results: TestResults) -> Result<(), Self::E> {
+        println!("MockClient::send_test_results: {:?}", results);
+        Ok(())
+    }
+
     async fn send_error<E>(&self, error: E) -> Result<(), Self::E>
     where
         E: Debug + Display + Send + Sync,
@@ -121,6 +126,10 @@ impl Client for MockClient {
 
     async fn results_file(&self) -> Result<PathBuf, Self::E> {
         Ok(self.results_file.path().join("result.tar.gz"))
+    }
+
+    async fn retries(&self) -> Result<u32, Self::E> {
+        Ok(0)
     }
 }
 

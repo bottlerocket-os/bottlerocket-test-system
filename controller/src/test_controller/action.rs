@@ -174,7 +174,7 @@ async fn dependency_wait_action(t: &TestInterface) -> Result<Option<Action>> {
         if needed_test
             .agent_status()
             .results
-            .as_ref()
+            .last()
             .map(|results| results.outcome != Outcome::Pass)
             .unwrap_or(true)
         {

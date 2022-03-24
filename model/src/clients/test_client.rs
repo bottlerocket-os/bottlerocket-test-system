@@ -70,12 +70,24 @@ impl TestClient {
         .await
     }
 
+    pub async fn send_test_results(&self, name: &str, results: TestResults) -> Result<Test> {
+        self.patch_status(
+            name,
+            vec![JsonPatch::new_add_operation(
+                "/status/agent/results/-",
+                results,
+            )],
+            "send test results",
+        )
+        .await
+    }
+
     pub async fn send_test_completed(&self, name: &str, results: TestResults) -> Result<Test> {
         self.patch_status(
             name,
             vec![
                 JsonPatch::new_add_operation("/status/agent/taskState", TaskState::Completed),
-                JsonPatch::new_add_operation("/status/agent/results", results),
+                JsonPatch::new_add_operation("/status/agent/results/-", results),
             ],
             "send test completion results",
         )

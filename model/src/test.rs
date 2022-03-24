@@ -32,6 +32,8 @@ pub struct TestSpec {
     pub depends_on: Option<Vec<String>>,
     /// Information about the test agent.
     pub agent: Agent,
+    /// The number of retries the agent is allowed to perform after a failed test.
+    pub retries: Option<u32>,
 }
 
 /// The status field of the TestSys Test CRD. This is where the controller and agents will write
@@ -87,7 +89,7 @@ pub struct AgentStatus {
     /// *may* be an error message here. If there is an error message here and the `run_state` is
     /// *not* `Error`, the this is a bad state and the `error_message` should be ignored.
     pub error: Option<String>,
-    pub results: Option<TestResults>,
+    pub results: Vec<TestResults>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Default, Eq, PartialEq, Clone, JsonSchema)]
@@ -171,7 +173,7 @@ impl Test {
             }
             TaskState::Running => TestUserState::Running,
             TaskState::Completed => {
-                if let Some(results) = &agent_status.results {
+                if let Some(results) = agent_status.results.last() {
                     match results.outcome {
                         Outcome::Pass => TestUserState::Passed,
                         Outcome::Fail => TestUserState::Failed,

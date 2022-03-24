@@ -34,7 +34,7 @@ spec:
 
 use async_trait::async_trait;
 use bottlerocket_agents::error::Error;
-use bottlerocket_agents::sonobuoy::{delete_sonobuoy, run_sonobuoy};
+use bottlerocket_agents::sonobuoy::{delete_sonobuoy, rerun_failed_sonobuoy, run_sonobuoy};
 use bottlerocket_agents::wireguard::setup_wireguard;
 use bottlerocket_agents::{
     aws_test_config, decode_write_kubeconfig, error, init_agent_logger,
@@ -86,6 +86,22 @@ impl test_agent::Runner for SonobuoyTestRunner {
         decode_write_kubeconfig(&self.config.kubeconfig_base64, TEST_CLUSTER_KUBECONFIG_PATH)
             .await?;
         run_sonobuoy(
+            TEST_CLUSTER_KUBECONFIG_PATH,
+            &self.config,
+            &self.results_dir,
+        )
+        .await
+    }
+
+    async fn rerun_failed(&mut self, _prev_results: &TestResults) -> Result<TestResults, Self::E> {
+        // Set up the aws credentials if they were provided.
+        aws_test_config(self, &self.aws_secret_name, &self.config.assume_role, &None).await?;
+
+        delete_sonobuoy(TEST_CLUSTER_KUBECONFIG_PATH).await?;
+
+        decode_write_kubeconfig(&self.config.kubeconfig_base64, TEST_CLUSTER_KUBECONFIG_PATH)
+            .await?;
+        rerun_failed_sonobuoy(
             TEST_CLUSTER_KUBECONFIG_PATH,
             &self.config,
             &self.results_dir,

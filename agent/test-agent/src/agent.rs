@@ -1,6 +1,7 @@
 use crate::error::{self, AgentError, Error, Result};
 use crate::{BootstrapData, Client, Runner};
 use log::{debug, error, info, trace};
+use model::Outcome;
 use snafu::ResultExt;
 use std::fs::File;
 use std::path::PathBuf;
@@ -84,7 +85,7 @@ where
             .await
             .map_err(error::Error::Client)?;
 
-        let test_results = match self.runner.run().await.map_err(error::Error::Runner) {
+        let mut test_results = match self.runner.run().await.map_err(error::Error::Runner) {
             Ok(ok) => ok,
             Err(e) => {
                 self.send_error_best_effort(&e).await;
@@ -92,6 +93,41 @@ where
                 return Err(e);
             }
         };
+
+        // If we are unable to get the number of retries it is safer to assume it is zero
+        // then to error.
+        let retries = self.client.retries().await.unwrap_or_default();
+        let mut retry_count = 0;
+        while test_results.outcome != Outcome::Pass && retry_count < retries {
+            info!(
+                "Test did not pass, retrying ({} of {})...",
+                retry_count + 1,
+                retries
+            );
+            if let Err(e) = self
+                .client
+                .send_test_done(test_results.clone())
+                .await
+                .map_err(error::Error::Client)
+            {
+                error!("Failed to send test results");
+                self.send_error_best_effort(&e).await;
+            }
+            test_results = match self
+                .runner
+                .rerun_failed(&test_results)
+                .await
+                .map_err(error::Error::Runner)
+            {
+                Ok(ok) => ok,
+                Err(e) => {
+                    self.send_error_best_effort(&e).await;
+                    self.terminate_best_effort().await;
+                    return Err(e);
+                }
+            };
+            retry_count += 1;
+        }
 
         if let Err(e) = self
             .client

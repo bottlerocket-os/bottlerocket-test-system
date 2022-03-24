@@ -6,11 +6,9 @@ use kube::core::object::HasStatus;
 use kube::{Api, Client, ResourceExt};
 use model::clients::{CrdClient, ResourceClient, TestClient};
 use model::constants::{LABEL_COMPONENT, NAMESPACE};
-use model::{Resource, TaskState, Test, TestUserState};
-use serde::{Deserialize, Serialize};
+use model::{Resource, TaskState, Test};
+use serde::Serialize;
 use snafu::ResultExt;
-use std::collections::HashMap;
-use std::fmt::Display;
 use structopt::StructOpt;
 use tabled::{Alignment, Column, Full, MaxWidth, Modify, Style, Table, Tabled};
 use termion::terminal_size;
@@ -36,24 +34,23 @@ impl Status {
         let tests_api = TestClient::new_from_k8s_client(k8s_client.clone());
         let resources_api = ResourceClient::new_from_k8s_client(k8s_client.clone());
         let pod_api = Api::<Pod>::namespaced(k8s_client, NAMESPACE);
-        let mut status_results = StatusResults::new();
+        let mut status_results = Results::default();
         if self.controller {
-            status_results.controller_is_running = Some(is_controller_running(&pod_api).await?);
+            status_results.add_controller(is_controller_running(&pod_api).await?);
         }
         let tests = self.tests(&tests_api).await?;
         let resources = self.resources(&resources_api).await?;
         for test in tests {
-            let test_result = TestResult::from_test(&test);
-            status_results.add_test_result(test_result)
+            status_results.add_test(&test)
         }
         for resource in resources {
-            let resource_result = ResourceResult::from_resource(&resource);
-            status_results.add_resource_result(resource_result)
+            status_results.add_resource(&resource)
         }
 
         if !self.json {
             let (width, _) = terminal_size().ok().unwrap_or((120, 0));
-            status_results.draw(width);
+            status_results.width = width;
+            status_results.draw();
         } else {
             println!(
                 "{}",
@@ -126,203 +123,22 @@ async fn is_controller_running(pod_api: &Api<Pod>) -> Result<bool> {
     Ok(true)
 }
 
-#[derive(Debug, Serialize, Deserialize, Default)]
-struct StatusResults {
-    tests: HashMap<String, TestResult>,
-    resources: HashMap<String, ResourceResult>,
-    controller_is_running: Option<bool>,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-struct TestResult {
-    name: String,
-    state: TestUserState,
-    passed: Option<u64>,
-    failed: Option<u64>,
-    skipped: Option<u64>,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-struct ResourceResult {
-    name: String,
-    create_state: TaskState,
-    delete_state: TaskState,
-}
-
-impl StatusResults {
-    fn new() -> Self {
-        Self {
-            tests: HashMap::new(),
-            resources: HashMap::new(),
-            controller_is_running: None,
-        }
-    }
-
-    fn add_test_result(&mut self, test_result: TestResult) {
-        self.tests.insert(test_result.name.clone(), test_result);
-    }
-
-    fn add_resource_result(&mut self, resource_result: ResourceResult) {
-        self.resources
-            .insert(resource_result.name.clone(), resource_result);
-    }
-
-    fn draw(&self, width: u16) {
-        let mut results = Vec::new();
-        if let Some(controller_running) = self.controller_is_running {
-            results.push(ResultRow {
-                name: "Controller".to_string(),
-                object_type: "Controller".to_string(),
-                state: if controller_running { "Running" } else { "" }.to_string(),
-                ..Default::default()
-            })
-        }
-        for resource_result in self.resources.values() {
-            results.push(resource_result.into());
-        }
-        for test_result in self.tests.values() {
-            results.push(test_result.into());
-        }
-        let results_table = Results {
-            width,
-            results,
-            ..Default::default()
-        };
-
-        results_table.draw();
-    }
-}
-
-impl Display for StatusResults {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        for result in self.tests.values() {
-            write!(f, "{}\n\n", result)?;
-        }
-
-        for result in self.resources.values() {
-            write!(f, "{}\n\n", result)?;
-        }
-
-        if let Some(running) = self.controller_is_running {
-            write!(f, "Controller Running: {}", running)?;
-        }
-
-        Ok(())
-    }
-}
-
-impl TestResult {
-    fn from_test(test: &Test) -> Self {
-        let name = test.metadata.name.clone().unwrap_or_else(|| "".to_string());
-        let mut passed = None;
-        let mut failed = None;
-        let mut skipped = None;
-        let test_user_state = test.test_user_state();
-        if let Some(results) = &test.agent_status().results {
-            passed = Some(results.num_passed);
-            failed = Some(results.num_failed);
-            skipped = Some(results.num_skipped);
-        }
-
-        Self {
-            name,
-            state: test_user_state,
-            passed,
-            failed,
-            skipped,
-        }
-    }
-}
-
-impl Display for TestResult {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        writeln!(f, "Test Name: {}", self.name)?;
-        writeln!(f, "Test State: {}", self.state)?;
-        writeln!(
-            f,
-            "Passed: {}",
-            self.passed.map_or("".to_string(), |x| x.to_string())
-        )?;
-        writeln!(
-            f,
-            "Failed: {}",
-            self.failed.map_or("".to_string(), |x| x.to_string())
-        )?;
-        writeln!(
-            f,
-            "Skipped: {}",
-            self.skipped.map_or("".to_string(), |x| x.to_string())
-        )?;
-
-        Ok(())
-    }
-}
-
-impl From<&TestResult> for ResultRow {
-    fn from(test_result: &TestResult) -> ResultRow {
-        ResultRow {
-            name: test_result.name.clone(),
-            object_type: "Test".to_string(),
-            state: test_result.state.to_string(),
-            passed: test_result.passed,
-            skipped: test_result.skipped,
-            failed: test_result.failed,
-        }
-    }
-}
-
-impl ResourceResult {
-    fn from_resource(resource: &Resource) -> Self {
-        let name = resource.name();
-        let mut create_state = TaskState::Unknown;
-        let mut delete_state = TaskState::Unknown;
-        if let Some(status) = resource.status() {
-            create_state = status.creation.task_state;
-            delete_state = status.destruction.task_state;
-        }
-
-        Self {
-            name,
-            create_state,
-            delete_state,
-        }
-    }
-}
-
-impl Display for ResourceResult {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        writeln!(f, "Resource Name: {}", self.name)?;
-        writeln!(f, "Resource Creation State: {:?}", self.create_state)?;
-        writeln!(f, "Resource Deletion State: {:?}", self.delete_state)?;
-        Ok(())
-    }
-}
-
-impl From<&ResourceResult> for ResultRow {
-    fn from(resource_result: &ResourceResult) -> ResultRow {
-        let state = match resource_result.delete_state {
-            TaskState::Unknown => resource_result.create_state,
-            _ => resource_result.delete_state,
-        };
-        ResultRow {
-            name: resource_result.name.clone(),
-            object_type: "Resource".to_string(),
-            state: state.to_string(),
-            passed: None,
-            skipped: None,
-            failed: None,
-        }
-    }
-}
-
+#[derive(Serialize)]
 struct Results {
+    #[serde(skip_serializing)]
     width: u16,
     results: Vec<ResultRow>,
+    #[serde(skip_serializing)]
     min_name_width: u16,
+    #[serde(skip_serializing)]
     min_object_width: u16,
+    #[serde(skip_serializing)]
     min_state_width: u16,
+    #[serde(skip_serializing)]
     min_passed_width: u16,
+    #[serde(skip_serializing)]
     min_skipped_width: u16,
+    #[serde(skip_serializing)]
     min_failed_width: u16,
 }
 
@@ -342,6 +158,73 @@ impl Default for Results {
 }
 
 impl Results {
+    /// Adds a new `ResultRow` for each `TestResults` in test, or a single row if no `TestsResults` are available.
+    fn add_test(&mut self, test: &Test) {
+        let name = test.metadata.name.clone().unwrap_or_else(|| "".to_string());
+        let state = test.test_user_state().to_string();
+        let results = &test.agent_status().results;
+        if results.is_empty() {
+            self.results.push(ResultRow {
+                name,
+                object_type: "Test".to_string(),
+                state,
+                passed: None,
+                skipped: None,
+                failed: None,
+            })
+        } else {
+            for (test_count, result) in results.iter().enumerate() {
+                let retry_name = if test_count == 0 {
+                    name.clone()
+                } else {
+                    format!("{}-retry-{}", name, test_count)
+                };
+                self.results.push(ResultRow {
+                    name: retry_name,
+                    object_type: "Test".to_string(),
+                    state: state.clone(),
+                    passed: Some(result.num_passed),
+                    skipped: Some(result.num_skipped),
+                    failed: Some(result.num_failed),
+                });
+            }
+        }
+    }
+
+    fn add_resource(&mut self, resource: &Resource) {
+        let name = resource.name();
+        let mut create_state = TaskState::Unknown;
+        let mut delete_state = TaskState::Unknown;
+        if let Some(status) = resource.status() {
+            create_state = status.creation.task_state;
+            delete_state = status.destruction.task_state;
+        }
+        let state = match delete_state {
+            TaskState::Unknown => create_state,
+            _ => delete_state,
+        };
+
+        self.results.push(ResultRow {
+            name,
+            object_type: "Resource".to_string(),
+            state: state.to_string(),
+            passed: None,
+            skipped: None,
+            failed: None,
+        });
+    }
+
+    fn add_controller(&mut self, running: bool) {
+        self.results.push(ResultRow {
+            name: "Controller".to_string(),
+            object_type: "Controller".to_string(),
+            state: if running { "Running" } else { "" }.to_string(),
+            passed: None,
+            skipped: None,
+            failed: None,
+        });
+    }
+
     fn draw(&self) {
         if self.width
             < self.min_name_width
@@ -396,7 +279,7 @@ impl Results {
     }
 }
 
-#[derive(Tabled, Default, Clone)]
+#[derive(Tabled, Default, Clone, Serialize)]
 struct ResultRow {
     #[header("NAME")]
     name: String,
