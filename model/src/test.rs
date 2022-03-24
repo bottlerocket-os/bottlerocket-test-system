@@ -108,7 +108,7 @@ pub enum TestUserState {
     /// The test state cannot be determined.
     Unknown,
     /// The test has not yet started its test agent, it might be waiting for resources.
-    Starting,
+    Waiting,
     /// The test agent container is running.
     Running,
     /// The test agent container finished successfully but reported no tests.
@@ -166,7 +166,7 @@ impl Test {
         match agent_status.task_state {
             TaskState::Unknown => {
                 if self.has_finalizer(FINALIZER_MAIN) {
-                    TestUserState::Starting
+                    TestUserState::Waiting
                 } else {
                     TestUserState::Unknown
                 }
