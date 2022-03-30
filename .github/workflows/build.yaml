@@ -13,7 +13,7 @@ jobs:
   build:
     runs-on: [self-hosted, linux, x64]
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - run: rustup update stable
       - run: make build
         # If we forget to add yamlgen changes to our commits, this will fail.
@@ -30,12 +30,12 @@ jobs:
   images:
     runs-on: [ self-hosted, linux, x64 ]
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - run: make images
   license-check:
     # A small machine is OK for this independent job.
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - run: rustup update stable
       - run: make cargo-deny
