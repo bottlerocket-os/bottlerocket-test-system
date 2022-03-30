@@ -1,6 +1,8 @@
 /*!
 
-This is the command line interface for setting up a TestSys Cluster and running tests in it.
+This is the an example command line interface for setting up a TestSys Cluster and running tests in
+it. This started out as a prototype for the `testsys` CLI in the Bottlerocket repo, and is left here
+for reference.
 
 !*/
 

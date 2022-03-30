@@ -41,7 +41,7 @@ export EKS_CLUSTER_NAME=external-cluster
 export KUBECONFIG="/tmp/${TESTSYS_CLUSTER_NAME}.yaml"
 export EKS_REGION="us-west-2"
 export CARGO_HOME="${TESTSYS_DIR}/.cargo"
-alias testsys="${TESTSYS_DIR}/.cargo/bin/testsys"
+alias testsys="${TESTSYS_DIR}/.cargo/bin/cli"
 ```
 
 Install the `testsys` command line tool into the local CARGO_HOME and build the containers we need:
