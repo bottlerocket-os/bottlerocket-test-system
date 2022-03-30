@@ -2,6 +2,7 @@ use aws_sdk_ec2::model::Filter;
 use aws_sdk_ec2::types::SdkError;
 use aws_sdk_iam::error::{GetInstanceProfileError, GetInstanceProfileErrorKind};
 use aws_sdk_iam::output::GetInstanceProfileOutput;
+use aws_types::sdk_config::SdkConfig;
 use bottlerocket_agents::aws_resource_config;
 use bottlerocket_types::agent_config::{EcsClusterConfig, AWS_CREDENTIALS_SECRET_NAME};
 use model::{Configuration, SecretName};
@@ -211,7 +212,7 @@ async fn instance_profile_arn(iam_client: &aws_sdk_iam::Client) -> ProviderResul
 }
 
 async fn created_cluster(
-    shared_config: &aws_config::Config,
+    shared_config: &SdkConfig,
     cluster_name: &str,
     region: String,
     vpc: Option<String>,

@@ -3,6 +3,7 @@ use aws_sdk_ec2::types::SdkError;
 use aws_sdk_eks::error::{DescribeClusterError, DescribeClusterErrorKind};
 use aws_sdk_eks::model::{Cluster, IpFamily};
 use aws_sdk_eks::output::DescribeClusterOutput;
+use aws_types::SdkConfig;
 use bottlerocket_agents::{
     aws_resource_config, impl_display_as_json, json_display, provider_error_for_cmd_output,
     setup_resource_env,
@@ -100,7 +101,7 @@ struct AwsClients {
 }
 
 impl AwsClients {
-    async fn new(shared_config: &aws_config::Config) -> Self {
+    async fn new(shared_config: &SdkConfig) -> Self {
         Self {
             eks_client: aws_sdk_eks::Client::new(shared_config),
             ec2_client: aws_sdk_ec2::Client::new(shared_config),

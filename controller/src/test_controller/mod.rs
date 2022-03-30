@@ -1,10 +1,10 @@
-use crate::constants::REQUEUE;
+use crate::constants::requeue;
 use crate::error::ReconciliationError;
 use crate::test_controller::context::{new_context, Context};
 use crate::test_controller::reconcile::reconcile;
 use futures::StreamExt;
 use kube::api::ListParams;
-use kube_runtime::controller::ReconcilerAction;
+use kube_runtime::controller::Action as RequeueAction;
 use kube_runtime::{controller, Controller};
 use log::{debug, error};
 
@@ -30,7 +30,7 @@ pub(super) async fn run_test_controller(client: kube::Client) {
 }
 
 /// `handle_reconciliation_error` is called when `reconcile` returns an error.
-fn handle_reconciliation_error(e: &ReconciliationError, _: Context) -> ReconcilerAction {
+fn handle_reconciliation_error(e: &ReconciliationError, _: Context) -> RequeueAction {
     error!("Reconciliation error: {}", e);
-    REQUEUE
+    requeue()
 }

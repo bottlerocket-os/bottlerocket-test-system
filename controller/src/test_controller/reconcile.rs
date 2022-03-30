@@ -1,19 +1,24 @@
-use crate::constants::{NO_REQUEUE, REQUEUE, REQUEUE_SLOW};
+use crate::constants::{no_requeue, requeue, requeue_slow};
 use crate::error::{ReconciliationResult, Result};
 use crate::job::{JobBuilder, JobType};
 use crate::test_controller::action::{determine_action, Action};
 use crate::test_controller::context::{Context, TestInterface};
 use anyhow::Context as AnyhowContext;
-use kube_runtime::controller::ReconcilerAction;
+use kube_runtime::controller::Action as RequeueAction;
 use log::{debug, error, trace};
 use model::clients::CrdClient;
 use model::constants::{ENV_TEST_NAME, FINALIZER_MAIN, FINALIZER_TEST_JOB};
 use model::Test;
+use std::ops::Deref;
+use std::sync::Arc;
 
 /// `reconcile` is called when a new `Test` object arrives, or when a `Test` object has been
 /// re-queued. This is the entrypoint to the controller logic.
-pub(crate) async fn reconcile(t: Test, context: Context) -> ReconciliationResult<ReconcilerAction> {
-    let mut t = TestInterface::new(t, context)?;
+pub(crate) async fn reconcile(
+    t: Arc<Test>,
+    context: Context,
+) -> ReconciliationResult<RequeueAction> {
+    let mut t = TestInterface::new(t.deref().clone(), context)?;
     let action = determine_action(&t).await?;
     trace!("action {:?}", action);
     match action {
@@ -22,7 +27,7 @@ pub(crate) async fn reconcile(t: Test, context: Context) -> ReconciliationResult
                 .initialize_status(t.name())
                 .await
                 .context(format!("Unable to initialize status for '{}'", t.name()))?;
-            Ok(REQUEUE)
+            Ok(requeue())
         }
         // Action::Acknowledge => acknowledge_new_test(&mut test).await,
         Action::AddMainFinalizer => {
@@ -30,9 +35,9 @@ pub(crate) async fn reconcile(t: Test, context: Context) -> ReconciliationResult
                 .add_finalizer(FINALIZER_MAIN, t.test())
                 .await
                 .context(format!("Unable to add main finalizer for '{}'", t.name()))?;
-            Ok(REQUEUE)
+            Ok(requeue())
         }
-        Action::WaitForResources => Ok(REQUEUE),
+        Action::WaitForResources => Ok(requeue()),
         Action::RegisterResourceCreationError(msg) => {
             t.test_client()
                 .send_resource_error(t.name(), &msg)
@@ -42,31 +47,31 @@ pub(crate) async fn reconcile(t: Test, context: Context) -> ReconciliationResult
                     msg,
                     t.name()
                 ))?;
-            Ok(REQUEUE_SLOW)
+            Ok(requeue())
         }
-        Action::WaitForDependency(_) => Ok(REQUEUE),
+        Action::WaitForDependency(_) => Ok(requeue()),
         Action::AddJobFinalizer => {
             t.test_client()
                 .add_finalizer(FINALIZER_TEST_JOB, t.test())
                 .await
                 .context(format!("Unable to add job finalizer for '{}'", t.name()))?;
-            Ok(REQUEUE)
+            Ok(requeue())
         }
         Action::StartTest => {
             create_job(&mut t).await?;
-            Ok(REQUEUE)
+            Ok(requeue())
         }
-        Action::WaitForTest => Ok(REQUEUE),
+        Action::WaitForTest => Ok(requeue()),
         Action::DeleteJob => {
             t.delete_job().await?;
-            Ok(REQUEUE)
+            Ok(requeue())
         }
         Action::RemoveJobFinalizer => {
             t.test_client()
                 .remove_finalizer(FINALIZER_TEST_JOB, t.test())
                 .await
                 .context(format!("Unable to remove job finalizer for '{}'", t.name()))?;
-            Ok(REQUEUE)
+            Ok(requeue())
         }
         Action::RemoveMainFinalizer => {
             t.test_client()
@@ -76,15 +81,15 @@ pub(crate) async fn reconcile(t: Test, context: Context) -> ReconciliationResult
                     "Unable to remove main finalizer for '{}'",
                     t.name()
                 ))?;
-            Ok(NO_REQUEUE)
+            Ok(no_requeue())
         }
         Action::TestDone => {
             debug!("Test '{}' is done", t.name());
-            Ok(REQUEUE_SLOW)
+            Ok(requeue_slow())
         }
         Action::Error(state) => {
             error!("Error state for test '{}': {}", t.name(), state);
-            Ok(REQUEUE_SLOW)
+            Ok(requeue_slow())
         }
     }
 }
