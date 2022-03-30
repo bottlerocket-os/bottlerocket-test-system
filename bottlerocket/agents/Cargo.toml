@@ -9,20 +9,20 @@ license = "MIT OR Apache-2.0"
 agent-common = { path = "../../agent/agent-common" }
 bottlerocket-types = { path = "../types" }
 async-trait = "0.1"
-aws-config = "0.8"
-aws-types = "0.8"
-aws-sdk-ec2 = "0.8"
-aws-sdk-ecs = "0.8"
-aws-sdk-eks = "0.8"
-aws-sdk-iam = "0.8"
-aws-sdk-ssm = "0.8"
-aws-sdk-sts = "0.8"
-aws-smithy-types = "0.38"
+aws-config = "0.9"
+aws-types = "0.9"
+aws-sdk-ec2 = "0.9"
+aws-sdk-ecs = "0.9"
+aws-sdk-eks = "0.9"
+aws-sdk-iam = "0.9"
+aws-sdk-ssm = "0.9"
+aws-sdk-sts = "0.9"
+aws-smithy-types = "0.39"
 base64 = "0.13.0"
 env_logger = "0.9"
 hex ="0.4.3"
 k8s-openapi = { version = "0.14", default-features = false, features = ["v1_20"] }
-kube = { version = "0.67", default-features = false, features = ["config", "derive", "client"] }
+kube = { version = "0.70", default-features = false, features = ["config", "derive", "client"] }
 log = "0.4"
 maplit = "1.0.2"
 model = { path = "../../model" }

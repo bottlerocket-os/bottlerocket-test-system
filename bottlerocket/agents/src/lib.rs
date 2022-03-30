@@ -15,6 +15,7 @@ use aws_config::meta::region::RegionProviderChain;
 use aws_config::RetryConfig;
 use aws_sdk_ec2::Region;
 use aws_smithy_types::retry::RetryMode;
+use aws_types::SdkConfig;
 use env_logger::Builder;
 use log::{info, LevelFilter};
 use model::SecretName;
@@ -79,7 +80,7 @@ pub async fn aws_test_config<R>(
     aws_secret_name: &Option<SecretName>,
     assume_role: &Option<String>,
     region: &Option<String>,
-) -> Result<aws_config::Config, R::E>
+) -> Result<SdkConfig, R::E>
 where
     R: Runner,
     <R as Runner>::E: From<Error>,
@@ -225,7 +226,7 @@ pub async fn aws_resource_config<I>(
     assume_role: &Option<String>,
     region: &Option<String>,
     resources: Resources,
-) -> ProviderResult<aws_config::Config>
+) -> ProviderResult<SdkConfig>
 where
     I: InfoClient,
 {

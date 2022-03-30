@@ -1,7 +1,7 @@
 mod action;
 mod context;
 
-use crate::constants::REQUEUE;
+use crate::constants::requeue;
 use crate::error::{ReconciliationError, ReconciliationResult, Result};
 use crate::resource_controller::action::{
     action, Action, CreationAction, DestructionAction, ErrorState,
@@ -11,12 +11,14 @@ use anyhow::Context as AnyhowContext;
 use futures::StreamExt;
 use kube::api::ListParams;
 use kube::{Api, Client};
-use kube_runtime::controller::ReconcilerAction;
+use kube_runtime::controller::Action as RequeueAction;
 use kube_runtime::{controller, Controller};
 use log::{debug, error, trace, warn};
 use model::clients::CrdClient;
 use model::constants::{FINALIZER_CREATION_JOB, FINALIZER_MAIN, FINALIZER_RESOURCE, NAMESPACE};
 use model::{CrdExt, ErrorResources, Resource, ResourceAction, ResourceError};
+use std::ops::Deref;
+use std::sync::Arc;
 
 pub(crate) async fn run_resource_controller(client: Client) {
     let context = new_context(client.clone());
@@ -39,8 +41,11 @@ pub(crate) async fn run_resource_controller(client: Client) {
     .await;
 }
 
-pub(super) async fn reconcile(r: Resource, ctx: Context) -> ReconciliationResult<ReconcilerAction> {
-    let interface = ResourceInterface::new(r, ctx)?;
+pub(super) async fn reconcile(
+    r: Arc<Resource>,
+    ctx: Context,
+) -> ReconciliationResult<RequeueAction> {
+    let interface = ResourceInterface::new(r.deref().clone(), ctx)?;
     trace!(
         "Reconciling resource: {}",
         interface.resource().object_name()
@@ -54,7 +59,7 @@ pub(super) async fn reconcile(r: Resource, ctx: Context) -> ReconciliationResult
             do_destruction_action(interface, destruction_action).await?
         }
     }
-    Ok(REQUEUE)
+    Ok(requeue())
 }
 
 async fn do_creation_action(r: ResourceInterface, action: CreationAction) -> Result<()> {
@@ -192,7 +197,7 @@ async fn handle_error_state(r: &ResourceInterface, a: ResourceAction, e: ErrorSt
 }
 
 /// `handle_reconciliation_error` is called when `reconcile` returns an error.
-pub(crate) fn handle_reconciliation_error(e: &ReconciliationError, _: Context) -> ReconcilerAction {
+pub(crate) fn handle_reconciliation_error(e: &ReconciliationError, _: Context) -> RequeueAction {
     error!("Resource reconciliation error: {}", e);
-    REQUEUE
+    requeue()
 }
