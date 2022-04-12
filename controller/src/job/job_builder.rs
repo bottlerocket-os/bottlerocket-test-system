@@ -33,10 +33,9 @@ impl JobBuilder<'_> {
     pub(crate) async fn deploy(self, client: kube::Client) -> JobResult<Job> {
         let job = self.build();
         let api: Api<Job> = Api::namespaced(client, NAMESPACE);
-        Ok(api
-            .create(&PostParams::default(), &job)
+        api.create(&PostParams::default(), &job)
             .await
-            .map_err(JobError::create)?)
+            .map_err(JobError::create)
     }
 
     fn build(self) -> Job {
