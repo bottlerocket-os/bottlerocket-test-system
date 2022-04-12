@@ -4,11 +4,11 @@ members = [
     "agent/resource-agent",
     "agent/test-agent",
     "bottlerocket/agents",
+    "bottlerocket/testsys",
     "bottlerocket/types",
     "controller",
     "model",
     "selftest",
-    "testsys",
     "yamlgen",
 ]
 
