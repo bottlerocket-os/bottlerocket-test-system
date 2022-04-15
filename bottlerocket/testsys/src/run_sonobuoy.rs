@@ -1,5 +1,6 @@
 use crate::error::{self, Result};
-use bottlerocket_types::agent_config::{SonobuoyConfig, SonobuoyMode, AWS_CREDENTIALS_SECRET_NAME};
+use crate::testsys_types::{create_plugin_config, SonobuoyPluginConfig};
+use bottlerocket_types::agent_config::{SonobuoyConfig, AWS_CREDENTIALS_SECRET_NAME};
 use kube::{api::ObjectMeta, Client};
 use model::clients::CrdClient;
 use model::constants::NAMESPACE;
@@ -43,14 +44,8 @@ pub(crate) struct RunSonobuoy {
     keep_running: bool,
 
     /// The plugin used for the sonobuoy test. Normally this is `e2e` (the default).
-    #[structopt(long, default_value = "e2e")]
-    plugin: String,
-
-    /// The mode used for the sonobuoy test. One of `non-disruptive-conformance`,
-    /// `certified-conformance`, `quick`. Although the Sonobuoy binary defaults to
-    /// `non-disruptive-conformance`, we default to `quick` to make a quick test the most ergonomic.
-    #[structopt(long, default_value = "quick")]
-    mode: SonobuoyMode,
+    #[structopt(flatten)]
+    sonobuoy_plugin: SonobuoyPluginConfig,
 
     /// The kubernetes conformance image used for the sonobuoy test.
     #[structopt(long)]
@@ -100,8 +95,7 @@ impl RunSonobuoy {
                     configuration: Some(
                         SonobuoyConfig {
                             kubeconfig_base64: kubeconfig_string,
-                            plugin: self.plugin.clone(),
-                            mode: self.mode,
+                            plugin: create_plugin_config(&self.sonobuoy_plugin)?,
                             kubernetes_version: None,
                             kube_conformance_image: self.kubernetes_conformance_image.clone(),
                             assume_role: self.assume_role.clone(),

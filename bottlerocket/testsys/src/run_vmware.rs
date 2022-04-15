@@ -1,8 +1,8 @@
 use crate::error::{self, Result};
+use crate::testsys_types::{create_plugin_config, SonobuoyPluginConfig};
 use bottlerocket_types::agent_config::{
-    MigrationConfig, SonobuoyConfig, SonobuoyMode, TufRepoConfig, VSphereClusterInfo,
-    VSphereVmConfig, AWS_CREDENTIALS_SECRET_NAME, VSPHERE_CREDENTIALS_SECRET_NAME,
-    WIREGUARD_SECRET_NAME,
+    MigrationConfig, SonobuoyConfig, TufRepoConfig, VSphereClusterInfo, VSphereVmConfig,
+    AWS_CREDENTIALS_SECRET_NAME, VSPHERE_CREDENTIALS_SECRET_NAME, WIREGUARD_SECRET_NAME,
 };
 use kube::ResourceExt;
 use kube::{api::ObjectMeta, Client};
@@ -40,14 +40,8 @@ pub(crate) struct RunVmware {
     keep_running: bool,
 
     /// The plugin used for the sonobuoy test. Normally this is `e2e` (the default).
-    #[structopt(long, default_value = "e2e")]
-    sonobuoy_plugin: String,
-
-    /// The mode used for the sonobuoy test. One of `non-disruptive-conformance`,
-    /// `certified-conformance`, `quick`. Although the Sonobuoy binary defaults to
-    /// `non-disruptive-conformance`, we default to `quick` to make a quick test the most ergonomic.
-    #[structopt(long, default_value = "quick")]
-    sonobuoy_mode: SonobuoyMode,
+    #[structopt(flatten)]
+    sonobuoy_plugin: SonobuoyPluginConfig,
 
     /// The kubernetes conformance image used for the sonobuoy test.
     #[structopt(long)]
@@ -392,8 +386,7 @@ impl RunVmware {
                     configuration: Some(
                         SonobuoyConfig {
                             kubeconfig_base64: encoded_kubeconfig.to_string(),
-                            plugin: self.sonobuoy_plugin.clone(),
-                            mode: self.sonobuoy_mode,
+                            plugin: create_plugin_config(&self.sonobuoy_plugin)?,
                             kubernetes_version: None,
                             kube_conformance_image: self.kubernetes_conformance_image.clone(),
                             assume_role: self.assume_role.clone(),
