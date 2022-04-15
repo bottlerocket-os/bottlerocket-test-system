@@ -9,7 +9,7 @@ license = "MIT OR Apache-2.0"
 agent-common = { path = "../../agent/agent-common" }
 bottlerocket-types = { path = "../types" }
 async-trait = "0.1"
-aws-config = "0.9"
+aws-config = "0.10"
 aws-types = "0.9"
 aws-sdk-ec2 = "0.9"
 aws-sdk-ecs = "0.9"
