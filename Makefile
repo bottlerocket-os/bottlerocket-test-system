@@ -1,10 +1,5 @@
 TOP := $(dir $(firstword $(MAKEFILE_LIST)))
 
-.PHONY: build sdk-openssl example-test-agent example-resource-agent \
-	controller images sonobuoy-test-agent integ-test ec2-resource-agent \
-	eks-resource-agent ecs-resource-agent show-variables migration-test-agent \
-	vsphere-vm-resource-agent ecs-test-agent cargo-deny
-
 TESTSYS_BUILD_HOST_UNAME_ARCH=$(shell uname -m)
 TESTSYS_BUILD_HOST_GOARCH ?= $(lastword $(subst :, ,$(filter $(TESTSYS_BUILD_HOST_UNAME_ARCH):%,x86_64:amd64 aarch64:arm64)))
 TESTSYS_BUILD_HOST_PLATFORM=$(shell uname | tr '[:upper:]' '[:lower:]')
@@ -15,6 +10,12 @@ BOTTLEROCKET_SDK_VERSION = v0.25.1
 BOTTLEROCKET_SDK_ARCH = $(TESTSYS_BUILD_HOST_UNAME_ARCH)
 
 BUILDER_IMAGE = public.ecr.aws/bottlerocket/bottlerocket-sdk-$(BOTTLEROCKET_SDK_ARCH):$(BOTTLEROCKET_SDK_VERSION)
+
+IMAGES = controller sonobuoy-test-agent ec2-resource-agent eks-resource-agent ecs-resource-agent \
+	migration-test-agent vsphere-vm-resource-agent ecs-test-agent
+
+.PHONY: build sdk-openssl example-test-agent example-resource-agent \
+	images fetch integ-test show-variables cargo-deny $(IMAGES)
 
 export DOCKER_BUILDKIT=1
 export CARGO_HOME = $(TOP)/.cargo
@@ -30,8 +31,7 @@ show-variables:
 fetch:
 	cargo fetch --locked
 
-images: fetch controller sonobuoy-test-agent ec2-resource-agent eks-resource-agent ecs-resource-agent \
-	migration-test-agent vsphere-vm-resource-agent
+images: fetch $(IMAGES)
 
 # Builds, Lints and Tests the Rust workspace
 build: fetch
