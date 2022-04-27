@@ -1,0 +1,30 @@
+[package]
+name = "testsys"
+version = "0.1.0"
+edition = "2021"
+publish = false
+license = "MIT OR Apache-2.0"
+
+[dependencies]
+anyhow = "1.0"
+clap = { version = "3.1", features = ["derive"] }
+env_logger = "0.9"
+futures = "0.3.8"
+log = "0.4"
+model = { path = "../model" }
+serde = "1"
+serde_json = "1"
+serde_plain = "1"
+terminal_size = "0.1"
+tokio = { version = "1", features = ["macros", "rt-multi-thread", "fs"] }
+
+[dev-dependencies]
+assert_cmd = "2.0"
+selftest = { path = "../selftest" }
+
+[build-dependencies]
+yamlgen = { path = "../yamlgen" }
+
+[features]
+# The `integ` feature enables integration tests. These tests require docker and kind.
+integ = []

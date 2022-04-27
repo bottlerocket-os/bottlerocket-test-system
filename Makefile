@@ -45,7 +45,7 @@ build: fetch
 	cargo test --locked
 	cargo test --features integ --no-run
 	# We've seen cases where this can fail with a version conflict, so we need to make sure it's working
-	cargo install --path ./bottlerocket/testsys --force
+	cargo install --path ./cli --force
 
 # Build the container image for the example test-agent program
 example-test-agent: show-variables fetch
