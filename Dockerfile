@@ -191,7 +191,8 @@ RUN mkdir -p /usr/share/licenses/aws-iam-authenticator && \
     chown -R builder:builder /usr/share/licenses/aws-iam-authenticator
 
 ARG AWS_IAM_AUTHENTICATOR_VERSION=0.5.3
-ARG AWS_IAM_AUTHENTICATOR_SOURCE_URL="https://github.com/kubernetes-sigs/aws-iam-authenticator/archive/refs/tags/v${AWS_IAM_AUTHENTICATOR_VERSION}.tar.gz"
+ARG AWS_IAM_AUTHENTICATOR_SHA512_SUM=430af9fd04b9a94205a485281fb668f5bc18cdac569de0232fa98e08ebb0e08a8d233537bd3373a5f1e53cf529bc2050aebc34a4a53c8b29a831070e34213210
+ARG AWS_IAM_AUTHENTICATOR_SOURCE_URL="https://cache.bottlerocket.aws/aws-iam-authenticator-${AWS_IAM_AUTHENTICATOR_VERSION}.tar.gz/${AWS_IAM_AUTHENTICATOR_SHA512_SUM}/aws-iam-authenticator-${AWS_IAM_AUTHENTICATOR_VERSION}.tar.gz"
 
 USER builder
 WORKDIR /home/builder/
