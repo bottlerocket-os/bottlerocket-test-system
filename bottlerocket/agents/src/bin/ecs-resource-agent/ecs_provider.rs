@@ -5,6 +5,7 @@ use aws_sdk_iam::output::GetInstanceProfileOutput;
 use aws_types::sdk_config::SdkConfig;
 use bottlerocket_agents::aws_resource_config;
 use bottlerocket_types::agent_config::{EcsClusterConfig, AWS_CREDENTIALS_SECRET_NAME};
+use log::{error, info};
 use model::{Configuration, SecretName};
 use resource_agent::clients::InfoClient;
 use resource_agent::provider::{
@@ -74,6 +75,7 @@ impl Create for EcsCreator {
     where
         I: InfoClient,
     {
+        info!("Creating ECS cluster");
         let mut memo: Memo = client
             .get_info()
             .await
@@ -100,6 +102,7 @@ impl Create for EcsCreator {
         let ecs_client = aws_sdk_ecs::Client::new(&config);
         let iam_client = aws_sdk_iam::Client::new(&config);
 
+        info!("Creating cluster '{}'", spec.configuration.cluster_name);
         ecs_client
             .create_cluster()
             .cluster_name(&spec.configuration.cluster_name)
@@ -107,8 +110,10 @@ impl Create for EcsCreator {
             .await
             .context(Resources::Clear, "The cluster could not be created.")?;
 
+        info!("Creating instance profile");
         let iam_arn = create_iam_instance_profile(&iam_client).await?;
 
+        info!("Getting cluster information");
         let created_cluster = created_cluster(
             &config,
             &spec.configuration.cluster_name,
@@ -301,6 +306,7 @@ impl Destroy for EcsDestroyer {
     where
         I: InfoClient,
     {
+        info!("Running destroy");
         let mut memo: Memo = client
             .get_info()
             .await
@@ -316,6 +322,10 @@ impl Destroy for EcsDestroyer {
         .await?;
         let ecs_client = aws_sdk_ecs::Client::new(&config);
 
+        info!(
+            "Deleting cluster '{}'",
+            memo.cluster_name.as_deref().unwrap_or_default()
+        );
         if let Some(cluster_name) = &memo.cluster_name {
             ecs_client
                 .delete_cluster()
@@ -326,13 +336,14 @@ impl Destroy for EcsDestroyer {
 
             memo.current_status = "Cluster deleted".into();
             if let Err(e) = client.send_info(memo.clone()).await {
-                eprintln!(
+                error!(
                     "Cluster deleted but failed to send info message to k8s: {}",
                     e
                 )
             }
         }
 
+        info!("Done with cluster deletion");
         Ok(())
     }
 }
