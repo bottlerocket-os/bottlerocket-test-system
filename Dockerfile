@@ -152,7 +152,7 @@ USER root
 RUN mkdir -p /usr/share/licenses/sonobuoy && \
     chown -R builder:builder /usr/share/licenses/sonobuoy
 
-ARG SONOBUOY_VERSION=0.53.2
+ARG SONOBUOY_VERSION=0.56.4
 ARG SONOBUOY_SOURCE_URL="https://github.com/vmware-tanzu/sonobuoy/archive/refs/tags/v${SONOBUOY_VERSION}.tar.gz"
 
 ARG GOARCH

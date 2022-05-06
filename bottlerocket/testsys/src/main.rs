@@ -24,6 +24,7 @@ mod run_sonobuoy;
 mod run_vmware;
 mod set;
 mod status;
+mod testsys_types;
 
 use crate::k8s::k8s_client;
 use env_logger::Builder;

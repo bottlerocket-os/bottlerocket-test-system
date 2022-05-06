@@ -51,8 +51,7 @@ derive_fromstr_from_deserialize!(SonobuoyMode);
 #[serde(rename_all = "camelCase")]
 pub struct SonobuoyConfig {
     pub kubeconfig_base64: String,
-    pub plugin: String,
-    pub mode: SonobuoyMode,
+    pub plugin: SonobuoyPluginConfig,
     /// This will be passed to `sonobuoy run` as `--kubernetes-version` if `kube_conformance_image`
     /// is `None`. **Caution**: if you provide `kubernetes_version`, it must precisely match the
     /// control plane version. If it is off by even a patch-level from the control plane, some tests
@@ -64,6 +63,63 @@ pub struct SonobuoyConfig {
 }
 
 impl Configuration for SonobuoyConfig {}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub enum SonobuoyPluginConfig {
+    /// The path to a sonobuoy plugin i.e (https://raw.githubusercontent.com/vmware-tanzu/sonobuoy-plugins/master/cis-benchmarks/kube-bench-plugin.yaml)
+    Path(String),
+    /// Base64 encoded sonobuoy custom plugin yaml.
+    EncodedYaml { name: String, encoded_yaml: String },
+    /// A simple custom sonobuoy plugin.
+    CustomPlugin {
+        name: String,
+        image: String,
+        result_format: ResultFormat,
+    },
+    /// e2e sonobuoy testing
+    E2E(SonobuoyMode),
+}
+
+impl Default for SonobuoyPluginConfig {
+    fn default() -> Self {
+        Self::Path("e2e".to_string())
+    }
+}
+
+impl SonobuoyPluginConfig {
+    pub fn name(&self) -> &str {
+        match self {
+            Self::Path(path) => path,
+            Self::EncodedYaml {
+                name,
+                encoded_yaml: _,
+            } => name,
+            Self::CustomPlugin {
+                name,
+                image: _,
+                result_format: _,
+            } => name,
+            Self::E2E(_) => "e2e",
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub enum ResultFormat {
+    /// A single tarball should be added to `/tmp/results/done` when the test is completed
+    Raw,
+    Junit,
+    /// The `Vec<String>` represents the results file locations. If empty, sonobuoy will look at `/tmp/results/sonobuoy_results.yaml` for test results
+    Manual(Vec<String>),
+}
+
+impl Default for ResultFormat {
+    fn default() -> Self {
+        Self::Raw
+    }
+}
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]

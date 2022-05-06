@@ -72,6 +72,9 @@ pub enum Error {
     #[snafu(display("{}", source))]
     DeserializeJson { source: serde_json::Error },
 
+    #[snafu(display("{}", source))]
+    DeserializeYaml { source: serde_yaml::Error },
+
     #[snafu(display("Missing '{}' field from sonobuoy status", field))]
     MissingSonobuoyStatusField { field: String },
 
