@@ -7,6 +7,7 @@ Provides (or queries) an ECS cluster for use in Bottlerocket testing.
 mod ecs_provider;
 
 use crate::ecs_provider::{EcsCreator, EcsDestroyer};
+use bottlerocket_agents::init_agent_logger;
 use resource_agent::clients::{DefaultAgentClient, DefaultInfoClient};
 use resource_agent::error::AgentResult;
 use resource_agent::{Agent, BootstrapData, Types};
@@ -14,6 +15,7 @@ use std::marker::PhantomData;
 
 #[tokio::main]
 async fn main() {
+    init_agent_logger(env!("CARGO_CRATE_NAME"), None);
     let data = match BootstrapData::from_env() {
         Ok(ok) => ok,
         Err(e) => {
