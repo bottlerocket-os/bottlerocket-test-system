@@ -31,7 +31,9 @@ jobs:
     runs-on: [ self-hosted, linux, x64 ]
     steps:
       - uses: actions/checkout@v3
-      - run: make images
+      # TODO - for most PRs we should use the published container image instead of building each time
+      - run: make tools -e TOOLS_IMAGE=localtools:latest
+      - run: make images -e TOOLS_IMAGE=localtools:latest
   license-check:
     # A small machine is OK for this independent job.
     runs-on: ubuntu-latest
