@@ -10,7 +10,7 @@ agent-common = { version = "0.1.0", path = "../../agent/agent-common" }
 bottlerocket-types = { version = "0.1.0", path = "../types" }
 async-trait = "0.1"
 aws-config = "0.11"
-aws-types = "0.11"
+aws-types = "0.12"
 aws-sdk-ec2 = "0.11"
 aws-sdk-ecs = "0.11"
 aws-sdk-eks = "0.11"
