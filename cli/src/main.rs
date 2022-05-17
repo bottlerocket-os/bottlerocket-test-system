@@ -4,73 +4,64 @@ This is the command line interface for setting up a TestSys Cluster and running 
 
 !*/
 
-mod add;
-mod add_aws_secret;
 mod add_secret;
-mod add_secret_map;
 mod delete;
 mod error;
 mod install;
-mod k8s;
 mod logs;
 mod restart;
 mod restart_test;
 mod results;
 mod run;
-mod run_aws_ecs;
-mod run_aws_k8s;
 mod run_file;
-mod run_sonobuoy;
-mod run_vmware;
-mod set;
 mod status;
 
-use crate::k8s::k8s_client;
+use clap::Parser;
 use env_logger::Builder;
-use error::Result;
+// use error::{IntoError, Result};
+use anyhow::{Context, Result};
 use log::LevelFilter;
+use model::test_manager::TestManager;
 use std::path::PathBuf;
-use structopt::StructOpt;
 
 /// The command line interface for setting up a Bottlerocket TestSys cluster and running tests.
-#[derive(Debug, StructOpt)]
+#[derive(Debug, Parser)]
+#[clap(author, version, about)]
 struct Args {
     /// Set logging verbosity [trace|debug|info|warn|error]. If the environment variable `RUST_LOG`
     /// is present, it overrides the default logging behavior. See https://docs.rs/env_logger/latest
-    #[structopt(long = "log-level", default_value = "info")]
+    #[clap(long = "log-level", default_value = "info")]
     log_level: LevelFilter,
     /// Path to the kubeconfig file. Also can be passed with the KUBECONFIG environment variable.
-    #[structopt(long = "kubeconfig")]
+    #[clap(long = "kubeconfig")]
     kubeconfig: Option<PathBuf>,
-    #[structopt(subcommand)]
+    #[clap(subcommand)]
     command: Command,
 }
 
-#[derive(Debug, StructOpt)]
+#[derive(Debug, Parser)]
 enum Command {
-    /// Install TestSys components into the cluster.
+    /// Install testsys components into the cluster.
     Install(install::Install),
-    /// Run a TestSys test.
-    Run(run::Run),
-    /// Check the status of a TestSys test.
-    Status(status::Status),
-    /// Add various components to the cluster.
-    Add(add::Add),
-    /// Set a field of a TestSys test.
-    Set(set::Set),
-    /// Retrieve the results tar from the test.
-    Results(results::Results),
-    /// Retrieve the logs for a test pod.
-    Logs(logs::Logs),
-    /// Delete a testsys object.
-    Delete(delete::Delete),
-    /// Restart a testsys test.
+    /// Restart a test.
     Restart(restart::Restart),
+    /// Run a testsys test.
+    Run(run::Run),
+    /// Get logs from testsys objects.
+    Logs(logs::Logs),
+    /// Add a secret to a cluster.
+    AddSecret(add_secret::AddSecret),
+    /// Get the status of testsys objects.
+    Status(status::Status),
+    /// Get the result files from a test.
+    Results(results::Results),
+    /// Delete objects from a testsys cluster.
+    Delete(delete::Delete),
 }
 
 #[tokio::main]
 async fn main() {
-    let args = Args::from_args();
+    let args = Args::parse();
     init_logger(args.log_level);
     if let Err(e) = run(args).await {
         eprintln!("{}", e);
@@ -79,17 +70,26 @@ async fn main() {
 }
 
 async fn run(args: Args) -> Result<()> {
-    let k8s_client = k8s_client(&args.kubeconfig).await?;
+    let client = match args.kubeconfig {
+        Some(path) => TestManager::new_from_kubeconfig_path(&path)
+            .await
+            .context(format!(
+                "Unable to create testsys client from path '{:?}'",
+                path
+            ))?,
+        None => TestManager::new()
+            .await
+            .context("Unable to create default testsys client")?,
+    };
     match args.command {
-        Command::Install(install) => install.run(k8s_client).await,
-        Command::Run(run) => run.run(k8s_client).await,
-        Command::Status(status) => status.run(k8s_client).await,
-        Command::Add(add) => add.run(k8s_client).await,
-        Command::Set(set) => set.run(k8s_client).await,
-        Command::Results(results) => results.run(k8s_client).await,
-        Command::Logs(logs) => logs.run(k8s_client).await,
-        Command::Delete(delete) => delete.run(k8s_client).await,
-        Command::Restart(restart) => restart.run(k8s_client).await,
+        Command::Install(install) => install.run(client).await,
+        Command::Restart(restart) => restart.run(client).await,
+        Command::Run(run) => run.run(client).await,
+        Command::Logs(logs) => logs.run(client).await,
+        Command::AddSecret(add_secret) => add_secret.run(client).await,
+        Command::Status(status) => status.run(client).await,
+        Command::Results(results) => results.run(client).await,
+        Command::Delete(delete) => delete.run(client).await,
     }
 }
 

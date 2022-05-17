@@ -65,17 +65,6 @@ async fn test_system() {
         .await
         .unwrap();
 
-    let mut cmd = Command::cargo_bin("testsys").unwrap();
-    cmd.args(&[
-        "--kubeconfig",
-        cluster.kubeconfig().to_str().unwrap(),
-        "set",
-        "hello-bones-1",
-        "--keep-running",
-        "false",
-    ]);
-    cmd.assert().success();
-
     // Delete everything
     cluster.delete_resource("dup-1").await.unwrap();
     cluster
