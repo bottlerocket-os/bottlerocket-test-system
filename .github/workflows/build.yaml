@@ -8,7 +8,8 @@ on:
     paths-ignore:
       - '**.md'
       - 'design/**'
-    branches: [develop]
+    branches: [develop, monorepo]
+  workflow_dispatch:
 jobs:
   build:
     runs-on: [self-hosted, linux, x64]
