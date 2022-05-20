@@ -31,7 +31,7 @@ impl Status {
         } else {
             let (terminal_size::Width(width), _) =
                 terminal_size::terminal_size().unwrap_or((Width(120), Height(0)));
-            println!("{}", status.to_string(width as usize));
+            println!("{:width$}", status, width = width as usize);
         }
         Ok(())
     }
