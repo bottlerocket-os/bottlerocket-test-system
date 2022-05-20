@@ -6,7 +6,8 @@ use tabled::{Alignment, Full, MaxWidth, MinWidth, Modify, Style, Table, Tabled};
 
 /// `Status` represents the status of a set of testsys objects (including the controller).
 /// `Status::to_string()` is used to create a table representation of the status.
-/// `Status` can also be used with `json::to_string()` to create a json representation of the testsys objects.
+/// `Status` can also be used with `json::to_string()` to create a json representation of the
+/// testsys objects.
 #[derive(Debug, Serialize)]
 pub struct Status {
     controller_status: Option<PodStatus>,

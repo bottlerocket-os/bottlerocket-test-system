@@ -51,13 +51,14 @@ impl TestManager {
         self.create_or_update(false, &test_agent_cluster_role, "Agent Cluster Role")
             .await?;
 
-        // If the role already exists, update it with the new one using Patch. If not create a new role.
+        // If the role already exists, update it with the new one using Patch. If not create a new
+        // role.
         let controller_cluster_role = controller_cluster_role();
         self.create_or_update(false, &controller_cluster_role, "Controller Cluster Role")
             .await?;
 
-        // If the cluster role binding already exists, update it with the new one using Patch. If not
-        // create a new cluster role binding.
+        // If the cluster role binding already exists, update it with the new one using Patch. If
+        // not create a new cluster role binding.
         let agent_cluster_role_binding = agent_cluster_role_binding(agent_type);
         self.create_or_update(
             false,
@@ -66,8 +67,8 @@ impl TestManager {
         )
         .await?;
 
-        // If the cluster role binding already exists, update it with the new one using Patch. If not
-        // create a new cluster role binding.
+        // If the cluster role binding already exists, update it with the new one using Patch. If
+        // not create a new cluster role binding.
         let controller_cluster_role_binding = controller_cluster_role_binding();
         self.create_or_update(
             false,
@@ -80,8 +81,8 @@ impl TestManager {
     }
 
     pub(super) async fn create_service_accts(&self, agent_type: AgentType) -> Result<()> {
-        // If the service accounts already exist, update them with the new ones using Patch.
-        // If not create new service accounts.
+        // If the service accounts already exist, update them with the new ones using Patch. If not
+        // create new service accounts.
         let agent_service_account = agent_service_account(agent_type);
         self.create_or_update(true, &agent_service_account, "Agent Service Account")
             .await?;
@@ -108,8 +109,8 @@ impl TestManager {
     ) -> Result<()> {
         let controller_deployment = controller_deployment(uri, secret);
 
-        // If the controller deployment already exists, update it with the new one using Patch.
-        // If not create a new controller deployment.
+        // If the controller deployment already exists, update it with the new one using Patch. If
+        // not create a new controller deployment.
         self.create_or_update(true, &controller_deployment, "namespace")
             .await
     }
