@@ -2,7 +2,8 @@ use crate::{Crd, TaskState};
 use k8s_openapi::api::core::v1::PodStatus;
 use kube::{core::object::HasStatus, ResourceExt};
 use serde::Serialize;
-use tabled::{Alignment, Full, MaxWidth, MinWidth, Modify, Style, Table, Tabled};
+use tabled::object::Segment;
+use tabled::{Alignment, MaxWidth, MinWidth, Modify, Style, Table, Tabled};
 
 /// `Status` represents the status of a set of testsys objects (including the controller).
 /// `Status::to_string()` is used to create a table representation of the status.
@@ -55,7 +56,7 @@ impl From<&Status> for Table {
 
         Table::new(results)
             .with(Style::blank())
-            .with(Modify::new(Full).with(Alignment::left()))
+            .with(Modify::new(Segment::all()).with(Alignment::left()))
     }
 }
 

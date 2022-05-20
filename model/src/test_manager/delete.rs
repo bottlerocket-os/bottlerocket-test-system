@@ -17,7 +17,7 @@ pub enum DeleteEvent {
 }
 
 impl TestManager {
-    /// Return a stream containing `DeleteEvent` for each object in `deletion_order` that is 
+    /// Return a stream containing `DeleteEvent` for each object in `deletion_order` that is
     /// deleted.
     pub(super) fn delete_sorted_resources(
         &self,
@@ -158,7 +158,7 @@ async fn async_deletion(
                             action: format!("get '{}'", resource_name),
                         })?;
                     if let Some(resource) = resource {
-                        // If the resource errored during deletion alert the user that a problem 
+                        // If the resource errored during deletion alert the user that a problem
                         // occured
                         if resource
                             .status()
