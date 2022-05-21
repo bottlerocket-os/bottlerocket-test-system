@@ -6,7 +6,6 @@ This is the command line interface for setting up a TestSys Cluster and running 
 
 mod add_secret;
 mod delete;
-mod error;
 mod install;
 mod logs;
 mod restart;
@@ -16,10 +15,9 @@ mod run;
 mod run_file;
 mod status;
 
+use anyhow::{Context, Result};
 use clap::Parser;
 use env_logger::Builder;
-// use error::{IntoError, Result};
-use anyhow::{Context, Result};
 use log::LevelFilter;
 use model::test_manager::TestManager;
 use std::path::PathBuf;

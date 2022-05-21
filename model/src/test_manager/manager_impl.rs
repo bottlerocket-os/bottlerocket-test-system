@@ -56,7 +56,8 @@ impl TestManager {
         } else {
             self.api::<T>()
         };
-        // If the data already exists, update it with the new one using a `Patch`. If not create a new one.
+        // If the data already exists, update it with the new one using a `Patch`. If not create a
+        // new one.
         match api.get(&data.name()).await {
             Ok(deployment) => {
                 api.patch(
@@ -91,7 +92,8 @@ impl TestManager {
         Api::<T>::namespaced(self.k8s_client.clone(), NAMESPACE)
     }
 
-    /// Returns a list containing all dependencies for each object in a `Vec<Crd>` including the objects themselves
+    /// Returns a list containing all dependencies for each object in a `Vec<Crd>` including the
+    /// objects themselves
     pub(super) async fn add_dependencies_to_vec(&self, objects: Vec<Crd>) -> Result<Vec<Crd>> {
         let mut dependencies = Vec::new();
         let mut to_be_visited = objects;

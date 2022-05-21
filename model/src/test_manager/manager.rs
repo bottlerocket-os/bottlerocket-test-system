@@ -149,7 +149,8 @@ impl TestManager {
         Ok(())
     }
 
-    /// Restart a crd object by deleting the crd from the cluster and adding a copy of it with its status cleared.
+    /// Restart a crd object by deleting the crd from the cluster and adding a copy of it with its
+    /// status cleared.
     pub async fn restart_test(&self, name: &str) -> Result<()> {
         let test_client = TestClient::new_from_k8s_client(self.k8s_client.clone());
         let mut test = test_client
@@ -250,8 +251,8 @@ impl TestManager {
         Ok(self.delete_sorted_resources(deletion_order))
     }
 
-    /// Delete resources from a testsys cluster based on `SelectionParams`. If `include_dependencies` all objects
-    /// that each item depends on will also be deleted.
+    /// Delete resources from a testsys cluster based on `SelectionParams`. If
+    /// `include_dependencies` all objects that each item depends on will also be deleted.
     pub async fn delete(
         &self,
         selection_params: &SelectionParams,
@@ -266,7 +267,7 @@ impl TestManager {
 
     /// Delete the resource after a failed deletion attempt.
     /// Warning: the physical resources may not be deleted.
-    /// /// The finalizers will be removed from the resource and the resource will be deleted.
+    /// The finalizers will be removed from the resource and the resource will be deleted.
     /// The k8s job for resource deletion will also be deleted.
     /// This should only be used if a resource has already failed to delete.
     /// All tests will be deleted normally.
@@ -295,9 +296,11 @@ impl TestManager {
         Ok(())
     }
 
-    /// Collect the status of all testsys objects meeting `selection_params`. If `include_controller` the status of the controller
-    /// will also be recorded. The `Status` returned can be used to print a table containing each objects status (including rerun tests)
-    /// or to print a json representation containing all included objects as well as the controller status.
+    /// Collect the status of all testsys objects meeting `selection_params`. If
+    /// `include_controller` the status of the controller will also be recorded. The `Status`
+    /// returned can be used to print a table containing each objects status (including rerun tests)
+    /// or to print a json representation containing all included objects as well as the controller
+    /// status.
     pub async fn status(
         &self,
         selection_params: &SelectionParams,
@@ -377,8 +380,8 @@ impl TestManager {
             })
     }
 
-    /// Write the results from a testsys `Test` to a given `destination`. The results are in the form of a tarball containing all files placed in
-    /// the test agents output directory.
+    /// Write the results from a testsys `Test` to a given `destination`. The results are in the
+    /// form of a tarball containing all files placed in the test agents output directory.
     pub async fn write_test_results(&self, test_name: &str, destination: &Path) -> Result<()> {
         let pod_name = self
             .get_pods(&CrdName::Test(test_name.to_string()))
@@ -423,8 +426,8 @@ impl TestManager {
     }
 }
 
-/// Takes a path to a yaml manifest of testsys crds (`Test` and `Resource`) and creates a set of `Crd`s through deserialization.
-/// These can be added using `TestManager::create_object`
+/// Takes a path to a yaml manifest of testsys crds (`Test` and `Resource`) and creates a set of
+/// `Crd`s through deserialization. These can be added using `TestManager::create_object`
 pub fn read_manifest(path: &Path) -> Result<Vec<Crd>> {
     let mut crds = Vec::new();
     // Create the resource objects from its path.
