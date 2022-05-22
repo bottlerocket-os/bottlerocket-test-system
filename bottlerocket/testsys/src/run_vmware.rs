@@ -57,24 +57,30 @@ pub(crate) struct RunVmware {
     #[structopt(long)]
     aws_secret: SecretName,
 
-    /// The name of the secret containing vsphere credentials.
+    /// The name of the Kubernetes secret containing vsphere credentials. This is required and will
+    /// be used to authenticate with vCenter. This Kuberenetes secret should be a map containing the
+    /// keys `username` and `password`.
     #[structopt(long)]
     vsphere_secret: SecretName,
 
-    /// The name of the secret containing wireguard configuration.
+    /// The name of the Kubernetes secret containing wireguard configuration. The given secret
+    /// should be a map with the key `b64-wireguard-conf`. The value should be the base64 encoded
+    /// representation of a wireguard conf file. Note that they will also need the `NET_ADMIN`
+    /// capability provided by `--capabilities 'NET_ADMIN'` if you give a wireguard secret.
     #[structopt(long)]
-    wireguard_secret: SecretName,
+    wireguard_secret: Option<SecretName>,
 
-    /// The name of the vsphere cluster that will be used.
+    /// The resource object name representing the vsphere cluster.
     #[structopt(long)]
-    cluster_name: String,
+    cluster_resource_name: String,
 
-    /// The ova name to use for cluster nodes.
+    /// The ova name to use for cluster nodes. This is the name of a file that will be found in the
+    /// TUF repository provided by `--tuf-repo-metadata-url` and `--tuf-repo-targets-url`.
     #[structopt(long)]
     ova_name: String,
 
     /// The name of the TestSys resource that will represent the vms serving as cluster nodes.
-    /// Defaults to `cluster-name-vms`.
+    /// Defaults to `cluster-resource-name-vms`.
     #[structopt(long)]
     vm_resource_name: Option<String>,
 
@@ -91,15 +97,15 @@ pub(crate) struct RunVmware {
     #[structopt(long)]
     vm_count: Option<i32>,
 
-    /// Url for tuf repo metadata.
+    /// Url for tuf repo metadata. The instance provider will get its OVA image from here.
     #[structopt(long)]
     tuf_repo_metadata_url: String,
 
-    /// Url for tuf repo targets.
+    /// Url for tuf repo targets. The instance provider will get its OVA image from here.
     #[structopt(long)]
     tuf_repo_targets_url: String,
 
-    /// URL of the vCenter instance to connect to
+    /// URL of the vCenter instance to connect to.
     #[structopt(long)]
     vcenter_url: String,
 
@@ -134,7 +140,9 @@ pub(crate) struct RunVmware {
     #[structopt(long)]
     cluster_endpoint: String,
 
-    /// Capabilities that should be enabled in the resource provider and the test agent.
+    /// Capabilities that should be enabled in the resource provider and the test agent. In order
+    /// to enable wireguard in the VMWare test and resource agents, you should pass the `NET_ADMIN`
+    /// capability. See Kuberenetes Security Context Capabilities for more information.
     #[structopt(long)]
     capabilities: Vec<String>,
 
@@ -181,10 +189,15 @@ impl RunVmware {
         let vm_resource_name = self
             .vm_resource_name
             .clone()
-            .unwrap_or(format!("{}-vms", self.cluster_name));
-        let secret_map = btreemap! [ AWS_CREDENTIALS_SECRET_NAME.to_string() => self.aws_secret.clone(),
-        VSPHERE_CREDENTIALS_SECRET_NAME.to_string() => self.vsphere_secret.clone(),
-        WIREGUARD_SECRET_NAME.to_string() => self.wireguard_secret.clone() ];
+            .unwrap_or(format!("{}-vms", self.cluster_resource_name));
+        let mut secret_map = btreemap![
+            AWS_CREDENTIALS_SECRET_NAME.to_string() => self.aws_secret.clone(),
+            VSPHERE_CREDENTIALS_SECRET_NAME.to_string() => self.vsphere_secret.clone()
+        ];
+
+        if let Some(wireguard_secret) = &self.wireguard_secret {
+            secret_map.insert(WIREGUARD_SECRET_NAME.to_string(), wireguard_secret.clone());
+        }
 
         let encoded_kubeconfig = base64::encode(
             read_to_string(&self.target_cluster_kubeconfig_path).context(error::FileSnafu {
@@ -332,7 +345,7 @@ impl RunVmware {
             vcenter_resource_pool: self.resource_pool.clone(),
             vcenter_workload_folder: self.workload_folder.clone(),
             cluster: VSphereClusterInfo {
-                name: self.cluster_name.clone(),
+                name: self.cluster_resource_name.clone(),
                 control_plane_endpoint_ip: self.cluster_endpoint.clone(),
                 kubeconfig_base64: encoded_kubeconfig.to_string(),
             },
