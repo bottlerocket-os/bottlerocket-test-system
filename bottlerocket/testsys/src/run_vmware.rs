@@ -68,7 +68,7 @@ pub(crate) struct RunVmware {
     /// representation of a wireguard conf file. Note that they will also need the `NET_ADMIN`
     /// capability provided by `--capabilities 'NET_ADMIN'` if you give a wireguard secret.
     #[structopt(long)]
-    wireguard_secret: SecretName,
+    wireguard_secret: Option<SecretName>,
 
     /// The resource object name representing the vsphere cluster.
     #[structopt(long)]
@@ -190,9 +190,14 @@ impl RunVmware {
             .vm_resource_name
             .clone()
             .unwrap_or(format!("{}-vms", self.cluster_resource_name));
-        let secret_map = btreemap! [ AWS_CREDENTIALS_SECRET_NAME.to_string() => self.aws_secret.clone(),
-        VSPHERE_CREDENTIALS_SECRET_NAME.to_string() => self.vsphere_secret.clone(),
-        WIREGUARD_SECRET_NAME.to_string() => self.wireguard_secret.clone() ];
+        let mut secret_map = btreemap![
+            AWS_CREDENTIALS_SECRET_NAME.to_string() => self.aws_secret.clone(),
+            VSPHERE_CREDENTIALS_SECRET_NAME.to_string() => self.vsphere_secret.clone()
+        ];
+
+        if let Some(wireguard_secret) = &self.wireguard_secret {
+            secret_map.insert(WIREGUARD_SECRET_NAME.to_string(), wireguard_secret.clone());
+        }
 
         let encoded_kubeconfig = base64::encode(
             read_to_string(&self.target_cluster_kubeconfig_path).context(error::FileSnafu {
