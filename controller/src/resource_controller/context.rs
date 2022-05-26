@@ -6,13 +6,14 @@ use log::debug;
 use model::clients::{CrdClient, ResourceClient};
 use model::constants::{ENV_RESOURCE_ACTION, ENV_RESOURCE_NAME};
 use model::{CrdExt, Resource, ResourceAction};
+use std::sync::Arc;
 
 /// This is used by `kube-runtime` to pass any custom information we need when [`reconcile`] is
 /// called.
-pub(super) type Context = kube_runtime::controller::Context<ContextData>;
+pub(super) type Context = Arc<ContextData>;
 
 pub(super) fn new_context(client: kube::Client) -> Context {
-    kube_runtime::controller::Context::new(ContextData {
+    Arc::new(ContextData {
         resource_client: ResourceClient::new_from_k8s_client(client),
     })
 }
@@ -59,11 +60,11 @@ impl ResourceInterface {
     }
 
     pub(super) fn api(&self) -> &Api<Resource> {
-        self.context.get_ref().api()
+        self.context.api()
     }
 
     pub(super) fn resource_client(&self) -> &ResourceClient {
-        &self.context.get_ref().resource_client
+        &self.context.resource_client
     }
 
     pub(super) fn k8s_client(&self) -> kube::Client {

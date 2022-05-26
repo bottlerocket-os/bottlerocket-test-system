@@ -4,13 +4,14 @@ use anyhow::Context as AnyhowContext;
 use kube::{Api, Client};
 use model::clients::{CrdClient, TestClient};
 use model::Test;
+use std::sync::Arc;
 
 /// This is used by `kube-runtime` to pass any custom information we need when [`reconcile`] is
 /// called.
-pub(crate) type Context = kube_runtime::controller::Context<ContextData>;
+pub(crate) type Context = Arc<ContextData>;
 
 pub(crate) fn new_context(client: Client) -> Context {
-    kube_runtime::controller::Context::new(ContextData {
+    Arc::new(ContextData {
         test_client: TestClient::new_from_k8s_client(client),
     })
 }
@@ -61,12 +62,12 @@ impl TestInterface {
     }
 
     pub(crate) fn api(&self) -> &Api<Test> {
-        self.context.get_ref().api()
+        self.context.api()
     }
 
     /// Access the inner `TestClient` object with fewer keystrokes.
     pub(super) fn test_client(&self) -> &TestClient {
-        &self.context.get_ref().test_client
+        &self.context.test_client
     }
 
     pub(super) async fn get_job_state(&self) -> Result<JobState> {
