@@ -14,7 +14,7 @@ mod reconcile;
 
 pub(super) async fn run_test_controller(client: kube::Client) {
     let context = new_context(client);
-    Controller::new(context.get_ref().api().clone(), ListParams::default())
+    Controller::new(context.api().clone(), ListParams::default())
         .run(reconcile, handle_reconciliation_error, context)
         .for_each(|reconciliation_result| async move {
             if let Err(reconciliation_err) = reconciliation_result {

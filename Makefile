@@ -6,7 +6,7 @@ TESTSYS_BUILD_HOST_PLATFORM=$(shell uname | tr '[:upper:]' '[:lower:]')
 # On some hosts we get an x509 certificate error and need to set GOPROXY to "direct"
 TESTSYS_BUILD_GOPROXY ?= direct
 
-BOTTLEROCKET_SDK_VERSION = v0.25.1
+BOTTLEROCKET_SDK_VERSION = v0.26.0
 BOTTLEROCKET_SDK_ARCH = $(TESTSYS_BUILD_HOST_UNAME_ARCH)
 BOTTLEROCKET_TOOLS_VERSION ?= v0.1.0
 
