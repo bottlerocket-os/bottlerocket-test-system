@@ -16,8 +16,15 @@ TOOLS_IMAGE ?= public.ecr.aws/bottlerocket/bottlerocket-test-tools:$(BOTTLEROCKE
 IMAGES = controller sonobuoy-test-agent ec2-resource-agent eks-resource-agent ecs-resource-agent \
 	migration-test-agent vsphere-vm-resource-agent ecs-test-agent
 
+# Store targets for tagging images
+TAG_IMAGES = $(addprefix tag-, $(IMAGES))
+
+# Store targets to push images
+PUSH_IMAGES = $(addprefix push-, $(IMAGES))
+
 .PHONY: build sdk-openssl example-test-agent example-resource-agent \
-	images fetch integ-test show-variables cargo-deny tools $(IMAGES)
+	images fetch integ-test show-variables cargo-deny tools $(IMAGES) \
+	tag-images $(TAG_IMAGES) push-images $(PUSH_IMAGES)
 
 export DOCKER_BUILDKIT=1
 export CARGO_HOME = $(TOP)/.cargo
@@ -130,3 +137,29 @@ cargo-deny:
 	cargo install --version 0.9.1 cargo-deny --locked
 	cargo fetch
 	cargo deny --all-features --no-default-features check --disable-fetch licenses sources
+
+# Define a target to tag all images
+tag-images: $(TAG_IMAGES)
+
+# This defines the TAG_IMAGE variable, extracting the image name from the target name
+$(TAG_IMAGES): TAG_IMAGE = $(@:tag-%=%)
+$(TAG_IMAGES): check-publish-version
+	docker tag $(TAG_IMAGE) $(if $(PUBLISH_IMAGES_REGISTRY), $(PUBLISH_IMAGES_REGISTRY)/)$(TAG_IMAGE):$(PUBLISH_IMAGES_VERSION)
+
+# Define a target to tag all images
+publish-images: $(PUSH_IMAGES)
+
+# This defines the TAG_IMAGE variable, extracting the image name from the target name
+$(PUSH_IMAGES): TAG_IMAGE = $(@:push-%=%)
+$(PUSH_IMAGES): check-publish-version check-publish-registry
+	docker push $(if $(PUBLISH_IMAGES_REGISTRY), $(PUBLISH_IMAGES_REGISTRY)/)$(TAG_IMAGE):$(PUBLISH_IMAGES_VERSION)
+
+check-publish-version:
+ifndef PUBLISH_IMAGES_VERSION
+	$(error PUBLISH_IMAGES_VERSION is undefined)
+endif
+
+check-publish-registry:
+ifndef PUBLISH_IMAGES_REGISTRY
+	$(error PUBLISH_IMAGES_REGISTRY is undefined)
+endif
