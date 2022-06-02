@@ -1,0 +1,14 @@
+apiVersion: testsys.bottlerocket.aws/v1
+kind: Resource
+metadata:
+  name: robot-provider
+  namespace: testsys-bottlerocket-aws
+spec:
+  dependsOn: []
+  agent:
+    name: robot-agent
+    image: "example-resource-agent:integ"
+    keepRunning: false
+    configuration:
+      color: "Purple"
+      numberOfRobots: 10
