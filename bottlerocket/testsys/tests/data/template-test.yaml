@@ -1,0 +1,20 @@
+apiVersion: testsys.bottlerocket.aws/v1
+kind: Test
+metadata:
+  name: hello-bones
+  namespace: testsys-bottlerocket-aws
+spec:
+  agent:
+    name: hello-agent
+    image: "example-test-agent:integ"
+    keepRunning: false
+    configuration:
+      mode: Fast
+      person: Bones the Cat
+      helloCount: ${dup1.info}
+      helloDurationMilliseconds: 500
+      nested:
+        data: 
+          inside: ${dup1.info}
+  resources: [dup1]
+  dependsOn: []

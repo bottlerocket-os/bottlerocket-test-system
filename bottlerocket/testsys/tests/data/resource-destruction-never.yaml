@@ -1,0 +1,14 @@
+apiVersion: testsys.bottlerocket.aws/v1
+kind: Resource
+metadata:
+  name: never-destroy
+  namespace: testsys-bottlerocket-aws
+spec:
+  dependsOn: []
+  destructionPolicy: never
+  agent:
+    name: robot-agent
+    image: "duplicator-resource-agent:integ"
+    keepRunning: false
+    configuration:
+      info: foo
