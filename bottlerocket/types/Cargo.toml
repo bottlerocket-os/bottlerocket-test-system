@@ -9,3 +9,4 @@ license = "MIT OR Apache-2.0"
 model = { version = "0.0.2", path = "../../model" }
 serde = "1"
 serde_plain = "1"
+serde_yaml = "0.8"

@@ -7,7 +7,7 @@ use aws_sdk_eks::model::{Cluster, IpFamily};
 use aws_sdk_eks::output::DescribeClusterOutput;
 use aws_types::SdkConfig;
 use bottlerocket_types::agent_config::{
-    CreationPolicy, EksClusterConfig, K8sVersion, AWS_CREDENTIALS_SECRET_NAME,
+    CreationPolicy, EksClusterConfig, EksctlConfig, K8sVersion, AWS_CREDENTIALS_SECRET_NAME,
 };
 use log::{debug, info, trace};
 use model::{Configuration, SecretName};
@@ -18,6 +18,7 @@ use resource_agent::provider::{
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::env::temp_dir;
+use std::fs::write;
 use std::path::Path;
 use std::process::Command;
 
@@ -25,6 +26,7 @@ use std::process::Command;
 const DEFAULT_REGION: &str = "us-west-2";
 /// The default cluster version.
 const DEFAULT_VERSION: &str = "1.21";
+const TEST_CLUSTER_CONFIG_PATH: &str = "/local/eksctl_config.yaml";
 
 #[derive(Clone, Debug, Default, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -108,6 +110,170 @@ impl AwsClients {
     }
 }
 
+enum ClusterConfig {
+    Args {
+        cluster_name: String,
+        region: String,
+        version: Option<K8sVersion>,
+        zones: Option<Vec<String>>,
+    },
+    ConfigPath {
+        cluster_name: String,
+        region: String,
+    },
+}
+
+impl ClusterConfig {
+    pub fn new(eksctl_config: EksctlConfig) -> ProviderResult<Self> {
+        let config = match eksctl_config {
+            EksctlConfig::File { encoded_config } => {
+                let decoded_config = base64::decode(encoded_config)
+                    .context(Resources::Clear, "Unable to decode eksctl configuration.")?;
+
+                let config: Value =
+                    serde_yaml::from_str(std::str::from_utf8(&decoded_config).context(
+                        Resources::Clear,
+                        "Unable to convert decoded config to string.",
+                    )?)
+                    .context(Resources::Clear, "Unable to serialize eksctl config.")?;
+
+                let config_path = Path::new(TEST_CLUSTER_CONFIG_PATH);
+                write(config_path, decoded_config).context(
+                    Resources::Clear,
+                    format!(
+                        "Unable to write eksctl configuration to '{}'",
+                        config_path.display()
+                    ),
+                )?;
+
+                let (cluster_name, region) = config
+                    .get("metadata")
+                    .map(|metadata| {
+                        (
+                            metadata.get("name").and_then(|name| name.as_str()),
+                            metadata.get("region").and_then(|region| region.as_str()),
+                        )
+                    })
+                    .context(Resources::Clear, "Metadata is missing from eksctl config.")?;
+
+                Self::ConfigPath {
+                    cluster_name: cluster_name
+                        .context(
+                            Resources::Clear,
+                            "The cluster's name was not in the eksctl config.",
+                        )?
+                        .to_string(),
+                    region: region
+                        .context(
+                            Resources::Clear,
+                            "The cluster's region was not in the eksctl config.",
+                        )?
+                        .to_string(),
+                }
+            }
+            EksctlConfig::Args {
+                cluster_name,
+                region,
+                zones,
+                version,
+            } => Self::Args {
+                cluster_name,
+                region: region.unwrap_or_else(|| DEFAULT_REGION.to_string()),
+                version,
+                zones,
+            },
+        };
+        Ok(config)
+    }
+
+    /// Create a cluster with the given config.
+    pub fn create_cluster(&self) -> ProviderResult<()> {
+        let status = match self {
+            Self::Args {
+                cluster_name,
+                region,
+                version,
+                zones,
+            } => {
+                let version_arg = version
+                    .as_ref()
+                    .map(|version| version.major_minor_without_v())
+                    .unwrap_or_else(|| DEFAULT_VERSION.to_string());
+                trace!("Calling eksctl create cluster");
+                let status = Command::new("eksctl")
+                    .args([
+                        "create",
+                        "cluster",
+                        "-r",
+                        region,
+                        "--zones",
+                        &zones.clone().unwrap_or_default().join(","),
+                        "--version",
+                        &version_arg,
+                        "-n",
+                        cluster_name,
+                        "--nodes",
+                        "0",
+                        "--managed=false",
+                    ])
+                    .status()
+                    .context(Resources::Clear, "Failed create cluster")?;
+                trace!("eksctl create cluster has completed");
+                status
+            }
+            Self::ConfigPath {
+                cluster_name: _,
+                region: _,
+            } => {
+                trace!("Calling eksctl create cluster with config file");
+                let status = Command::new("eksctl")
+                    .args(["create", "cluster", "-f", TEST_CLUSTER_CONFIG_PATH])
+                    .status()
+                    .context(Resources::Clear, "Failed create cluster")?;
+                trace!("eksctl create cluster has completed");
+                status
+            }
+        };
+        if !status.success() {
+            return Err(ProviderError::new_with_context(
+                Resources::Clear,
+                format!("Failed create cluster with status code {}", status),
+            ));
+        }
+        Ok(())
+    }
+
+    pub fn region(&self) -> String {
+        match self {
+            Self::Args {
+                cluster_name: _,
+                region,
+                version: _,
+                zones: _,
+            } => region.to_string(),
+            Self::ConfigPath {
+                cluster_name: _,
+                region,
+            } => region.to_string(),
+        }
+    }
+
+    pub fn cluster_name(&self) -> String {
+        match self {
+            Self::Args {
+                cluster_name,
+                region: _,
+                version: _,
+                zones: _,
+            } => cluster_name.to_string(),
+            Self::ConfigPath {
+                cluster_name,
+                region: _,
+            } => cluster_name.to_string(),
+        }
+    }
+}
+
 pub struct EksCreator {}
 
 #[async_trait::async_trait]
@@ -130,17 +296,14 @@ impl Create for EksCreator {
             .await
             .context(Resources::Clear, "Unable to get info from client")?;
         memo.creation_policy = Some(spec.configuration.creation_policy.unwrap_or_default());
+
+        let cluster_config = ClusterConfig::new(spec.configuration.config)?;
+
         info!(
             "Beginning creation of EKS cluster '{}' with creation policy '{:?}'",
-            spec.configuration.cluster_name, memo.creation_policy
+            cluster_config.cluster_name(),
+            memo.creation_policy
         );
-
-        let region = spec
-            .configuration
-            .region
-            .as_ref()
-            .unwrap_or(&DEFAULT_REGION.to_string())
-            .to_string();
 
         // Write aws credentials if we need them so we can run eksctl
         if let Some(aws_secret_name) = spec.secrets.get(AWS_CREDENTIALS_SECRET_NAME) {
@@ -155,14 +318,14 @@ impl Create for EksCreator {
             client,
             &spec.secrets.get(AWS_CREDENTIALS_SECRET_NAME),
             &spec.configuration.assume_role,
-            &spec.configuration.region.clone(),
+            &Some(cluster_config.region()),
             Resources::Clear,
         )
         .await?;
         let aws_clients = AwsClients::new(&shared_config).await;
 
         let (do_create, message) = is_cluster_creation_required(
-            &spec.configuration.cluster_name,
+            &cluster_config.cluster_name(),
             spec.configuration.creation_policy.unwrap_or_default(),
             &aws_clients,
         )
@@ -178,17 +341,15 @@ impl Create for EksCreator {
 
         if do_create {
             info!("Creating cluster with eksctl");
-            create_cluster(
-                &spec.configuration.cluster_name,
-                &region,
-                &spec.configuration.zones,
-                &spec.configuration.version,
-                &kubeconfig_dir,
-            )?;
+            cluster_config.create_cluster()?;
             info!("Done creating cluster with eksctl");
         }
 
-        write_kubeconfig(&spec.configuration.cluster_name, &region, &kubeconfig_dir)?;
+        write_kubeconfig(
+            &cluster_config.cluster_name(),
+            &cluster_config.region(),
+            &kubeconfig_dir,
+        )?;
         let kubeconfig = std::fs::read_to_string(kubeconfig_dir)
             .context(Resources::Remaining, "Unable to read kubeconfig.")?;
         let encoded_kubeconfig = base64::encode(kubeconfig);
@@ -196,15 +357,15 @@ impl Create for EksCreator {
         info!("Gathering information about the cluster");
         let created_cluster = created_cluster(
             encoded_kubeconfig,
-            &spec.configuration.cluster_name,
-            &region,
+            &cluster_config.cluster_name(),
+            &cluster_config.region(),
             &aws_clients,
         )
         .await?;
 
         memo.current_status = "Cluster ready".into();
-        memo.cluster_name = Some(spec.configuration.cluster_name);
-        memo.region = Some(region);
+        memo.cluster_name = Some(cluster_config.cluster_name());
+        memo.region = Some(cluster_config.region());
         debug!("Sending memo:\n{}", &memo);
         client.send_info(memo.clone()).await.context(
             Resources::Remaining,
@@ -259,54 +420,6 @@ async fn is_cluster_creation_required(
             Ok((false, format!("Creation policy is '{:?}' and cluster '{}' exists: not creating cluster", creation_policy, cluster_name)))
         },
     }
-}
-
-fn create_cluster(
-    cluster_name: &str,
-    region: &str,
-    zones: &Option<Vec<String>>,
-    version: &Option<K8sVersion>,
-    kubeconfig_dir: &Path,
-) -> ProviderResult<()> {
-    let version_arg = version
-        .as_ref()
-        .map(|version| version.major_minor_without_v())
-        .unwrap_or_else(|| DEFAULT_VERSION.to_string());
-
-    trace!("Calling eksctl create cluster");
-    let status = Command::new("eksctl")
-        .args([
-            "create",
-            "cluster",
-            "-r",
-            region,
-            "--zones",
-            &zones.clone().unwrap_or_default().join(","),
-            "--version",
-            &version_arg,
-            "--kubeconfig",
-            kubeconfig_dir.to_str().context(
-                Resources::Clear,
-                format!("Unable to convert '{:?}' to string path", kubeconfig_dir),
-            )?,
-            "-n",
-            cluster_name,
-            "--nodes",
-            "0",
-            "--managed=false",
-        ])
-        .status()
-        .context(Resources::Clear, "Failed create cluster")?;
-    trace!("eksctl create cluster has completed");
-
-    if !status.success() {
-        return Err(ProviderError::new_with_context(
-            Resources::Clear,
-            format!("Failed create cluster with status code {}", status),
-        ));
-    }
-
-    Ok(())
 }
 
 fn cluster_iam_identity_mapping(cluster_name: &str, region: &str) -> ProviderResult<String> {
@@ -401,9 +514,7 @@ async fn created_cluster(
         .await
         .context(Resources::Remaining, "Unable to get eks describe cluster")?
         .cluster
-        .as_ref()
-        .context(Resources::Remaining, "Response missing cluster field")?
-        .clone();
+        .context(Resources::Remaining, "Response missing cluster field")?;
     let eks_subnet_ids = eks_subnet_ids(&cluster).await?;
     let endpoint = endpoint(&cluster).await?;
     let certificate = certificate(&cluster).await?;

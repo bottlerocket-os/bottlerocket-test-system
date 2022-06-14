@@ -597,6 +597,7 @@ dependencies = [
  "serde",
  "serde_json",
  "serde_plain",
+ "serde_yaml",
  "sha2",
  "snafu",
  "test-agent",
@@ -613,6 +614,7 @@ dependencies = [
  "model",
  "serde",
  "serde_plain",
+ "serde_yaml",
 ]
 
 [[package]]
