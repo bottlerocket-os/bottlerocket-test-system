@@ -1,13 +1,15 @@
-name: Images
+name: Build
 on:
   pull_request:
     paths-ignore:
       - '**.md'
       - 'design/**'
+      - 'toos/**'
   push:
     paths-ignore:
       - '**.md'
       - 'design/**'
+      - 'toos/**'
     branches: [develop]
 jobs:
   build:
@@ -31,9 +33,7 @@ jobs:
     runs-on: [ self-hosted, linux, x64 ]
     steps:
       - uses: actions/checkout@v3
-      # TODO - for most PRs we should use the published container image instead of building each time
-      - run: make tools -e TOOLS_IMAGE=localtools:latest
-      - run: make images -e TOOLS_IMAGE=localtools:latest
+      - run: make images
   license-check:
     # A small machine is OK for this independent job.
     runs-on: ubuntu-latest
