@@ -14,6 +14,7 @@ mod results;
 mod run;
 mod run_file;
 mod status;
+mod uninstall;
 
 use anyhow::{Context, Result};
 use clap::Parser;
@@ -41,6 +42,8 @@ struct Args {
 enum Command {
     /// Install testsys components into the cluster.
     Install(install::Install),
+    /// Uninstall all components from a testsys cluster.
+    Uninstall(uninstall::Uninstall),
     /// Restart a test.
     Restart(restart::Restart),
     /// Run a testsys test.
@@ -81,6 +84,7 @@ async fn run(args: Args) -> Result<()> {
     };
     match args.command {
         Command::Install(install) => install.run(client).await,
+        Command::Uninstall(uninstall) => uninstall.run(client).await,
         Command::Restart(restart) => restart.run(client).await,
         Command::Run(run) => run.run(client).await,
         Command::Logs(logs) => logs.run(client).await,

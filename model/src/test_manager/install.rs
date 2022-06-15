@@ -8,7 +8,7 @@ use crate::system::{
 use crate::test_manager::TestManager;
 use crate::{Resource, Test};
 use k8s_openapi::api::core::v1::Namespace;
-use kube::CustomResourceExt;
+use kube::{Api, CustomResourceExt};
 use snafu::ResultExt;
 
 impl TestManager {
@@ -113,5 +113,16 @@ impl TestManager {
         // not create a new controller deployment.
         self.create_or_update(true, &controller_deployment, "namespace")
             .await
+    }
+
+    pub(super) async fn uninstall_testsys(&self) -> Result<()> {
+        let namespace_api: Api<Namespace> = self.api();
+        namespace_api
+            .delete(NAMESPACE, &Default::default())
+            .await
+            .context(error::KubeSnafu {
+                action: "delete testsys namespace",
+            })?;
+        Ok(())
     }
 }
