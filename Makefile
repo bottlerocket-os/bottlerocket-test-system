@@ -11,7 +11,7 @@ BOTTLEROCKET_SDK_ARCH = $(TESTSYS_BUILD_HOST_UNAME_ARCH)
 BOTTLEROCKET_TOOLS_VERSION ?= v0.1.0
 
 BUILDER_IMAGE = public.ecr.aws/bottlerocket/bottlerocket-sdk-$(BOTTLEROCKET_SDK_ARCH):$(BOTTLEROCKET_SDK_VERSION)
-TOOLS_IMAGE ?= public.ecr.aws/bottlerocket/bottlerocket-test-tools:$(BOTTLEROCKET_TOOLS_VERSION)
+TOOLS_IMAGE ?= public.ecr.aws/bottlerocket-test-system/bottlerocket-test-tools:$(BOTTLEROCKET_TOOLS_VERSION)
 
 IMAGES = controller sonobuoy-test-agent ec2-resource-agent eks-resource-agent ecs-resource-agent \
 	migration-test-agent vsphere-vm-resource-agent ecs-test-agent

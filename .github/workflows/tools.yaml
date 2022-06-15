@@ -1,0 +1,15 @@
+name: Images
+on:
+  pull_request:
+    paths:
+      - 'tools/**'
+  push:
+    paths:
+      - 'tools/**'
+    branches: [develop]
+jobs:
+  build:
+    runs-on: [self-hosted, linux, x64]
+    steps:
+      - uses: actions/checkout@v3
+      - run: make tools
