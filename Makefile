@@ -24,7 +24,7 @@ PUSH_IMAGES = $(addprefix push-, $(IMAGES))
 
 .PHONY: build sdk-openssl example-test-agent example-resource-agent \
 	images fetch integ-test show-variables cargo-deny tools $(IMAGES) \
-	tag-images $(TAG_IMAGES) push-images $(PUSH_IMAGES)
+	tag-images $(TAG_IMAGES) push-images $(PUSH_IMAGES) print-image-names
 
 export DOCKER_BUILDKIT=1
 export CARGO_HOME = $(TOP)/.cargo
@@ -43,6 +43,20 @@ fetch:
 	cargo fetch --locked
 
 images: fetch $(IMAGES)
+
+# This target prints the image names. It may be useful to write loops over the names of the containers. For example, we
+# might want to check to make sure a repository exists for each image (i.e. maybe a new container has been added to the
+# list since we last pushed, so maybe we need to create a new repository).
+#
+# Example:
+# declare -a arr=($(make print-image-names))
+# for image_name in "${arr[@]}"
+# do
+#   echo "do something with $image_name"
+# done
+print-image-names:
+	$(info $(IMAGES))
+	@echo > /dev/null
 
 # Builds, Lints and Tests the Rust workspace
 build: fetch
