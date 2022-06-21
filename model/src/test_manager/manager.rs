@@ -149,6 +149,11 @@ impl TestManager {
         Ok(())
     }
 
+    /// Uninstall testsys from a cluster.
+    pub async fn uninstall(&self) -> Result<()> {
+        self.uninstall_testsys().await
+    }
+
     /// Restart a crd object by deleting the crd from the cluster and adding a copy of it with its
     /// status cleared.
     pub async fn restart_test(&self, name: &str) -> Result<()> {
