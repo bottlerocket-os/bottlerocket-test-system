@@ -4,7 +4,7 @@ version = 3
 
 [[package]]
 name = "agent-common"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "model",
  "snafu",
@@ -506,7 +506,7 @@ dependencies = [
 
 [[package]]
 name = "bottlerocket-agents"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "agent-common",
  "async-trait",
@@ -545,7 +545,7 @@ dependencies = [
 
 [[package]]
 name = "bottlerocket-types"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "model",
  "serde",
@@ -673,7 +673,7 @@ dependencies = [
 
 [[package]]
 name = "cli"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "anyhow",
  "assert_cmd",
@@ -693,7 +693,7 @@ dependencies = [
 
 [[package]]
 name = "controller"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "anyhow",
  "env_logger",
@@ -1558,7 +1558,7 @@ dependencies = [
 
 [[package]]
 name = "model"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "async-recursion",
  "async-trait",
@@ -2119,7 +2119,7 @@ dependencies = [
 
 [[package]]
 name = "resource-agent"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "agent-common",
  "async-trait",
@@ -2314,7 +2314,7 @@ dependencies = [
 
 [[package]]
 name = "selftest"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "anyhow",
  "envy",
@@ -2657,7 +2657,7 @@ checksum = "507e9898683b6c43a9aa55b64259b721b52ba226e0f3779137e50ad114a4c90b"
 
 [[package]]
 name = "test-agent"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "agent-common",
  "async-trait",
@@ -2674,7 +2674,7 @@ dependencies = [
 
 [[package]]
 name = "testsys"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "assert_cmd",
  "base64",
@@ -3398,7 +3398,7 @@ dependencies = [
 
 [[package]]
 name = "yamlgen"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "kube",
  "model",
