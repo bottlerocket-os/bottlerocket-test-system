@@ -11,7 +11,7 @@ bottlerocket-types = { version = "0.1.0", path = "../types" }
 async-trait = "0.1"
 aws-config = "0.13"
 aws-types = "0.13"
-aws-sdk-ec2 = "0.13"
+aws-sdk-ec2 = "0.14"
 aws-sdk-ecs = "0.13"
 aws-sdk-eks = "0.13"
 aws-sdk-iam = "0.13"
