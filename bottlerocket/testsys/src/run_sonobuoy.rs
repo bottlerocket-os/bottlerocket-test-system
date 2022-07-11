@@ -46,13 +46,12 @@ pub(crate) struct RunSonobuoy {
     #[structopt(long, default_value = "e2e")]
     plugin: String,
 
-    /// The mode used for the sonobuoy test. One of `non-disruptive-conformance`,
-    /// `certified-conformance`, `quick`. Although the Sonobuoy binary defaults to
-    /// `non-disruptive-conformance`, we default to `quick` to make a quick test the most ergonomic.
+    /// The test mode passed to the sonobuoy E2E plugin. We default to `quick` to make a quick test
+    /// the most ergonomic.
     #[structopt(long, default_value = "quick")]
     mode: SonobuoyMode,
 
-    /// The kubernetes conformance image used for the sonobuoy test.
+    /// The kubernetes conformance image used for the sonobuoy E2E plugin.
     #[structopt(long)]
     kubernetes_conformance_image: Option<String>,
 
