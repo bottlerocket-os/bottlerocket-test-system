@@ -101,7 +101,7 @@ impl ResourceInterface {
     }
 
     pub(super) async fn remove_job(&self, op: ResourceAction) -> Result<()> {
-        let _ = delete_job(self.k8s_client(), self.job_name(op))
+        delete_job(self.k8s_client(), self.job_name(op))
             .await
             .context(format!("Unable to remove job '{}'", self.job_name(op)))?;
         Ok(())
