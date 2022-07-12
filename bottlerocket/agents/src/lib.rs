@@ -33,17 +33,15 @@ pub const DEFAULT_TASK_DEFINITION: &str = "testsys-bottlerocket-aws-default-ecs-
 pub const TEST_CLUSTER_KUBECONFIG_PATH: &str = "/local/test-cluster.kubeconfig";
 pub const DEFAULT_REGION: &str = "us-west-2";
 
-/// Decode and write out the kubeconfig file for a test cluster to a specified path
-pub async fn decode_write_kubeconfig(
-    kubeconfig_base64: &str,
-    kubeconfig_path: &str,
+/// Decode base64 blob and write to a file at the specified path
+pub async fn base64_decode_write_file(
+    base64_content: &str,
+    path_to_write_to: &str,
 ) -> Result<(), error::Error> {
-    let kubeconfig_path = Path::new(kubeconfig_path);
-    info!("Decoding kubeconfig for test cluster");
-    let decoded_bytes = base64::decode(kubeconfig_base64.as_bytes())
-        .context(error::Base64DecodeSnafu { what: "kubeconfig" })?;
-    info!("Storing kubeconfig in {}", kubeconfig_path.display());
-    fs::write(kubeconfig_path, decoded_bytes).context(error::WriteSnafu { what: "kubeconfig" })?;
+    let path = Path::new(path_to_write_to);
+    let decoded_bytes = base64::decode(base64_content.as_bytes())
+        .context(error::Base64DecodeSnafu)?;
+    fs::write(path, decoded_bytes).context(error::WriteFileSnafu { path: path_to_write_to })?;
     Ok(())
 }
 

@@ -37,13 +37,13 @@ use bottlerocket_agents::error::Error;
 use bottlerocket_agents::sonobuoy::{delete_sonobuoy, rerun_failed_sonobuoy, run_sonobuoy};
 use bottlerocket_agents::wireguard::setup_wireguard;
 use bottlerocket_agents::{
-    aws_test_config, decode_write_kubeconfig, error, init_agent_logger,
+    aws_test_config, base64_decode_write_file, error, init_agent_logger,
     TEST_CLUSTER_KUBECONFIG_PATH,
 };
 use bottlerocket_types::agent_config::{
     SonobuoyConfig, AWS_CREDENTIALS_SECRET_NAME, WIREGUARD_SECRET_NAME,
 };
-use log::info;
+use log::{debug, info};
 use model::{SecretName, TestResults};
 use snafu::ResultExt;
 use std::path::PathBuf;
@@ -82,9 +82,10 @@ impl test_agent::Runner for SonobuoyTestRunner {
                 .context(error::SecretMissingSnafu)?;
             setup_wireguard(&wireguard_secret).await?;
         }
-
-        decode_write_kubeconfig(&self.config.kubeconfig_base64, TEST_CLUSTER_KUBECONFIG_PATH)
+        debug!("Decoding kubeconfig for test cluster");
+        base64_decode_write_file(&self.config.kubeconfig_base64, TEST_CLUSTER_KUBECONFIG_PATH)
             .await?;
+        info!("Stored kubeconfig in {}", TEST_CLUSTER_KUBECONFIG_PATH);
         run_sonobuoy(
             TEST_CLUSTER_KUBECONFIG_PATH,
             &self.config,
@@ -99,8 +100,10 @@ impl test_agent::Runner for SonobuoyTestRunner {
 
         delete_sonobuoy(TEST_CLUSTER_KUBECONFIG_PATH).await?;
 
-        decode_write_kubeconfig(&self.config.kubeconfig_base64, TEST_CLUSTER_KUBECONFIG_PATH)
+        debug!("Decoding kubeconfig for test cluster");
+        base64_decode_write_file(&self.config.kubeconfig_base64, TEST_CLUSTER_KUBECONFIG_PATH)
             .await?;
+        info!("Stored kubeconfig in {}", TEST_CLUSTER_KUBECONFIG_PATH);
         rerun_failed_sonobuoy(
             TEST_CLUSTER_KUBECONFIG_PATH,
             &self.config,

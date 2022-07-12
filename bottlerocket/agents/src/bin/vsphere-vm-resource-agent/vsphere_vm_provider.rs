@@ -2,7 +2,7 @@ use crate::aws::{create_ssm_activation, ensure_ssm_service_role, wait_for_ssm_re
 use crate::tuf::download_target;
 use bottlerocket_agents::wireguard::setup_wireguard;
 use bottlerocket_agents::{
-    aws_resource_config, decode_write_kubeconfig, TEST_CLUSTER_KUBECONFIG_PATH,
+    aws_resource_config, base64_decode_write_file, TEST_CLUSTER_KUBECONFIG_PATH,
 };
 use bottlerocket_types::agent_config::{
     TufRepoConfig, VSphereVmConfig, AWS_CREDENTIALS_SECRET_NAME, VSPHERE_CREDENTIALS_SECRET_NAME,
@@ -152,7 +152,8 @@ impl Create for VMCreator {
         set_govc_env_vars(&spec.configuration);
 
         let vsphere_cluster = spec.configuration.cluster.clone();
-        decode_write_kubeconfig(
+        debug!("Decoding and writing out kubeconfig for vSphere cluster");
+        base64_decode_write_file(
             &vsphere_cluster.kubeconfig_base64,
             TEST_CLUSTER_KUBECONFIG_PATH,
         )
