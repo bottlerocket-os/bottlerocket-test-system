@@ -60,7 +60,7 @@ pub async fn rerun_failed_sonobuoy(
     info!("Rerunning sonobuoy");
     let status = Command::new("/usr/bin/sonobuoy")
         .args(kubeconfig_arg.to_owned())
-        .arg("e2e")
+        .arg("run")
         .arg("--wait")
         .arg("--rerun-failed")
         .arg(results_filepath.as_os_str())
