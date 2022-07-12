@@ -31,6 +31,7 @@ use test_agent::Runner;
 pub const DEFAULT_AGENT_LEVEL_FILTER: LevelFilter = LevelFilter::Info;
 pub const DEFAULT_TASK_DEFINITION: &str = "testsys-bottlerocket-aws-default-ecs-smoke-test-v1";
 pub const TEST_CLUSTER_KUBECONFIG_PATH: &str = "/local/test-cluster.kubeconfig";
+pub const E2E_REPO_CONFIG_PATH: &str = "/local/e2e-repo-config.yaml";
 pub const DEFAULT_REGION: &str = "us-west-2";
 
 /// Decode base64 blob and write to a file at the specified path
@@ -39,9 +40,11 @@ pub async fn base64_decode_write_file(
     path_to_write_to: &str,
 ) -> Result<(), error::Error> {
     let path = Path::new(path_to_write_to);
-    let decoded_bytes = base64::decode(base64_content.as_bytes())
-        .context(error::Base64DecodeSnafu)?;
-    fs::write(path, decoded_bytes).context(error::WriteFileSnafu { path: path_to_write_to })?;
+    let decoded_bytes =
+        base64::decode(base64_content.as_bytes()).context(error::Base64DecodeSnafu)?;
+    fs::write(path, decoded_bytes).context(error::WriteFileSnafu {
+        path: path_to_write_to,
+    })?;
     Ok(())
 }
 

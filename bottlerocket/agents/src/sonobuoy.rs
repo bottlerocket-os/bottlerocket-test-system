@@ -10,6 +10,7 @@ use std::process::Command;
 /// result at the end.
 pub async fn run_sonobuoy(
     kubeconfig_path: &str,
+    e2e_repo_config_path: Option<&str>,
     sonobuoy_config: &SonobuoyConfig,
     results_dir: &Path,
 ) -> Result<TestResults, error::Error> {
@@ -29,6 +30,14 @@ pub async fn run_sonobuoy(
             vec![]
         }
     };
+    let e2e_repo_arg = match e2e_repo_config_path {
+        Some(e2e_repo_config_path) => {
+            vec!["--e2e-repo-config", e2e_repo_config_path]
+        }
+        None => {
+            vec![]
+        }
+    };
     info!("Running sonobuoy");
     let status = Command::new("/usr/bin/sonobuoy")
         .args(kubeconfig_arg.to_owned())
@@ -39,6 +48,7 @@ pub async fn run_sonobuoy(
         .arg("--mode")
         .arg(&sonobuoy_config.mode.to_string())
         .args(k8s_image_arg)
+        .args(e2e_repo_arg)
         .status()
         .context(error::SonobuoyProcessSnafu)?;
     info!("Sonobuoy testing has completed, checking results");
@@ -52,15 +62,25 @@ pub async fn run_sonobuoy(
 /// Reruns the the failed tests from sonobuoy conformance that has already run in this agent.
 pub async fn rerun_failed_sonobuoy(
     kubeconfig_path: &str,
+    e2e_repo_config_path: Option<&str>,
     sonobuoy_config: &SonobuoyConfig,
     results_dir: &Path,
 ) -> Result<TestResults, error::Error> {
     let kubeconfig_arg = vec!["--kubeconfig", kubeconfig_path];
     let results_filepath = results_dir.join(SONOBUOY_RESULTS_FILENAME);
+    let e2e_repo_arg = match e2e_repo_config_path {
+        Some(e2e_repo_config_path) => {
+            vec!["--e2e-repo-config", e2e_repo_config_path]
+        }
+        None => {
+            vec![]
+        }
+    };
     info!("Rerunning sonobuoy");
     let status = Command::new("/usr/bin/sonobuoy")
         .args(kubeconfig_arg.to_owned())
         .arg("run")
+        .args(e2e_repo_arg)
         .arg("--wait")
         .arg("--rerun-failed")
         .arg(results_filepath.as_os_str())

@@ -14,6 +14,7 @@ use model::{
 use serde_json::Value;
 use snafu::ResultExt;
 use std::collections::BTreeMap;
+use std::fs::read_to_string;
 use structopt::StructOpt;
 
 /// Create an EKS resource, EC2 resource and run Sonobuoy.
@@ -44,6 +45,11 @@ pub(crate) struct RunAwsK8s {
     /// the most ergonomic.
     #[structopt(long, default_value = "quick")]
     sonobuoy_mode: SonobuoyMode,
+
+    /// Path to config file that overrides the registries for test images.
+    /// Specifying this option passes the config to `sonobuoy run --e2e-repo-config`
+    #[structopt(long)]
+    sonobuoy_e2e_repo_config: Option<String>,
 
     /// The kubernetes conformance image used for the sonobuoy E2E plugin.
     #[structopt(long)]
@@ -422,6 +428,15 @@ impl RunAwsK8s {
         cluster_resource_name: &str,
         depends_on: Option<Vec<String>>,
     ) -> Result<Test> {
+        let e2e_repo_config_string = match &self.sonobuoy_e2e_repo_config {
+            Some(e2e_repo_config_path) => Some(base64::encode(
+                read_to_string(e2e_repo_config_path).context(error::FileSnafu {
+                    path: e2e_repo_config_path,
+                })?,
+            )),
+            None => None,
+        };
+
         Ok(Test {
             metadata: ObjectMeta {
                 name: Some(name.to_string()),
@@ -449,6 +464,7 @@ impl RunAwsK8s {
                             ),
                             plugin: self.sonobuoy_plugin.clone(),
                             mode: self.sonobuoy_mode,
+                            e2e_repo_config_base64: e2e_repo_config_string,
                             kubernetes_version: None,
                             kube_conformance_image: self.kubernetes_conformance_image.clone(),
                             assume_role: self.assume_role.clone(),

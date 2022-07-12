@@ -55,6 +55,11 @@ pub(crate) struct RunSonobuoy {
     #[structopt(long)]
     kubernetes_conformance_image: Option<String>,
 
+    /// Path to config file that overrides the registries for test images.
+    /// Specifying this option passes the config to `sonobuoy run --e2e-repo-config`
+    #[structopt(long)]
+    e2e_repo_config: Option<String>,
+
     /// The name of the secret containing aws credentials.
     #[structopt(long)]
     aws_secret: Option<SecretName>,
@@ -80,6 +85,15 @@ impl RunSonobuoy {
             (_, _) => return Err(error::Error::InvalidArguments { why: "Exactly 1 of 'target-cluster-kubeconfig' and 'target-cluster-kubeconfig-path' must be provided".to_string() })
         };
 
+        let e2e_repo_config_string = match &self.e2e_repo_config {
+            Some(e2e_repo_config_path) => Some(base64::encode(
+                read_to_string(e2e_repo_config_path).context(error::FileSnafu {
+                    path: e2e_repo_config_path,
+                })?,
+            )),
+            None => None,
+        };
+
         let test = Test {
             metadata: ObjectMeta {
                 name: Some(self.name.clone()),
@@ -101,6 +115,7 @@ impl RunSonobuoy {
                             kubeconfig_base64: kubeconfig_string,
                             plugin: self.plugin.clone(),
                             mode: self.mode,
+                            e2e_repo_config_base64: e2e_repo_config_string,
                             kubernetes_version: None,
                             kube_conformance_image: self.kubernetes_conformance_image.clone(),
                             assume_role: self.assume_role.clone(),

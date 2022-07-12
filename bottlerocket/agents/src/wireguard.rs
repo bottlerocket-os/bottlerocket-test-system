@@ -1,5 +1,5 @@
-use crate::{base64_decode_write_file, error};
 use crate::error::Error;
+use crate::{base64_decode_write_file, error};
 use agent_common::secrets::SecretData;
 use log::{debug, info};
 use snafu::{ensure, OptionExt, ResultExt};
@@ -20,10 +20,7 @@ pub async fn setup_wireguard(wireguard_secret: &SecretData) -> Result<(), Error>
     })?;
     debug!("Decoding wireguard conf for setting up wireguard VPN");
     base64_decode_write_file(&base64_encoded_wireguard_conf, WIREGUARD_CONF_PATH).await?;
-    info!(
-        "Stored wireguard conf in {}",
-        WIREGUARD_CONF_PATH
-    );
+    info!("Stored wireguard conf in {}", WIREGUARD_CONF_PATH);
     let output = Command::new("/usr/bin/wg-quick")
         .env("WG_QUICK_USERSPACE_IMPLEMENTATION", "boringtun")
         .env("WG_SUDO", "1")

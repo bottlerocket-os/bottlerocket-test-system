@@ -37,7 +37,7 @@ use bottlerocket_agents::error::Error;
 use bottlerocket_agents::sonobuoy::{delete_sonobuoy, rerun_failed_sonobuoy, run_sonobuoy};
 use bottlerocket_agents::wireguard::setup_wireguard;
 use bottlerocket_agents::{
-    aws_test_config, base64_decode_write_file, error, init_agent_logger,
+    aws_test_config, base64_decode_write_file, error, init_agent_logger, E2E_REPO_CONFIG_PATH,
     TEST_CLUSTER_KUBECONFIG_PATH,
 };
 use bottlerocket_types::agent_config::{
@@ -86,8 +86,19 @@ impl test_agent::Runner for SonobuoyTestRunner {
         base64_decode_write_file(&self.config.kubeconfig_base64, TEST_CLUSTER_KUBECONFIG_PATH)
             .await?;
         info!("Stored kubeconfig in {}", TEST_CLUSTER_KUBECONFIG_PATH);
+        let e2e_repo_config = match &self.config.e2e_repo_config_base64 {
+            Some(e2e_repo_config_base64) => {
+                info!("Decoding e2e-repo-config config");
+                base64_decode_write_file(e2e_repo_config_base64, E2E_REPO_CONFIG_PATH).await?;
+                info!("Stored e2e-repo-config in {}", E2E_REPO_CONFIG_PATH);
+                Some(E2E_REPO_CONFIG_PATH)
+            }
+            None => None,
+        };
+
         run_sonobuoy(
             TEST_CLUSTER_KUBECONFIG_PATH,
+            e2e_repo_config,
             &self.config,
             &self.results_dir,
         )
@@ -104,8 +115,19 @@ impl test_agent::Runner for SonobuoyTestRunner {
         base64_decode_write_file(&self.config.kubeconfig_base64, TEST_CLUSTER_KUBECONFIG_PATH)
             .await?;
         info!("Stored kubeconfig in {}", TEST_CLUSTER_KUBECONFIG_PATH);
+        let e2e_repo_config = match &self.config.e2e_repo_config_base64 {
+            Some(e2e_repo_config_base64) => {
+                info!("Decoding e2e-repo-config config");
+                base64_decode_write_file(e2e_repo_config_base64, E2E_REPO_CONFIG_PATH).await?;
+                info!("Stored e2e-repo-config in {}", E2E_REPO_CONFIG_PATH);
+                Some(E2E_REPO_CONFIG_PATH)
+            }
+            None => None,
+        };
+
         rerun_failed_sonobuoy(
             TEST_CLUSTER_KUBECONFIG_PATH,
+            e2e_repo_config,
             &self.config,
             &self.results_dir,
         )
