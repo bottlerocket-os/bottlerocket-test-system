@@ -1,11 +1,12 @@
 use crate::error::Result;
 use crate::job::{JobState, TEST_START_TIME_LIMIT};
 use crate::resource_controller::context::ResourceInterface;
+use kube::core::object::HasSpec;
 use kube::ResourceExt;
 use log::{debug, trace};
-use model::clients::CrdClient;
+use model::clients::{AllowNotFound, CrdClient, TestClient};
 use model::constants::{FINALIZER_CREATION_JOB, FINALIZER_MAIN, FINALIZER_RESOURCE};
-use model::{CrdExt, DestructionPolicy, ResourceAction, TaskState};
+use model::{CrdExt, DestructionPolicy, ResourceAction, TaskState, TestUserState};
 use parse_duration::parse;
 
 /// The action that the controller needs to take in order to reconcile the [`Resource`].
@@ -22,6 +23,7 @@ pub(super) enum CreationAction {
     AddJobFinalizer,
     StartJob,
     WaitForDependency(String),
+    WaitForConflict(String),
     WaitForCreation,
     AddResourceFinalizer,
     Done,
@@ -30,6 +32,7 @@ pub(super) enum CreationAction {
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub(super) enum DestructionAction {
+    StartResourceDeletion,
     RemoveCreationJob,
     RemoveCreationJobFinalizer,
     StartDestructionJob,
@@ -52,7 +55,7 @@ pub(super) enum ErrorState {
 }
 
 pub(super) async fn action(r: &ResourceInterface) -> Result<Action> {
-    if r.resource().is_delete_requested() {
+    if r.resource().is_delete_requested() || is_deletion_required(r).await? {
         Ok(Action::Destruction(destruction_action(r).await?))
     } else {
         Ok(Action::Creation(creation_action(r).await?))
@@ -69,6 +72,10 @@ async fn creation_action(r: &ResourceInterface) -> Result<CreationAction> {
     }
 
     if let Some(wait_action) = dependency_wait_action(r).await? {
+        return Ok(wait_action);
+    }
+
+    if let Some(wait_action) = conflicting_wait_action(r).await? {
         return Ok(wait_action);
     }
 
@@ -99,6 +106,30 @@ async fn dependency_wait_action(r: &ResourceInterface) -> Result<Option<Creation
             return Ok(Some(CreationAction::WaitForDependency(
                 needed_resource.name(),
             )));
+        }
+    }
+    Ok(None)
+}
+
+async fn conflicting_wait_action(r: &ResourceInterface) -> Result<Option<CreationAction>> {
+    let conflicts_with = if let Some(conflicts_with) = &r.resource().spec.conflicts_with {
+        if conflicts_with.is_empty() {
+            return Ok(None);
+        }
+        conflicts_with
+    } else {
+        return Ok(None);
+    };
+
+    // Make sure each resource in conflicts_with is deleted.
+    for conflicting in conflicts_with {
+        let conflicting_resource = r
+            .resource_client()
+            .get(conflicting)
+            .await
+            .allow_not_found(|_| ())?;
+        if let Some(conflict) = conflicting_resource {
+            return Ok(Some(CreationAction::WaitForConflict(conflict.name())));
         }
     }
     Ok(None)
@@ -151,8 +182,51 @@ async fn creation_completed_action(r: &ResourceInterface) -> Result<CreationActi
     }
 }
 
+/// Destruction for a resource may be required if the resources `DestructionPolicy` is
+/// `OnTestSuccess` or `OnTestCompletion`.
+async fn is_deletion_required(r: &ResourceInterface) -> Result<bool> {
+    let destruction_policy = r.resource().spec.destruction_policy;
+    if !matches!(
+        destruction_policy,
+        DestructionPolicy::OnTestCompletion | DestructionPolicy::OnTestSuccess
+    ) {
+        return Ok(false);
+    }
+    // If any resources still depend on this resource it should not be deleted.
+    let resources = r.resource_client().get_all().await?;
+    for resource in resources {
+        if let Some(depends_on) = resource.spec().depends_on.as_ref() {
+            if depends_on.contains(&r.name().to_string()) {
+                return Ok(false);
+            }
+        }
+    }
+    let test_client = TestClient::new_from_k8s_client(r.k8s_client());
+    let tests = test_client.get_all().await?;
+    for test in tests {
+        if test.spec().resources.contains(&r.name().to_string()) {
+            match destruction_policy {
+                DestructionPolicy::OnTestCompletion => {
+                    if test.agent_status().task_state != TaskState::Completed {
+                        return Ok(false);
+                    }
+                }
+                DestructionPolicy::OnTestSuccess => {
+                    if test.test_user_state() != TestUserState::Passed {
+                        return Ok(false);
+                    }
+                }
+                _ => (),
+            }
+        }
+    }
+    Ok(true)
+}
+
 async fn destruction_action(r: &ResourceInterface) -> Result<DestructionAction> {
-    if let Some(creation_cleanup_action) = creation_cleanup_action(r).await? {
+    if !r.resource().is_delete_requested() {
+        Ok(DestructionAction::StartResourceDeletion)
+    } else if let Some(creation_cleanup_action) = creation_cleanup_action(r).await? {
         Ok(creation_cleanup_action)
     } else if r.resource().has_finalizer(FINALIZER_RESOURCE) {
         destruction_action_with_resources(r).await
@@ -176,7 +250,9 @@ async fn creation_cleanup_action(r: &ResourceInterface) -> Result<Option<Destruc
 async fn destruction_action_with_resources(r: &ResourceInterface) -> Result<DestructionAction> {
     let destruction_policy = r.resource().spec.destruction_policy;
     match destruction_policy {
-        DestructionPolicy::OnDeletion => { /* Ok, we are in the right place, continue */ }
+        DestructionPolicy::OnDeletion
+        | DestructionPolicy::OnTestCompletion
+        | DestructionPolicy::OnTestSuccess => { /* Ok, we are in the right place, continue */ }
         DestructionPolicy::Never => {
             // We will not be running a destruction job so remove the resource finalizer to proceed
             // with object deletion.
