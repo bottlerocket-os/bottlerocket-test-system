@@ -22,11 +22,8 @@ pub enum Error {
         source: SdkError<AssumeRoleError>,
     },
 
-    #[snafu(display("Failed to base64-decode '{}' for test cluster: {}", what, source))]
-    Base64Decode {
-        what: String,
-        source: base64::DecodeError,
-    },
+    #[snafu(display("Failed to decode base64 blob: {}", source))]
+    Base64Decode { source: base64::DecodeError },
 
     #[snafu(display("Could not convert '{}' secret to string: {}", what, source))]
     Conversion { what: String, source: FromUtf8Error },
@@ -37,9 +34,9 @@ pub enum Error {
     #[snafu(display("Failed to setup environment variables: {}", what))]
     EnvSetup { what: String },
 
-    #[snafu(display("Failed to write '{}': {}", what, source))]
-    Write {
-        what: String,
+    #[snafu(display("Failed to write file at '{}': {}", path, source))]
+    WriteFile {
+        path: String,
         source: std::io::Error,
     },
 
