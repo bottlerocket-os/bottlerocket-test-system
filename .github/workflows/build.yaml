@@ -5,11 +5,13 @@ on:
       - '**.md'
       - 'design/**'
       - 'toos/**'
+      - '.github/dependabot.yml'
   push:
     paths-ignore:
       - '**.md'
       - 'design/**'
       - 'toos/**'
+      - '.github/dependabot.yml'
     branches: [develop]
 jobs:
   build:
