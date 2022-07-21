@@ -80,6 +80,7 @@ pub async fn aws_test_config<R>(
     runner: &R,
     aws_secret_name: &Option<SecretName>,
     assume_role: &Option<String>,
+    assume_role_session_duration: &Option<i32>,
     region: &Option<String>,
 ) -> Result<SdkConfig, R::E>
 where
@@ -118,6 +119,7 @@ where
             .assume_role()
             .role_arn(role_arn)
             .role_session_name("testsys")
+            .set_duration_seconds(*assume_role_session_duration)
             .send()
             .await
             .context(error::AssumeRoleSnafu { role_arn })?
