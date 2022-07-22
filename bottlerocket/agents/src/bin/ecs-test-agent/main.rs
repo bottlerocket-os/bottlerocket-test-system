@@ -41,6 +41,7 @@ impl Runner for EcsTestRunner {
             self,
             &self.aws_secret_name,
             &self.config.assume_role,
+            &None,
             &self.config.region,
         )
         .await?;

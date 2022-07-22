@@ -81,6 +81,7 @@ impl test_agent::Runner for MigrationTestRunner {
             self,
             &self.aws_secret_name,
             &self.config.assume_role,
+            &None,
             &Some(self.config.aws_region.clone()),
         )
         .await?;
