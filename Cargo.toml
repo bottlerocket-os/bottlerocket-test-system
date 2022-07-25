@@ -3,6 +3,7 @@ members = [
     "agent/agent-common",
     "agent/resource-agent",
     "agent/test-agent",
+    "agent/test-agent-cli",
     "bottlerocket/agents",
     "cli",
     "bottlerocket/types",
