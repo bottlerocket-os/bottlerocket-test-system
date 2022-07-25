@@ -1,0 +1,28 @@
+[package]
+name = "test-agent-cli"
+version = "0.1.0"
+edition = "2021"
+publish = false
+license = "MIT OR Apache-2.0"
+
+[dependencies]
+argh = "0.1"
+agent-common = { version = "0.0.1", path = "../agent-common" }
+test-agent = { version = "0.0.1", path = "../test-agent" }
+tokio = { version = "1", features = ["macros", "rt-multi-thread", "fs"] }
+tokio-util = "0.7"
+log = "0.4"
+model = { version = "0.0.1", path = "../../model" }
+snafu = "0.7"
+async-trait = "0.1"
+tempfile = "3"
+serde_json = "1"
+env_logger = "0.9"
+serde_plain = "0.3"
+serde_derive = "1"
+serde = "1"
+tar = "0.4"
+
+[dev-dependencies]
+assert_cmd = "2.0"
+selftest = { version = "0.0.1", path = "../../selftest" }

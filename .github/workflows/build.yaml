@@ -27,6 +27,7 @@ jobs:
       - run: make duplicator-resource-agent
       - run: make example-resource-agent
       - run: make example-test-agent
+      - run: make example-test-agent-cli
       - run: make integ-test
         env:
           TESTSYS_SELFTEST_SKIP_IMAGE_BUILDS: true

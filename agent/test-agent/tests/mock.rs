@@ -131,6 +131,11 @@ impl Client for MockClient {
     async fn retries(&self) -> Result<u32, Self::E> {
         Ok(0)
     }
+
+    async fn send_test_completed(&self) -> Result<(), Self::E> {
+        println!("MockClient::send_test_completed");
+        Ok(())
+    }
 }
 
 /// This test runs [`MyRunner`] inside a [`TestAgent`] with k8s and the container environment mocked
