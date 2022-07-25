@@ -21,7 +21,7 @@ We also are not quite ready for external contributions, but we are happy to resp
 ## Quickstart
 
 Since nothing has been published yet, you will have to build everything!
-You will need `docker`, `cargo`, `make`, `kind`, and the `aws` CLI for this.
+You will need `docker`, `cargo`, `make`, `kind`, and the `aws` and `eksctl` CLIs for this.
 Caution: if you follow these instructions, you will create an EKS cluster and EC2 instances!
 
 Set the `TESTSYS_DIR` variable to point to the directory in which you have cloned the project.
@@ -48,7 +48,7 @@ Install the `testsys` command line tool into the local CARGO_HOME and build the 
 
 ```shell
 cd "${TESTSYS_DIR}"
-cargo install --path "${TESTSYS_DIR}/testsys" --force
+cargo install --path "${TESTSYS_DIR}/bottlerocket/testsys" --force
 
 make controller
 make ec2-resource-agent
@@ -99,8 +99,8 @@ Then we pass it to TestSys which will create an EKS cluster, launch Bottlerocket
 
 **Caution**: The command below specifies `never` as the `--cluster-destruction-policy`.
 This is because creating a cluster takes a long time, and we might want to re-use it.
-To delete the cluster manually, use `eksctl delete cluster "external-cluster"` or delete the relevant Cloudformation stacks.
-You can also change the `--cluster-destruction-policy` to `onDelete` in the command below.
+To delete the cluster manually, use `eksctl delete cluster "external-cluster"` or delete the relevant CloudFormation stacks.
+You can also change the `--cluster-destruction-policy` to `onDeletion` in the command below.
 If you do, then when you `kubectl delete resource external-cluster`, the EKS cluster will be deleted.
 
 ```shell
@@ -118,7 +118,6 @@ testsys run aws-k8s \
   --test-agent-image "sonobuoy-test-agent:eks" \
   --keep-running \
   --sonobuoy-mode "quick" \
-  --kubernetes-version "v${K8S_VER}" \
   --aws-secret "aws-creds" \
   --region "${REGION}" \
   --cluster-name "${EKS_CLUSTER_NAME}" \
@@ -129,25 +128,58 @@ testsys run aws-k8s \
   --ec2-provider-image "ec2-resource-agent:eks"
 ```
 
+### Test Results
+
+Executing the `testsys run aws-k8s` command will kick off the setup and execution of the Sonobuoy tests on an EKS cluster using Bottlerocket as the host OS for the cluster nodes.
+
+To get the status and results of test execution, run the `testsys status` command for a high level summary:
+
+```shell
+ NAME           TYPE   STATE    PASSED   SKIPPED   FAILED
+ testsys-demo   Test   passed   1        5772      0
+```
+
+**Note:** run `testsys status --help` to learn about more options.
+Notably the `-c` and `-r` arguments for getting controller and resource status.
+
+When the test run has completed you may get the full logs of the test results.
+The content of the resulting tar file will vary depending on the tests being run.
+
+```shell
+testsys results --destination testresults.tar --test-name testsys-demo
+tar -xvf testresults.tar
+```
+
+### Cleanup
+
+If you used the `--cluster-destruction-policy never` as given above, there will be an EKS cluster running at the end of execution.
+This can be very convenient to keep around for subsequent test runs.
+
+It does however consume resources and incur usage charges.
+If you are done running tests and would like to clean up, run the following to delete the EKS cluster.
+
+```shell
+eksctl delete cluster external-cluster
+```
+
+**Note:** This will destroy the EKS cluster, so ensure you are no longer
+using it and you have the correct cluster name before running the
+example command.
+
 ## Development
 
 ### Project Structure
 
-- `model` is the root dependency.
-It includes the CRDs and clients for interacting with them.
-
+- `model` is the root dependency. It includes the CRDs and clients for interacting with them.
 - `controller` contains the Kubernetes controller responsible for running resource and test pods.
-
 - `agent` contains libraries with the traits and harnesses for creating test and resource agents.
-
-- `bottlerocket-agents` contains the implementations of the test and resource traits that we use for Bottlerocket testing.
-
-- `testsys` contains the command line interface for installing the system and running tests.
+- `bottlerocket/agents` contains the implementations of the test and resource traits that we use for Bottlerocket testing.
+- `bottlerocket/testsys` contains the command line interface for installing the system and running tests.
 
 The `model`, `agents` and `controller` crates are general-purpose, and define the TestSys system.
-It is possible to use these libraries and controller to for testing purposes other than Bottlerocket.
+It is possible to use these libraries and controller for testing purposes other than Bottlerocket.
 
-The `testsys` CLI and `bottlerocket-agents` crates are more specialized to Bottlerocket's testing use cases.
+The `bottlerocket/testsys` CLI and `bottlerocket/agents` crates are more specialized to Bottlerocket's testing use cases.
 
 ## Security
 
