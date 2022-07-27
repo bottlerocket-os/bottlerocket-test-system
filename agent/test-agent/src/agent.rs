@@ -106,7 +106,7 @@ where
             );
             if let Err(e) = self
                 .client
-                .send_test_done(test_results.clone())
+                .send_test_results(test_results.clone())
                 .await
                 .map_err(error::Error::Client)
             {
