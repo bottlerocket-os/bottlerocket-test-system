@@ -335,6 +335,7 @@ impl RunAwsK8s {
             },
             spec: ResourceSpec {
                 depends_on: None,
+                conflicts_with: None,
                 agent: Agent {
                     name: "eks-provider".to_string(),
                     image: self.cluster_provider_image.clone(),
@@ -404,6 +405,7 @@ impl RunAwsK8s {
             },
             spec: ResourceSpec {
                 depends_on: Some(vec![cluster_resource_name.to_owned()]),
+                conflicts_with: None,
                 agent: Agent {
                     name: "ec2-provider".to_string(),
                     image: self.ec2_provider_image.clone(),

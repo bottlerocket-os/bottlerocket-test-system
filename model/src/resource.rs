@@ -30,6 +30,8 @@ use std::fmt::{Display, Formatter};
 pub struct ResourceSpec {
     /// Other resources that must to be created before this one can be created.
     pub depends_on: Option<Vec<String>>,
+    /// Creation of this resource will not begin until all conflicting resources have been deleted.
+    pub conflicts_with: Option<Vec<String>>,
     /// Information about the resource agent.
     pub agent: Agent,
     /// Whether/when the resource controller will destroy the resource (`OnDeletion` is the
@@ -214,9 +216,10 @@ pub enum DestructionPolicy {
     OnDeletion,
     /// The controller will not delete this resource even when the Kubernetes object is deleted.
     Never,
-    // TODO - support additional destruction policies such as...
-    // OnTestSuccess,
-    // OnTestCompletion,
+    /// The controller will delete this resource when all tests requiring it have passed.
+    OnTestSuccess,
+    /// The controller will delete this resource when all tests requiring it have finished.
+    OnTestCompletion,
 }
 
 impl Default for DestructionPolicy {
