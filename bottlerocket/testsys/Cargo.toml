@@ -26,7 +26,7 @@ tabled = "0.4"
 termion = "1.5"
 tokio = { version = "1", features = ["macros", "rt-multi-thread", "fs"] }
 tokio-util = "0.7"
-topological-sort = "0.1"
+topological-sort = "0.2"
 
 [dev-dependencies]
 assert_cmd = "2.0"
