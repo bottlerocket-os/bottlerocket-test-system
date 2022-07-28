@@ -31,7 +31,10 @@ pub enum SonobuoyMode {
     /// This is the default mode and will run all the tests in the e2e plugin which are marked
     /// `Conformance` which are known to not be disruptive to other workloads in your cluster.
     NonDisruptiveConformance,
-    //// This mode runs all of the Conformance tests.
+    /// An unofficial mode of running the e2e tests which removes some of the longest running tests
+    /// so that tests can complete in the fastest time possible while maximizing coverage.
+    ConformanceLite,
+    /// This mode runs all the tests in the K8s E2E conformance test suite.
     CertifiedConformance,
     /// This mode will run a single test from the e2e test suite which is known to be simple and
     /// fast. Use this mode as a quick check that the cluster is responding and reachable.
