@@ -20,6 +20,7 @@ use resource_agent::provider::{
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::env::temp_dir;
+use std::fs::write;
 use std::path::Path;
 use std::process::Command;
 
@@ -27,6 +28,7 @@ use std::process::Command;
 const DEFAULT_REGION: &str = "us-west-2";
 /// The default cluster version.
 const DEFAULT_VERSION: &str = "1.21";
+const TEST_CLUSTER_CONFIG_PATH: &str = "/local/eksctl_config.yaml";
 
 #[derive(Clone, Debug, Default, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -186,6 +188,7 @@ impl Create for EksCreator {
                 &spec.configuration.zones,
                 &spec.configuration.version,
                 &kubeconfig_dir,
+                &spec.configuration.encoded_eksctl_config,
             )?;
             info!("Done creating cluster with eksctl");
         }
@@ -268,37 +271,60 @@ fn create_cluster(
     zones: &Option<Vec<String>>,
     version: &Option<K8sVersion>,
     kubeconfig_dir: &Path,
+    eksctl_config: &Option<String>,
 ) -> ProviderResult<()> {
     let version_arg = version
         .as_ref()
         .map(|version| version.major_minor_without_v())
         .unwrap_or_else(|| DEFAULT_VERSION.to_string());
 
-    trace!("Calling eksctl create cluster");
-    let status = Command::new("eksctl")
-        .args([
-            "create",
-            "cluster",
-            "-r",
-            region,
-            "--zones",
-            &zones.clone().unwrap_or_default().join(","),
-            "--version",
-            &version_arg,
-            "--kubeconfig",
-            kubeconfig_dir.to_str().context(
-                Resources::Clear,
-                format!("Unable to convert '{:?}' to string path", kubeconfig_dir),
-            )?,
-            "-n",
-            cluster_name,
-            "--nodes",
-            "0",
-            "--managed=false",
-        ])
-        .status()
-        .context(Resources::Clear, "Failed create cluster")?;
-    trace!("eksctl create cluster has completed");
+    let status = if let Some(eksctl_config) = eksctl_config {
+        let decoded_config = base64::decode(eksctl_config)
+            .context(Resources::Clear, "Unable to decode eksctl configuration.")?;
+        let config_path = Path::new(TEST_CLUSTER_CONFIG_PATH);
+        write(config_path, decoded_config).context(
+            Resources::Clear,
+            format!(
+                "Unable to write eksctl configuration to '{}'",
+                config_path.display()
+            ),
+        )?;
+
+        trace!("Calling eksctl create cluster with config file");
+        let status = Command::new("eksctl")
+            .args(["create", "cluster", "-f", TEST_CLUSTER_CONFIG_PATH])
+            .status()
+            .context(Resources::Clear, "Failed create cluster")?;
+        trace!("eksctl create cluster has completed");
+        status
+    } else {
+        trace!("Calling eksctl create cluster");
+        let status = Command::new("eksctl")
+            .args([
+                "create",
+                "cluster",
+                "-r",
+                region,
+                "--zones",
+                &zones.clone().unwrap_or_default().join(","),
+                "--version",
+                &version_arg,
+                "--kubeconfig",
+                kubeconfig_dir.to_str().context(
+                    Resources::Clear,
+                    format!("Unable to convert '{:?}' to string path", kubeconfig_dir),
+                )?,
+                "-n",
+                cluster_name,
+                "--nodes",
+                "0",
+                "--managed=false",
+            ])
+            .status()
+            .context(Resources::Clear, "Failed create cluster")?;
+        trace!("eksctl create cluster has completed");
+        status
+    };
 
     if !status.success() {
         return Err(ProviderError::new_with_context(

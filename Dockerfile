@@ -111,7 +111,7 @@ ENTRYPOINT ["./vsphere-vm-resource-agent"]
 
 # =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^=
 # Builds the EKS resource agent image
-FROM scratch as eks-resource-agent
+FROM public.ecr.aws/amazonlinux/amazonlinux:2 as eks-resource-agent
 
 # Copy eksctl
 COPY --from=tools /eksctl /usr/bin/eksctl

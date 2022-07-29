@@ -105,6 +105,9 @@ pub struct EksClusterConfig {
     /// quoted so that it is interpreted as a JSON/YAML string (not a number).
     pub version: Option<K8sVersion>,
 
+    /// The encoded eksctl config that should be used for cluster creation.
+    pub encoded_eksctl_config: Option<String>,
+
     /// The role that should be assumed when creating the cluster.
     pub assume_role: Option<String>,
 }
