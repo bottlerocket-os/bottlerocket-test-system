@@ -1,11 +1,11 @@
 [package]
 name = "yamlgen"
-version = "0.1.0"
+version = "0.0.1"
 edition = "2021"
 publish = false
 license = "MIT OR Apache-2.0"
 
 [build-dependencies]
 kube = { version = "0.73", default-features = false }
-model = { version = "0.1.0", path = "../model" }
+model = { version = "0.0.1", path = "../model" }
 serde_yaml = "0"
