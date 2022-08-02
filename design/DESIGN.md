@@ -115,7 +115,7 @@ The resource agent writes to the status fields of the resource object to indicat
 
 ## Architecture Diagram
 
-The architecture diagram show a user using the `testsys` CLI to create three CRD instances.
+The architecture diagram shows a user using the `testsys` CLI to create three CRD instances.
 - Cluster Resource CRD represents an external Kubernetes cluster that needs to be created for testing.
 - Instances Resource CRD represents Bottlerocket instances that will run as nodes in the external cluster.
 - Sonobuoy Test CRD represents the desired test that will run agains the external cluster and nodes.
@@ -151,7 +151,7 @@ We aim to make the following scenarios possible in the fewest number of steps pr
 
 * Running a local TestSys cluster and running tests in AWS.
 * Running an EKS TestSys cluster and running tests in AWS.
-* Running a local TestSys cluster and running tests in a vSphere Center.
+* Running a local TestSys cluster and running tests in a vSphere environment.
 
 For these common scenarios the TestSys CLI can install the controller and CRDs into a cluster and create the CRD instances for running the tests.
 

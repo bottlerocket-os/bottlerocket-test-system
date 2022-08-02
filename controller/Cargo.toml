@@ -1,6 +1,6 @@
 [package]
 name = "controller"
-version = "0.1.0"
+version = "0.0.1"
 edition = "2021"
 publish = false
 license = "MIT OR Apache-2.0"
@@ -15,7 +15,7 @@ kube = { version = "0.73", default-features = true, features = ["derive"] }
 kube-runtime = "0.73"
 lazy_static = "1"
 log = "0.4"
-model = { version = "0.1.0", path = "../model" }
+model = { version = "0.0.1", path = "../model" }
 parse_duration = "2.1"
 schemars = "0"
 serde = { version = "1", features = ["derive"] }
@@ -24,4 +24,4 @@ snafu = "0.7"
 tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
 
 [build-dependencies]
-yamlgen = { version = "0.1.0", path = "../yamlgen" }
+yamlgen = { version = "0.0.1", path = "../yamlgen" }

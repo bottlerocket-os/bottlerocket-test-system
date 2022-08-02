@@ -394,6 +394,7 @@ impl RunVmware {
                             kubeconfig_base64: encoded_kubeconfig.to_string(),
                             plugin: self.sonobuoy_plugin.clone(),
                             mode: self.sonobuoy_mode,
+                            e2e_repo_config_base64: None,
                             kubernetes_version: None,
                             kube_conformance_image: self.kubernetes_conformance_image.clone(),
                             assume_role: self.assume_role.clone(),

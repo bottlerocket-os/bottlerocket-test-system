@@ -5,36 +5,87 @@ use serde::Serialize;
 use tabled::object::Segment;
 use tabled::{Alignment, MaxWidth, MinWidth, Modify, Style, Table, Tabled};
 
-/// `Status` represents the status of a set of testsys objects (including the controller).
-/// `Status::to_string()` is used to create a table representation of the status.
-/// `Status` can also be used with `json::to_string()` to create a json representation of the
-/// testsys objects.
+/// `StatusSnapshot` represents the status of a set of testsys objects (including the controller).
+/// `StatusSnapshot::to_string()` is used to create a table representation of the status.
+/// `StatusSnapshot` can also be used with `json::to_string()` to create a json representation of
+/// the testsys objects.
 #[derive(Debug, Serialize)]
-pub struct Status {
+pub struct StatusSnapshot {
+    finished: bool,
+    passed: bool,
+    failed_tests: Vec<String>,
     controller_status: Option<PodStatus>,
     crds: Vec<Crd>,
 }
 
-impl Status {
+impl StatusSnapshot {
     pub(super) fn new(controller_status: Option<PodStatus>, crds: Vec<Crd>) -> Self {
+        let mut passed = true;
+        let mut finished = true;
+        let mut failed_tests = Vec::new();
+        for crd in &crds {
+            match crd {
+                Crd::Test(test) => match test.agent_status().task_state {
+                    TaskState::Unknown | TaskState::Running => {
+                        passed = false;
+                        finished = false
+                    }
+                    TaskState::Error => {
+                        passed = false;
+                        failed_tests.push(test.name());
+                    }
+                    _ => continue,
+                },
+                Crd::Resource(resource) => {
+                    match resource.creation_task_state() {
+                        TaskState::Unknown | TaskState::Running => {
+                            passed = false;
+                            finished = false
+                        }
+                        TaskState::Error => passed = false,
+                        _ => continue,
+                    };
+                    match resource.destruction_task_state() {
+                        TaskState::Unknown | TaskState::Running => {
+                            // Indicate that some pods still may be running.
+                            finished = false
+                        }
+                        _ => continue,
+                    }
+                }
+            }
+        }
         Self {
+            passed,
+            finished,
+            failed_tests,
             controller_status,
             crds,
         }
     }
+}
 
-    /// Create a table containing the status of all objects.
-    pub fn to_string(&self, width: usize) -> String {
+impl std::fmt::Display for StatusSnapshot {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let table: Table = self.into();
-        table
-            .with(MaxWidth::truncating(width))
-            .with(MinWidth::new(width))
-            .to_string()
+        if let Some(width) = f.width() {
+            // If we received a width, we use it
+            write!(
+                f,
+                "{}",
+                table
+                    .with(MaxWidth::truncating(width))
+                    .with(MinWidth::new(width))
+            )
+        } else {
+            // Otherwise we do nothing special
+            write!(f, "{}", table)
+        }
     }
 }
 
-impl From<&Status> for Table {
-    fn from(status: &Status) -> Self {
+impl From<&StatusSnapshot> for Table {
+    fn from(status: &StatusSnapshot) -> Self {
         let mut results = Vec::new();
         if let Some(controller_status) = &status.controller_status {
             results.push(ResultRow {

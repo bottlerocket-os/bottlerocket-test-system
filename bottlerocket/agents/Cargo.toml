@@ -1,23 +1,23 @@
 [package]
 name = "bottlerocket-agents"
-version = "0.1.0"
+version = "0.0.1"
 edition = "2018"
 publish = false
 license = "MIT OR Apache-2.0"
 
 [dependencies]
-agent-common = { version = "0.1.0", path = "../../agent/agent-common" }
-bottlerocket-types = { version = "0.1.0", path = "../types" }
+agent-common = { version = "0.0.1", path = "../../agent/agent-common" }
+bottlerocket-types = { version = "0.0.1", path = "../types" }
 async-trait = "0.1"
-aws-config = "0.13"
-aws-types = "0.13"
-aws-sdk-ec2 = "0.13"
-aws-sdk-ecs = "0.13"
-aws-sdk-eks = "0.13"
-aws-sdk-iam = "0.13"
-aws-sdk-ssm = "0.13"
-aws-sdk-sts = "0.13"
-aws-smithy-types = "0.43"
+aws-config = "0.15"
+aws-types = "0.15"
+aws-sdk-ec2 = "0.15"
+aws-sdk-ecs = "0.15"
+aws-sdk-eks = "0.15"
+aws-sdk-iam = "0.15"
+aws-sdk-ssm = "0.15"
+aws-sdk-sts = "0.15"
+aws-smithy-types = "0.45"
 base64 = "0.13.0"
 env_logger = "0.9"
 hex ="0.4.3"
@@ -25,19 +25,19 @@ k8s-openapi = { version = "0.15", default-features = false, features = ["v1_20"]
 kube = { version = "0.73", default-features = false, features = ["config", "derive", "client"] }
 log = "0.4"
 maplit = "1.0.2"
-model = { version = "0.1.0", path = "../../model" }
+model = { version = "0.0.1", path = "../../model" }
 reqwest = { version = "0.11.1", default-features = false, features = ["rustls-tls", "blocking"] }
-resource-agent = { version = "0.1.0", path = "../../agent/resource-agent" }
+resource-agent = { version = "0.0.1", path = "../../agent/resource-agent" }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 serde_plain = "1"
 sha2 = "0.10"
 snafu = "0.7"
-test-agent = { version = "0.1.0", path = "../../agent/test-agent" }
+test-agent = { version = "0.0.1", path = "../../agent/test-agent" }
 tokio = { version = "1", default-features = false, features = ["macros", "rt-multi-thread", "time"] }
 tough = { version = "0.12", features = ["http"] }
 url = "2.2"
 uuid = { version = "1.0", default-features = false, features = ["serde", "v4"] }
 
 [build-dependencies]
-yamlgen = { version = "0.1.0", path = "../../yamlgen" }
+yamlgen = { version = "0.0.1", path = "../../yamlgen" }

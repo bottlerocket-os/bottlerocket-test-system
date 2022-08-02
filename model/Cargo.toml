@@ -1,6 +1,6 @@
 [package]
 name = "model"
-version = "0.1.0"
+version = "0.0.1"
 edition = "2021"
 publish = false
 license = "MIT OR Apache-2.0"
@@ -28,10 +28,10 @@ snafu = "0.7"
 tabled = "0.6"
 tokio =  { version = "1", features = ["rt-multi-thread", "sync", "fs"] }
 tokio-util = "0.7"
-topological-sort = "0.1"
+topological-sort = "0.2"
 
 [dev-dependencies]
-selftest = { version = "0.1.0", path = "../selftest" }
+selftest = { version = "0.0.1", path = "../selftest" }
 tokio = { version = "1", features = ["macros"] }
 
 [features]

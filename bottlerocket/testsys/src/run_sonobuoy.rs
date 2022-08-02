@@ -46,15 +46,19 @@ pub(crate) struct RunSonobuoy {
     #[structopt(long, default_value = "e2e")]
     plugin: String,
 
-    /// The mode used for the sonobuoy test. One of `non-disruptive-conformance`,
-    /// `certified-conformance`, `quick`. Although the Sonobuoy binary defaults to
-    /// `non-disruptive-conformance`, we default to `quick` to make a quick test the most ergonomic.
+    /// The test mode passed to the sonobuoy E2E plugin. We default to `quick` to make a quick test
+    /// the most ergonomic.
     #[structopt(long, default_value = "quick")]
     mode: SonobuoyMode,
 
-    /// The kubernetes conformance image used for the sonobuoy test.
+    /// The kubernetes conformance image used for the sonobuoy E2E plugin.
     #[structopt(long)]
     kubernetes_conformance_image: Option<String>,
+
+    /// Path to config file that overrides the registries for test images.
+    /// Specifying this option passes the config to `sonobuoy run --e2e-repo-config`
+    #[structopt(long)]
+    e2e_repo_config: Option<String>,
 
     /// The name of the secret containing aws credentials.
     #[structopt(long)]
@@ -81,6 +85,15 @@ impl RunSonobuoy {
             (_, _) => return Err(error::Error::InvalidArguments { why: "Exactly 1 of 'target-cluster-kubeconfig' and 'target-cluster-kubeconfig-path' must be provided".to_string() })
         };
 
+        let e2e_repo_config_string = match &self.e2e_repo_config {
+            Some(e2e_repo_config_path) => Some(base64::encode(
+                read_to_string(e2e_repo_config_path).context(error::FileSnafu {
+                    path: e2e_repo_config_path,
+                })?,
+            )),
+            None => None,
+        };
+
         let test = Test {
             metadata: ObjectMeta {
                 name: Some(self.name.clone()),
@@ -102,6 +115,7 @@ impl RunSonobuoy {
                             kubeconfig_base64: kubeconfig_string,
                             plugin: self.plugin.clone(),
                             mode: self.mode,
+                            e2e_repo_config_base64: e2e_repo_config_string,
                             kubernetes_version: None,
                             kube_conformance_image: self.kubernetes_conformance_image.clone(),
                             assume_role: self.assume_role.clone(),
