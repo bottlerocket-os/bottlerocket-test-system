@@ -258,6 +258,12 @@ spec:
                     - name
                     - timeout
                   type: object
+                conflictsWith:
+                  description: Creation of this resource will not begin until all conflicting resources have been deleted.
+                  items:
+                    type: string
+                  nullable: true
+                  type: array
                 dependsOn:
                   description: Other resources that must to be created before this one can be created.
                   items:
@@ -270,6 +276,8 @@ spec:
                   enum:
                     - onDeletion
                     - never
+                    - onTestSuccess
+                    - onTestCompletion
                     - "null"
                   nullable: true
                   type: string

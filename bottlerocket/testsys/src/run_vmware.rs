@@ -349,6 +349,7 @@ impl RunVmware {
             },
             spec: ResourceSpec {
                 depends_on: None,
+                conflicts_with: None,
                 agent: Agent {
                     name: "vsphere-vm-provider".to_string(),
                     image: self.vm_provider_image.clone(),

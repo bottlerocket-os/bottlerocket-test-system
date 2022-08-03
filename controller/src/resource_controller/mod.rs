@@ -96,6 +96,13 @@ async fn do_creation_action(r: ResourceInterface, action: CreationAction) -> Res
                 dependency
             );
         }
+        CreationAction::WaitForConflict(conflict) => {
+            debug!(
+                "'{}' is waiting for conflicting resource '{}' to be destroyed",
+                r.name(),
+                conflict
+            );
+        }
         CreationAction::AddResourceFinalizer => {
             let _ = r
                 .resource_client()
@@ -113,6 +120,9 @@ async fn do_creation_action(r: ResourceInterface, action: CreationAction) -> Res
 
 async fn do_destruction_action(r: ResourceInterface, action: DestructionAction) -> Result<()> {
     match action {
+        DestructionAction::StartResourceDeletion => {
+            r.resource_client().delete(r.name()).await?;
+        }
         DestructionAction::RemoveCreationJob => {
             r.remove_job(ResourceAction::Create).await?;
         }
