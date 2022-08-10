@@ -1,12 +1,10 @@
 use crate::aws::{create_ssm_activation, ensure_ssm_service_role, wait_for_ssm_ready};
 use crate::tuf::download_target;
-use bottlerocket_agents::wireguard::setup_wireguard;
 use bottlerocket_agents::{
     aws_resource_config, base64_decode_write_file, TEST_CLUSTER_KUBECONFIG_PATH,
 };
 use bottlerocket_types::agent_config::{
     TufRepoConfig, VSphereVmConfig, AWS_CREDENTIALS_SECRET_NAME, VSPHERE_CREDENTIALS_SECRET_NAME,
-    WIREGUARD_SECRET_NAME,
 };
 use k8s_openapi::api::core::v1::Service;
 use kube::api::ListParams;
@@ -106,21 +104,6 @@ impl Create for VMCreator {
         // Keep track of the state of resources
         let mut resources = Resources::Clear;
         let (metadata_url, targets_url) = tuf_repo_urls(&spec.configuration.tuf_repo, &resources)?;
-
-        if let Some(wireguard_secret_name) = spec.secrets.get(WIREGUARD_SECRET_NAME) {
-            // If a wireguard secret is specified, try to set up an wireguard connection with the
-            // wireguard configuration stored in the secret.
-            let wireguard_secret = IntoProviderError::context(
-                client.get_secret(wireguard_secret_name).await,
-                resources,
-                format!("Error getting secret '{}'", wireguard_secret_name),
-            )?;
-            IntoProviderError::context(
-                setup_wireguard(&wireguard_secret).await,
-                resources,
-                "Error setting up wireguard connection",
-            )?;
-        }
 
         memo.aws_secret_name = spec.secrets.get(AWS_CREDENTIALS_SECRET_NAME).cloned();
         memo.assume_role = spec.configuration.assume_role.clone();
@@ -494,21 +477,6 @@ impl Destroy for VMDestroyer {
             Resources::Clear
         };
         let spec = spec.context(resources, "Missing vSphere resource agent spec")?;
-
-        if let Some(wireguard_secret_name) = spec.secrets.get(WIREGUARD_SECRET_NAME) {
-            // If a wireguard secret is specified, try to set up an wireguard connection with the
-            // wireguard configuration stored in the secret.
-            let wireguard_secret = IntoProviderError::context(
-                client.get_secret(wireguard_secret_name).await,
-                resources,
-                format!("Error getting secret '{}'", wireguard_secret_name),
-            )?;
-            IntoProviderError::context(
-                setup_wireguard(&wireguard_secret).await,
-                resources,
-                "Error setting up wireguard connection",
-            )?;
-        }
 
         let shared_config = aws_resource_config(
             client,

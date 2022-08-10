@@ -36,16 +36,6 @@ ENV CARGO_HOME=/home/builder/.cargo
 ENV OPENSSL_STATIC=true
 
 # =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^=
-FROM build-rust as boringtun
-
-ARG ARCH
-
-# TODO get licenses for boringtun
-RUN cargo install boringtun \
-    --target ${ARCH}-bottlerocket-linux-musl \
-    --root /home/builder
-
-# =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^=
 FROM build-go as eksctl-build
 
 USER root
@@ -196,9 +186,6 @@ FROM scratch
 # aws-iam-authenticator
 COPY --from=aws-iam-authenticator-build /tmp/aws-iam-authenticator /aws-iam-authenticator
 COPY --from=aws-iam-authenticator-build /usr/share/licenses/aws-iam-authenticator /licenses/aws-iam-authenticator
-
-#boringtun
-COPY --from=boringtun /home/builder/bin/boringtun /boringtun
 
 # eksctl
 COPY --from=eksctl-build /tmp/eksctl /eksctl

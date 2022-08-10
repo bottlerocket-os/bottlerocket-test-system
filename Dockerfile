@@ -53,22 +53,6 @@ RUN --mount=type=cache,mode=0777,target=/src/target \
       --root .
 
 # =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^=
-# TODO figure out how to build this in the Bottlerocket SDK
-# Builds wireguard tools
-FROM public.ecr.aws/amazonlinux/amazonlinux:2 as wireguard-build
-RUN yum install -y gcc tar gzip make && yum clean all
-ARG WIREGUARD_TOOLS_VERSION=1.0.20210914
-ARG WIREGUARD_TOOLS_SOURCE_URL=https://github.com/WireGuard/wireguard-tools/archive/refs/tags/v${WIREGUARD_TOOLS_VERSION}.tar.gz
-
-# Download wireguard-tools source and install wg
-RUN temp_dir="$(mktemp -d --suffix wireguard-tools-setup)" && \
-    curl -fsSL "${WIREGUARD_TOOLS_SOURCE_URL}" -o "${temp_dir}/${WIREGUARD_TOOLS_SOURCE_URL##*/}" && \
-    tar xpf "${temp_dir}/${WIREGUARD_TOOLS_SOURCE_URL##*/}" -C "${temp_dir}" && \
-    cd "${temp_dir}/wireguard-tools-${WIREGUARD_TOOLS_VERSION}/src" && \
-    make && WITH_BASHCOMPLETION=no WITH_SYSTEMDUNITS=no make install && \
-    rm -rf ${temp_dir}
-
-# =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^=
 # Builds the EC2 resource agent image
 FROM scratch as ec2-resource-agent
 # Copy CA certificates store
@@ -94,13 +78,6 @@ COPY --from=build /usr/share/licenses/govmomi /licenses/govmomi
 # Copy kubeadm
 COPY --from=tools /kubeadm /usr/local/bin/kubeadm
 COPY --from=tools /licenses/kubernetes /licenses/kubernetes
-
-# Copy wireguard-tools binaries
-COPY --from=wireguard-build /usr/bin/wg /usr/bin/wg
-COPY --from=wireguard-build /usr/bin/wg-quick /usr/bin/wg-quick
-
-# Copy boringtun binary
-COPY --from=tools /boringtun /usr/bin/boringtun
 
 # Copy binary
 COPY --from=build-src /src/bottlerocket/agents/bin/vsphere-vm-resource-agent ./
@@ -174,13 +151,6 @@ RUN temp_dir="$(mktemp -d --suffix aws-cli)" && \
 # Copy sonobuoy
 COPY --from=tools /sonobuoy /usr/bin/sonobuoy
 COPY --from=tools /licenses/sonobuoy /licenses/sonobuoy
-
-# Copy wireguard-tools
-COPY --from=wireguard-build /usr/bin/wg /usr/bin/wg
-COPY --from=wireguard-build /usr/bin/wg-quick /usr/bin/wg-quick
-
-# Copy boringtun
-COPY --from=tools /boringtun /usr/bin/boringtun
 
 # Copy sonobuoy-test-agent
 COPY --from=build-src /src/bottlerocket/agents/bin/sonobuoy-test-agent ./
