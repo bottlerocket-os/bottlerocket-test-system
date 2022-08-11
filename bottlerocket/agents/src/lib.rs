@@ -8,7 +8,6 @@ This `lib.rs` provides code that is used by multiple agent binaries orused by th
 
 pub mod error;
 pub mod sonobuoy;
-pub mod wireguard;
 
 use crate::error::Error;
 use aws_config::meta::region::RegionProviderChain;

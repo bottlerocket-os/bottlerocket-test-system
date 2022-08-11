@@ -2,11 +2,9 @@ use crate::error::{self, Result};
 use bottlerocket_types::agent_config::{
     MigrationConfig, SonobuoyConfig, SonobuoyMode, TufRepoConfig, VSphereClusterInfo,
     VSphereVmConfig, AWS_CREDENTIALS_SECRET_NAME, VSPHERE_CREDENTIALS_SECRET_NAME,
-    WIREGUARD_SECRET_NAME,
 };
 use kube::ResourceExt;
 use kube::{api::ObjectMeta, Client};
-use maplit::btreemap;
 use model::clients::{CrdClient, ResourceClient, TestClient};
 use model::constants::NAMESPACE;
 use model::{
@@ -55,15 +53,11 @@ pub(crate) struct RunVmware {
 
     /// The name of the secret containing aws credentials.
     #[structopt(long)]
-    aws_secret: SecretName,
+    aws_secret: Option<SecretName>,
 
     /// The name of the secret containing vsphere credentials.
     #[structopt(long)]
     vsphere_secret: SecretName,
-
-    /// The name of the secret containing wireguard configuration.
-    #[structopt(long)]
-    wireguard_secret: SecretName,
 
     /// The name of the vsphere cluster that will be used.
     #[structopt(long)]
@@ -182,9 +176,14 @@ impl RunVmware {
             .vm_resource_name
             .clone()
             .unwrap_or(format!("{}-vms", self.cluster_name));
-        let secret_map = btreemap! [ AWS_CREDENTIALS_SECRET_NAME.to_string() => self.aws_secret.clone(),
-        VSPHERE_CREDENTIALS_SECRET_NAME.to_string() => self.vsphere_secret.clone(),
-        WIREGUARD_SECRET_NAME.to_string() => self.wireguard_secret.clone() ];
+        let mut secret_map = BTreeMap::new();
+        secret_map.insert(
+            VSPHERE_CREDENTIALS_SECRET_NAME.to_string(),
+            self.vsphere_secret.to_owned(),
+        );
+        if let Some(aws_secret) = self.aws_secret.to_owned() {
+            secret_map.insert(AWS_CREDENTIALS_SECRET_NAME.to_string(), aws_secret);
+        }
 
         let encoded_kubeconfig = base64::encode(
             read_to_string(&self.target_cluster_kubeconfig_path).context(error::FileSnafu {

@@ -35,24 +35,19 @@ spec:
 use async_trait::async_trait;
 use bottlerocket_agents::error::Error;
 use bottlerocket_agents::sonobuoy::{delete_sonobuoy, rerun_failed_sonobuoy, run_sonobuoy};
-use bottlerocket_agents::wireguard::setup_wireguard;
 use bottlerocket_agents::{
-    aws_test_config, base64_decode_write_file, error, init_agent_logger, E2E_REPO_CONFIG_PATH,
+    aws_test_config, base64_decode_write_file, init_agent_logger, E2E_REPO_CONFIG_PATH,
     TEST_CLUSTER_KUBECONFIG_PATH,
 };
-use bottlerocket_types::agent_config::{
-    SonobuoyConfig, AWS_CREDENTIALS_SECRET_NAME, WIREGUARD_SECRET_NAME,
-};
+use bottlerocket_types::agent_config::{SonobuoyConfig, AWS_CREDENTIALS_SECRET_NAME};
 use log::{debug, info};
 use model::{SecretName, TestResults};
-use snafu::ResultExt;
 use std::path::PathBuf;
 use test_agent::{BootstrapData, ClientError, DefaultClient, Spec, TestAgent};
 
 struct SonobuoyTestRunner {
     config: SonobuoyConfig,
     aws_secret_name: Option<SecretName>,
-    wireguard_secret_name: Option<SecretName>,
     results_dir: PathBuf,
 }
 
@@ -66,7 +61,6 @@ impl test_agent::Runner for SonobuoyTestRunner {
         Ok(Self {
             config: spec.configuration,
             aws_secret_name: spec.secrets.get(AWS_CREDENTIALS_SECRET_NAME).cloned(),
-            wireguard_secret_name: spec.secrets.get(WIREGUARD_SECRET_NAME).cloned(),
             results_dir: spec.results_dir,
         })
     }
@@ -81,14 +75,6 @@ impl test_agent::Runner for SonobuoyTestRunner {
         )
         .await?;
 
-        if let Some(wireguard_secret_name) = &self.wireguard_secret_name {
-            // If a wireguard secret is specified, try to set up an wireguard connection with the
-            // wireguard configuration stored in the secret.
-            let wireguard_secret = self
-                .get_secret(wireguard_secret_name)
-                .context(error::SecretMissingSnafu)?;
-            setup_wireguard(&wireguard_secret).await?;
-        }
         debug!("Decoding kubeconfig for test cluster");
         base64_decode_write_file(&self.config.kubeconfig_base64, TEST_CLUSTER_KUBECONFIG_PATH)
             .await?;

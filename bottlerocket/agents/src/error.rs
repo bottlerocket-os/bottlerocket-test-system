@@ -45,12 +45,6 @@ pub enum Error {
         source: agent_common::secrets::Error,
     },
 
-    #[snafu(display("Wireguard configuration missing from wireguard secret data"))]
-    WireguardConfMissing,
-
-    #[snafu(display("Failed to run wireguard to set up wireguard VPN tunnel: {}", stderr))]
-    WireguardRun { stderr: String },
-
     #[snafu(display("Failed to create sonobuoy process: {}", source))]
     SonobuoyProcess { source: std::io::Error },
 

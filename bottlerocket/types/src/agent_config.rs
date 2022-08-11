@@ -11,7 +11,6 @@ use std::str::FromStr;
 pub const AWS_CREDENTIALS_SECRET_NAME: &str = "awsCredentials";
 pub const SONOBUOY_RESULTS_FILENAME: &str = "sonobuoy-results.tar.gz";
 pub const VSPHERE_CREDENTIALS_SECRET_NAME: &str = "vsphereCredentials";
-pub const WIREGUARD_SECRET_NAME: &str = "wireguardSecrets";
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, Default)]
 #[serde(rename_all = "camelCase")]
