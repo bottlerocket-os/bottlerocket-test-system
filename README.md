@@ -168,6 +168,8 @@ example command.
 
 ## Development
 
+See [DEVELOPER](DEVELOPER.md) for an introduction to the framework and start up guide.
+
 ### Project Structure
 
 - `model` is the root dependency. It includes the CRDs and clients for interacting with them.
