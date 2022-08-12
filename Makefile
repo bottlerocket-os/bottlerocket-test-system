@@ -198,3 +198,6 @@ check-publish-registry:
 ifndef PUBLISH_IMAGES_REGISTRY
 	$(error PUBLISH_IMAGES_REGISTRY is undefined)
 endif
+
+mdlint:
+	docker run --rm -v "$$(pwd)":/workdir ghcr.io/igorshubovych/markdownlint-cli:latest "**/*.md"

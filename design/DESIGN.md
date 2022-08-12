@@ -118,14 +118,16 @@ The resource agent writes to the status fields of the resource object to indicat
 ## Architecture Diagram
 
 The architecture diagram shows a user using the `testsys` CLI to create three CRD instances.
-- Cluster Resource CRD represents an external Kubernetes cluster that needs to be created for testing.
-- Instances Resource CRD represents Bottlerocket instances that will run as nodes in the external cluster.
-- Sonobuoy Test CRD represents the desired test that will run agains the external cluster and nodes.
+
+* Cluster Resource CRD represents an external Kubernetes cluster that needs to be created for testing.
+* Instances Resource CRD represents Bottlerocket instances that will run as nodes in the external cluster.
+* Sonobuoy Test CRD represents the desired test that will run agains the external cluster and nodes.
 
 The controller sees these CRD instances and:
-- Creates a cluster.
-- Launches Bottlerocket instances as the nodes in the cluster.
-- Runs Sonobuoy testing in the external cluster.
+
+* Creates a cluster.
+* Launches Bottlerocket instances as the nodes in the cluster.
+* Runs Sonobuoy testing in the external cluster.
 
 ![Architecture](testsys.jpg)
 
@@ -133,10 +135,11 @@ The controller sees these CRD instances and:
 
 Resources may need to be created in a certain order and tests may depend on other tests.
 For example, you may want to:
-- create a cluster, `my-cluster`
-- launch instances as nodes for the cluster, `my-instances`
-- run `test-a`
-- and upon successful completion of `test-a`, run `test-b`.
+
+* create a cluster, `my-cluster`
+* launch instances as nodes for the cluster, `my-instances`
+* run `test-a`
+* and upon successful completion of `test-a`, run `test-b`.
 
 To do this we can specify in the `my-instances` resource CRD that it depends on `my-cluster`.
 We can specify that `test-a` depends on resources `my-instances` and `my-cluster`.
@@ -165,8 +168,6 @@ Secrets will be mounted in a predictable manner.
 Dedicated [status] fields of the CRD are used to communicate necessary information from the agents back to the controller.
 In this way the TestSys CRD and execution engine defines an interface that can be implemented by any testing modality.
 The TestAgent and ResourceAgent libraries will hide these details from the implementer and ensure that the TestSys API is being used correctly.
-
-[status]: https://kubernetes.io/docs/tasks/extend-kubernetes/custom-resources/custom-resource-definitions/#status-subresource
 
 In Kubernetes the spec and status fields of a CRD are specified with an OpenAPIv3 [schema].
 The Kubernetes server validates requests based on the schema provided.

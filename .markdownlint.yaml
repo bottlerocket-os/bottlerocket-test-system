@@ -1,0 +1,19 @@
+# Project settings for markdownlint behavior.
+# See https://github.com/DavidAnson/markdownlint/blob/main/doc/Rules.md
+# for a detailed description of all rules.
+
+# Turn on all rules by default
+default: true
+
+# We use one sentence per line, so allow long line lengths
+MD013: false
+
+# Allow duplicate headers if they are under different sections
+MD024:
+  siblings_only: true
+
+# Allow using bare URLs
+MD034: false
+
+# We've decided to allow punctuation in headers
+MD036: false
