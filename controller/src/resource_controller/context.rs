@@ -41,8 +41,16 @@ pub(super) struct ResourceInterface {
 
 impl ResourceInterface {
     pub(super) fn new(resource: Resource, context: Context) -> Result<Self> {
-        let creation_job = format!("{}-creation", resource.object_name());
-        let destruction_job = format!("{}-destruction", resource.object_name());
+        let mut resource_name = resource.object_name().to_string();
+
+        // Selects the UID from the k8s object to append to the truncated job name, preventing duplicate job names
+        let id = match resource.metadata.uid.as_ref() {
+            Some(r) => r,
+            None => "",
+        };
+        resource_name.truncate(15);
+        let creation_job = format!("{}{}-creation", resource_name, id);
+        let destruction_job = format!("{}{}-destruction", resource_name, id);
         Ok(Self {
             resource,
             context,
