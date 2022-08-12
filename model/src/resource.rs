@@ -11,7 +11,9 @@ use std::fmt::{Display, Formatter};
 /// A resource required by a test. For example, a compute instance or cluster. The `CustomResource`
 /// derive also produces a struct named `Resource` which represents a resource CRD object in the k8s
 /// API.
-#[derive(Clone, CustomResource, Debug, Default, Deserialize, JsonSchema, PartialEq, Serialize)]
+#[derive(
+    Clone, CustomResource, Debug, Default, Deserialize, JsonSchema, PartialEq, Eq, Serialize,
+)]
 #[kube(
     derive = "Default",
     derive = "PartialEq",
