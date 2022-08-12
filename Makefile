@@ -1,11 +1,10 @@
+# Set our default to print out help if user has not provided a target
+.DEFAULT_GOAL := help
+
+# Determine our root directory path for later use
 TOP := $(dir $(firstword $(MAKEFILE_LIST)))
 
-TESTSYS_BUILD_HOST_UNAME_ARCH=$(shell uname -m)
-TESTSYS_BUILD_HOST_GOARCH ?= $(lastword $(subst :, ,$(filter $(TESTSYS_BUILD_HOST_UNAME_ARCH):%,x86_64:amd64 aarch64:arm64)))
-TESTSYS_BUILD_HOST_PLATFORM=$(shell uname | tr '[:upper:]' '[:lower:]')
-# On some hosts we get an x509 certificate error and need to set GOPROXY to "direct"
-TESTSYS_BUILD_GOPROXY ?= direct
-
+# Variables we update as newer versions are released
 BOTTLEROCKET_SDK_VERSION = v0.26.0
 BOTTLEROCKET_SDK_ARCH = $(TESTSYS_BUILD_HOST_UNAME_ARCH)
 BOTTLEROCKET_TOOLS_VERSION ?= v0.1.0
@@ -13,6 +12,15 @@ BOTTLEROCKET_TOOLS_VERSION ?= v0.1.0
 BUILDER_IMAGE = public.ecr.aws/bottlerocket/bottlerocket-sdk-$(BOTTLEROCKET_SDK_ARCH):$(BOTTLEROCKET_SDK_VERSION)
 TOOLS_IMAGE ?= public.ecr.aws/bottlerocket-test-system/bottlerocket-test-tools:$(BOTTLEROCKET_TOOLS_VERSION)
 
+# Capture information about the build host
+TESTSYS_BUILD_HOST_UNAME_ARCH=$(shell uname -m)
+TESTSYS_BUILD_HOST_GOARCH ?= $(lastword $(subst :, ,$(filter $(TESTSYS_BUILD_HOST_UNAME_ARCH):%,x86_64:amd64 aarch64:arm64)))
+TESTSYS_BUILD_HOST_PLATFORM=$(shell uname | tr '[:upper:]' '[:lower:]')
+# On some hosts we get an x509 certificate error and need to set GOPROXY to "direct"
+TESTSYS_BUILD_GOPROXY ?= direct
+
+# The set of bottlerocket images to create. Add new artifacts here when added
+# to the project.
 IMAGES = controller sonobuoy-test-agent ec2-resource-agent eks-resource-agent ecs-resource-agent \
 	migration-test-agent vsphere-vm-resource-agent ecs-test-agent
 
@@ -24,10 +32,14 @@ PUSH_IMAGES = $(addprefix push-, $(IMAGES))
 
 .PHONY: build sdk-openssl example-test-agent example-resource-agent \
 	images fetch integ-test show-variables cargo-deny tools $(IMAGES) \
-	tag-images $(TAG_IMAGES) push-images $(PUSH_IMAGES) print-image-names
+	tag-images $(TAG_IMAGES) push-images $(PUSH_IMAGES) print-image-names \
+	help
 
 export DOCKER_BUILDKIT=1
 export CARGO_HOME = $(TOP)/.cargo
+
+help: ## display help
+	@awk 'BEGIN {FS = ":.* ## "; printf "\n\033[1;32mTargets:\033[36m\033[0m\n"} /^[a-zA-Z_-]+:.*? ## / { printf "  \033[36m%-15s\033[0m %s\n", $$1, $$2 } /^##@/ { printf "\n\033[1m%s\033[0m\n", substr($$0, 5) } ' $(MAKEFILE_LIST)
 
 show-variables:
 	$(info TESTSYS_BUILD_HOST_UNAME_ARCH=$(TESTSYS_BUILD_HOST_UNAME_ARCH))
@@ -58,8 +70,7 @@ print-image-names:
 	$(info $(IMAGES))
 	@echo > /dev/null
 
-# Builds, Lints and Tests the Rust workspace
-build: fetch
+build: fetch  ## build, lint, and test the Rust workspace
 	cargo fmt -- --check
 	cargo clippy --locked -- -D warnings
 	cargo build --locked
@@ -137,6 +148,7 @@ eks-resource-agent ec2-resource-agent ecs-resource-agent vsphere-vm-resource-age
 # TESTSYS_SELFTEST_THREADS           - The number of tests that cargo will run in parallel. This defaults to 1 since the
 #                                      integration tests run Kubernetes clusters in kind which can be resource-intensive
 #                                      for some machines.
+integ-test:  ## run integration tests
 integ-test: export TESTSYS_SELFTEST_KIND_PATH := $(shell pwd)/bin/kind
 integ-test: TESTSYS_SELFTEST_THREADS ?= 1
 integ-test: $(if $(TESTSYS_SELFTEST_SKIP_IMAGE_BUILDS), ,controller example-test-agent duplicator-resource-agent)
@@ -153,15 +165,15 @@ cargo-deny:
 	cargo deny --all-features --no-default-features check --disable-fetch licenses sources
 
 # Define a target to tag all images
-tag-images: $(TAG_IMAGES)
+tag-images: $(TAG_IMAGES)  ## tag all images
 
 # This defines the TAG_IMAGE variable, extracting the image name from the target name
 $(TAG_IMAGES): TAG_IMAGE = $(@:tag-%=%)
 $(TAG_IMAGES): check-publish-version
 	docker tag $(TAG_IMAGE) $(if $(PUBLISH_IMAGES_REGISTRY), $(PUBLISH_IMAGES_REGISTRY)/)$(TAG_IMAGE):$(PUBLISH_IMAGES_VERSION)
 
-# Define a target to tag all images
-publish-images: $(PUSH_IMAGES)
+# Define a target to publish all images
+publish-images: $(PUSH_IMAGES)  ## publish all images
 
 # This defines the TAG_IMAGE variable, extracting the image name from the target name
 $(PUSH_IMAGES): TAG_IMAGE = $(@:push-%=%)
