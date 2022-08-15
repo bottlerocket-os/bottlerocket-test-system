@@ -8,7 +8,7 @@ use kube::{
     Api, Client, Config,
 };
 use model::clients::{HttpStatusCode, StatusCode};
-use model::constants::{LABEL_COMPONENT, LABEL_PROVIDER_NAME, NAMESPACE};
+use model::constants::{LABEL_COMPONENT, LABEL_PROVIDER_NAME, NAMESPACE, TRUNC_LEN};
 use model::{Resource, Test};
 use std::fmt::Debug;
 use std::{convert::TryInto, fs::File};
@@ -371,7 +371,7 @@ impl Cluster {
         let resource = resource_api.get(name).await?;
         let pods = pod_api.list(&ListParams::default()).await?.items;
         let mut truncated_name = name.to_string();
-        truncated_name.truncate(15);
+        truncated_name.truncate(TRUNC_LEN);
         for pod in pods {
             if pod.metadata.name.unwrap_or_default().starts_with(&format!(
                 "{}{}-destruction",
