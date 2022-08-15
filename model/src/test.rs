@@ -9,7 +9,9 @@ use std::borrow::Cow;
 
 /// A TestSys Test. The `CustomResource` derive also produces a struct named `Test` which represents
 /// a test CRD object in the k8s API.
-#[derive(Clone, CustomResource, Debug, Default, Deserialize, JsonSchema, PartialEq, Serialize)]
+#[derive(
+    Clone, CustomResource, Debug, Default, Deserialize, JsonSchema, PartialEq, Eq, Serialize,
+)]
 #[kube(
     derive = "Default",
     derive = "PartialEq",

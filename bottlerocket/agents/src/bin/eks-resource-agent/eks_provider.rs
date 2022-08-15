@@ -240,12 +240,13 @@ async fn is_cluster_creation_required(
                     )
                 )
             ),
-        CreationPolicy::Never if !cluster_exists => return Err(
-            ProviderError::new_with_context(
-                Resources::Clear, format!(
-                    "The cluster '{}' does not exist and creation policy '{:?}' requires that it exist",
-                    cluster_name,
-                    creation_policy
+        CreationPolicy::Never if !cluster_exists =>
+            Err(
+                ProviderError::new_with_context(
+                    Resources::Clear, format!(
+                        "The cluster '{}' does not exist and creation policy '{:?}' requires that it exist",
+                        cluster_name,
+                        creation_policy
                 )
             )
         ),
