@@ -385,6 +385,26 @@ impl TestManager {
             })
     }
 
+    /// Retrieve the logs of the controller.
+    pub async fn controller_logs(
+        &self,
+        follow: bool,
+    ) -> Result<impl Stream<Item = core::result::Result<Bytes, Error>>> {
+        let pod_api: Api<Pod> = self.namespaced_api();
+        let pod = self.controller_pod().await?;
+        let log_params = LogParams {
+            follow,
+            pretty: true,
+            ..Default::default()
+        };
+        pod_api
+            .log_stream(&pod.name(), &log_params)
+            .await
+            .context(error::KubeSnafu {
+                action: "stream logs",
+            })
+    }
+
     /// Write the results from a testsys `Test` to a given `destination`. The results are in the
     /// form of a tarball containing all files placed in the test agents output directory.
     pub async fn write_test_results(&self, test_name: &str, destination: &Path) -> Result<()> {

@@ -10,13 +10,17 @@ pub(crate) struct Logs {
     #[clap(long, conflicts_with = "resource")]
     test: Option<String>,
 
-    /// The name of the test we want logs from.
+    /// The name of the resource we want logs from.
     #[clap(long, conflicts_with = "test", requires = "state")]
     resource: Option<String>,
 
     /// The resource state we want logs for (Creation, Destruction).
     #[clap(long = "state", conflicts_with = "test")]
     resource_state: Option<ResourceState>,
+
+    /// Retrieve logs for the testsys controller
+    #[clap(long = "controller", conflicts_with_all = &["test", "resource", "state"])]
+    controller: bool,
 
     /// Include logs from dependencies.
     #[clap(long, short)]
@@ -29,20 +33,26 @@ pub(crate) struct Logs {
 
 impl Logs {
     pub(crate) async fn run(self, client: TestManager) -> Result<()> {
-        match (self.test, self.resource, self.resource_state) {
-            (Some(test), None, None ) => {
+        match (self.test, self.resource, self.resource_state, self.controller) {
+            (Some(test), None, None, false ) => {
                 let mut logs = client.test_logs(test, self.follow).await.context("Unable to get logs.")?;
                 while let Some(line) = logs.next().await {
                     println!("{:#?}", line.context("Unable to read line")?);
                 }
             }
-            (None, Some(resource), Some(state)) => {
+            (None, Some(resource), Some(state), false) => {
                 let mut logs = client.resource_logs(resource, state, self.follow).await.context("Unable to get logs.")?;
                 while let Some(line) = logs.next().await {
                     println!("{:#?}", line.context("Unable to read line")?);
                 }
             }
-            _ => return Err(Error::msg("Invalid arguments were provided. Exactly one of `--test` and `--resource` must be used.")),
+            (None, None, None, true) => {
+                let mut logs = client.controller_logs(self.follow).await.context("Unable to get logs.")?;
+                while let Some(line) = logs.next().await {
+                    println!("{:#?}", line.context("Unable to read line")?);
+                }
+            }
+            _ => return Err(Error::msg("Invalid arguments were provided. Exactly one of `--test`, `--resource`, and `--controller` must be used.")),
         };
         Ok(())
     }
