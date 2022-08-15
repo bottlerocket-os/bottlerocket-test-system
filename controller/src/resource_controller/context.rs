@@ -4,7 +4,7 @@ use anyhow::Context as AnyhowContext;
 use kube::Api;
 use log::debug;
 use model::clients::{CrdClient, ResourceClient};
-use model::constants::{ENV_RESOURCE_ACTION, ENV_RESOURCE_NAME};
+use model::constants::{ENV_RESOURCE_ACTION, ENV_RESOURCE_NAME, TRUNC_LEN};
 use model::{CrdExt, Resource, ResourceAction};
 use std::sync::Arc;
 
@@ -41,8 +41,18 @@ pub(super) struct ResourceInterface {
 
 impl ResourceInterface {
     pub(super) fn new(resource: Resource, context: Context) -> Result<Self> {
-        let creation_job = format!("{}-creation", resource.object_name());
-        let destruction_job = format!("{}-destruction", resource.object_name());
+        let mut resource_name = resource.object_name().to_string();
+
+        // Selects the UID from the k8s object to append to the truncated job name, preventing duplicate job names
+        let id = match resource.metadata.uid.as_ref() {
+            Some(r) => r,
+            None => "",
+        };
+        // Truncates the resource name down to TRUNC_LEN so that the truncated name + 36-character UID is at most 51 characters long
+        // This ensures that the new name with the -creation or -destruction suffix is within the k8s-enforced 63-character limit
+        resource_name.truncate(TRUNC_LEN);
+        let creation_job = format!("{}{}-creation", resource_name, id);
+        let destruction_job = format!("{}{}-destruction", resource_name, id);
         Ok(Self {
             resource,
             context,

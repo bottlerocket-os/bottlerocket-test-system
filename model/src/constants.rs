@@ -57,6 +57,9 @@ pub const FINALIZER_TEST_JOB: &str = testsys!("test-job");
 
 pub const TESTSYS_RESULTS_FILE: &str = "/output.tar.gz";
 
+// Used by the controller to truncate resource names
+pub const TRUNC_LEN: usize = 15;
+
 #[test]
 fn testsys_constants_macro_test() {
     assert_eq!("testsys.bottlerocket.aws", testsys!());

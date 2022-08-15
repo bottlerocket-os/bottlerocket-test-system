@@ -8,7 +8,7 @@ use kube::{
     Api, Client, Config,
 };
 use model::clients::{HttpStatusCode, StatusCode};
-use model::constants::{LABEL_COMPONENT, LABEL_PROVIDER_NAME, NAMESPACE};
+use model::constants::{LABEL_COMPONENT, LABEL_PROVIDER_NAME, NAMESPACE, TRUNC_LEN};
 use model::{Resource, Test};
 use std::fmt::Debug;
 use std::{convert::TryInto, fs::File};
@@ -366,15 +366,18 @@ impl Cluster {
     /// Return `true` if the destruction pod is found for resource named `name`.
     pub async fn does_resource_destruction_pod_exist(&self, name: &str) -> Result<bool> {
         let client = self.k8s_client().await?;
-        let pod_api = Api::<Pod>::namespaced(client, NAMESPACE);
+        let pod_api = Api::<Pod>::namespaced(client.clone(), NAMESPACE);
+        let resource_api = Api::<Resource>::namespaced(client, NAMESPACE);
+        let resource = resource_api.get(name).await?;
         let pods = pod_api.list(&ListParams::default()).await?.items;
+        let mut truncated_name = name.to_string();
+        truncated_name.truncate(TRUNC_LEN);
         for pod in pods {
-            if pod
-                .metadata
-                .name
-                .unwrap_or_default()
-                .starts_with(&format!("{}-destruction", name))
-            {
+            if pod.metadata.name.unwrap_or_default().starts_with(&format!(
+                "{}{}-destruction",
+                truncated_name,
+                resource.metadata.uid.as_ref().unwrap()
+            )) {
                 return Ok(true);
             }
         }
