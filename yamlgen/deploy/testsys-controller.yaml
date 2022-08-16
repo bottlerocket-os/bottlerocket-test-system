@@ -121,10 +121,6 @@ spec:
                     operator: In
                     values:
                       - linux
-                  - key: kubernetes.io/arch
-                    operator: In
-                    values:
-                      - amd64
       containers:
         - image: "6456745674567.dkr.ecr.us-west-2.amazonaws.com/controller:v0.1.2"
           name: controller

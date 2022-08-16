@@ -195,20 +195,11 @@ pub fn controller_deployment(
                             required_during_scheduling_ignored_during_execution: Some(
                                 NodeSelector {
                                     node_selector_terms: vec![NodeSelectorTerm {
-                                        match_expressions: Some(vec![
-                                            NodeSelectorRequirement {
-                                                key: "kubernetes.io/os".to_string(),
-                                                operator: "In".to_string(),
-                                                values: Some(vec!["linux".to_string()]),
-                                            },
-                                            NodeSelectorRequirement {
-                                                key: "kubernetes.io/arch".to_string(),
-                                                operator: "In".to_string(),
-                                                // TODO make sure the pod works on arm64 before adding arm64 here.
-                                                // https://github.com/bottlerocket-os/bottlerocket-test-system/issues/90
-                                                values: Some(vec!["amd64".to_string()]),
-                                            },
-                                        ]),
+                                        match_expressions: Some(vec![NodeSelectorRequirement {
+                                            key: "kubernetes.io/os".to_string(),
+                                            operator: "In".to_string(),
+                                            values: Some(vec!["linux".to_string()]),
+                                        }]),
                                         ..Default::default()
                                     }],
                                 },
