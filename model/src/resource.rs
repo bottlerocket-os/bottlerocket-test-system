@@ -1,3 +1,5 @@
+use crate::constants::TRUNC_LEN;
+use crate::test_manager::ResourceState;
 use crate::{agent::config_schema, Agent, CrdExt, TaskState};
 use core::option::Option;
 use k8s_openapi::apimachinery::pkg::apis::meta::v1::ObjectMeta;
@@ -78,6 +80,31 @@ impl Resource {
             .as_ref()
             .map(|s| s.destruction.task_state)
             .unwrap_or_default()
+    }
+
+    /// Gets the name of the -creation or -destruction job. This name consists of the first TRUNC_LEN
+    /// characters of the resource name, followed by the resource UID, followed by -creation or -destruction
+    pub fn job_name(&self, resource_state: ResourceState) -> String {
+        let suffix = match resource_state {
+            ResourceState::Creation => "creation",
+            ResourceState::Destruction => "destruction",
+        };
+        // Truncates the resource name down to TRUNC_LEN so that the truncated name + 36-character UID is at most 51 characters long
+        // This ensures that the new name with the -creation or -destruction suffix is within the k8s-enforced 63-character limit
+        let mut truncated_name = self
+            .metadata
+            .name
+            .as_ref()
+            .unwrap_or(&"".to_string())
+            .to_owned();
+        truncated_name.truncate(TRUNC_LEN);
+        // Append the resource UID to the truncated name to ensure unique pod names
+        format!(
+            "{}{}-{}",
+            truncated_name,
+            self.metadata.uid.as_ref().unwrap_or(&"".to_string()),
+            suffix
+        )
     }
 
     /// Gets either the creation error (if there is one) or the destruction error (if there is one)

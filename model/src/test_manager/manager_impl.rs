@@ -1,6 +1,6 @@
 use super::{error, ResourceState, Result, TestManager};
 use crate::clients::{AllowNotFound, CrdClient};
-use crate::constants::{LABEL_COMPONENT, NAMESPACE, TRUNC_LEN};
+use crate::constants::{LABEL_COMPONENT, NAMESPACE};
 use crate::{Crd, CrdName, Resource, Test};
 use k8s_openapi::api::core::v1::Pod;
 use kube::api::{ListParams, Patch, PatchParams, PostParams};
@@ -209,29 +209,16 @@ impl TestManager {
     where
         S: Into<String>,
     {
-        let pod_api: Api<Pod> = self.namespaced_api();
-        let suffix = match state {
-            ResourceState::Creation => "creation",
-            ResourceState::Destruction => "destruction",
-        };
-        let mut resource_name = resource.into();
-        let resource_api = Api::<Resource>::namespaced(self.k8s_client.clone(), NAMESPACE);
-        let resource_crd = resource_api.get(&resource_name).await;
-        let result = match resource_crd {
+        let resource_crd = self.resource_client().get(&resource.into()).await;
+        match resource_crd {
             // if the resource exists, retrieve the pod based on the truncated resource name + UID + resource state
             Ok(resource_object) => {
-                resource_name.truncate(TRUNC_LEN);
+                let pod_api: Api<Pod> = self.namespaced_api();
                 return pod_api
                     .list(&ListParams {
                         label_selector: Some(format!(
-                            "job-name={}{}-{}",
-                            resource_name,
-                            resource_object
-                                .metadata
-                                .uid
-                                .as_ref()
-                                .unwrap_or(&"".to_string()),
-                            suffix
+                            "job-name={}",
+                            resource_object.job_name(state)
                         )),
                         ..Default::default()
                     })
@@ -248,8 +235,7 @@ impl TestManager {
             Err(_) => Err(error::Error::NotFound {
                 what: "pod for test".to_string(),
             }),
-        };
-        result
+        }
     }
 
     /// Get a pod for the testsys controller.

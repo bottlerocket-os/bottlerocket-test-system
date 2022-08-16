@@ -7,8 +7,9 @@ use kube::{
     config::{KubeConfigOptions, Kubeconfig},
     Api, Client, Config,
 };
-use model::clients::{HttpStatusCode, StatusCode};
-use model::constants::{LABEL_COMPONENT, LABEL_PROVIDER_NAME, NAMESPACE, TRUNC_LEN};
+use model::clients::{CrdClient, HttpStatusCode, ResourceClient, StatusCode};
+use model::constants::{LABEL_COMPONENT, LABEL_PROVIDER_NAME, NAMESPACE};
+use model::test_manager::ResourceState;
 use model::{Resource, Test};
 use std::fmt::Debug;
 use std::{convert::TryInto, fs::File};
@@ -367,21 +368,20 @@ impl Cluster {
     pub async fn does_resource_destruction_pod_exist(&self, name: &str) -> Result<bool> {
         let client = self.k8s_client().await?;
         let pod_api = Api::<Pod>::namespaced(client.clone(), NAMESPACE);
-        let resource_api = Api::<Resource>::namespaced(client, NAMESPACE);
-        let resource = resource_api.get(name).await?;
-        let pods = pod_api.list(&ListParams::default()).await?.items;
-        let mut truncated_name = name.to_string();
-        truncated_name.truncate(TRUNC_LEN);
-        for pod in pods {
-            if pod.metadata.name.unwrap_or_default().starts_with(&format!(
-                "{}{}-destruction",
-                truncated_name,
-                resource.metadata.uid.as_ref().unwrap()
-            )) {
-                return Ok(true);
-            }
+        let resource_client = ResourceClient::new_from_k8s_client(client);
+        let resource = resource_client.get(name).await?;
+        let pod_name = resource.job_name(ResourceState::Destruction);
+        let pods = pod_api
+            .list(&ListParams {
+                label_selector: Some(format!("job-name={}", pod_name)),
+                ..Default::default()
+            })
+            .await?
+            .items;
+        match pods.first() {
+            Some(_) => Ok(true),
+            None => Ok(false),
         }
-        Ok(false)
     }
 
     /// Deletes a TestSys `Resource`. Does not wait for deletion to complete.
