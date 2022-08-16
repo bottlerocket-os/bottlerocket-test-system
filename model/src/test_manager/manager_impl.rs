@@ -1,6 +1,6 @@
 use super::{error, ResourceState, Result, TestManager};
 use crate::clients::{AllowNotFound, CrdClient};
-use crate::constants::NAMESPACE;
+use crate::constants::{LABEL_COMPONENT, NAMESPACE};
 use crate::{Crd, CrdName, Resource, Test};
 use k8s_openapi::api::core::v1::Pod;
 use kube::api::{ListParams, Patch, PatchParams, PostParams};
@@ -225,6 +225,26 @@ impl TestManager {
             .first()
             .context(error::NotFoundSnafu {
                 what: "pod for test",
+            })
+            .map(|pod| pod.clone())
+    }
+
+    /// Get a pod for the testsys controller.
+    pub(super) async fn controller_pod(&self) -> Result<Pod> {
+        let pod_api: Api<Pod> = self.namespaced_api();
+        pod_api
+            .list(&ListParams {
+                label_selector: Some(format!("{}={}", LABEL_COMPONENT, "controller")),
+                ..Default::default()
+            })
+            .await
+            .context(error::KubeSnafu {
+                action: "get controller pod",
+            })?
+            .items
+            .first()
+            .context(error::NotFoundSnafu {
+                what: "controller pod for test",
             })
             .map(|pod| pod.clone())
     }
