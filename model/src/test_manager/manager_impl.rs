@@ -1,6 +1,6 @@
 use super::{error, ResourceState, Result, TestManager};
 use crate::clients::{AllowNotFound, CrdClient};
-use crate::constants::{LABEL_COMPONENT, NAMESPACE};
+use crate::constants::{LABEL_COMPONENT, NAMESPACE, TRUNC_LEN};
 use crate::{Crd, CrdName, Resource, Test};
 use k8s_openapi::api::core::v1::Pod;
 use kube::api::{ListParams, Patch, PatchParams, PostParams};
@@ -214,19 +214,42 @@ impl TestManager {
             ResourceState::Creation => "creation",
             ResourceState::Destruction => "destruction",
         };
-        pod_api
-            .list(&ListParams {
-                label_selector: Some(format!("job-name={}-{}", resource.into(), suffix)),
-                ..Default::default()
-            })
-            .await
-            .context(error::KubeSnafu { action: "get pods" })?
-            .items
-            .first()
-            .context(error::NotFoundSnafu {
-                what: "pod for test",
-            })
-            .map(|pod| pod.clone())
+        let mut resource_name = resource.into();
+        let resource_api = Api::<Resource>::namespaced(self.k8s_client.clone(), NAMESPACE);
+        let resource_crd = resource_api.get(&resource_name).await;
+        let result = match resource_crd {
+            // if the resource exists, retrieve the pod based on the truncated resource name + UID + resource state
+            Ok(resource_object) => {
+                resource_name.truncate(TRUNC_LEN);
+                return pod_api
+                    .list(&ListParams {
+                        label_selector: Some(format!(
+                            "job-name={}{}-{}",
+                            resource_name,
+                            resource_object
+                                .metadata
+                                .uid
+                                .as_ref()
+                                .unwrap_or(&"".to_string()),
+                            suffix
+                        )),
+                        ..Default::default()
+                    })
+                    .await
+                    .context(error::KubeSnafu { action: "get pods" })?
+                    .items
+                    .first()
+                    .context(error::NotFoundSnafu {
+                        what: "pod for test",
+                    })
+                    .map(|pod| pod.clone());
+            }
+            // if the resource does not exist, return an error
+            Err(_) => Err(error::Error::NotFound {
+                what: "pod for test".to_string(),
+            }),
+        };
+        result
     }
 
     /// Get a pod for the testsys controller.
