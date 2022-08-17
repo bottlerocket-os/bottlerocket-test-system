@@ -15,7 +15,7 @@ model = { path = "../model" }
 serde = "1"
 serde_json = "1"
 serde_plain = "1"
-terminal_size = "0.1"
+terminal_size = "0.2"
 tokio = { version = "1", features = ["macros", "rt-multi-thread", "fs"] }
 
 [dev-dependencies]
