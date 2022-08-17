@@ -80,6 +80,8 @@ For example, we have created a [test agent which uses Sonobuoy] to test the Kube
 
 [test agent which uses Sonobuoy]: https://github.com/bottlerocket-os/bottlerocket-test-system/tree/develop/bottlerocket-agents/src/bin/sonobuoy-test-agent
 
+Test agents can also be created using [bash scripts](../agent/test-agent-cli/examples/example_test_agent_cli/example-test.sh).
+
 **[TestAgent Library]**:
 
 A Rust library (using [kube-rs]) that is provided for writing TestAgents.

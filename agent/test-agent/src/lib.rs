@@ -135,6 +135,9 @@ pub trait Client: Sized {
     async fn send_error<E>(&self, error: E) -> Result<(), Self::E>
     where
         E: Debug + Display + Send + Sync;
+
+    /// Set the task state as `Completed` indicating that no more retries or testing will occur.
+    async fn send_test_completed(&self) -> Result<(), Self::E>;
 }
 
 /// Provides the default [`Client`] implementation.

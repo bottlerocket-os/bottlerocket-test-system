@@ -1,0 +1,18 @@
+apiVersion: testsys.bottlerocket.aws/v1
+kind: Test
+metadata:
+  name: hello-world-cli
+  namespace: testsys-bottlerocket-aws
+spec:
+  retries: 5
+  agent:
+    name: hello-agent-cli
+    image: example-test-agent-cli:integ
+    keepRunning: false
+    configuration:
+      mode: Fast
+      person: Bones the Cat
+      helloCount: 1
+      helloDurationMilliseconds: 2
+  resources: []
+  dependsOn: []

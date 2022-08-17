@@ -95,6 +95,14 @@ impl Client for DefaultClient {
         Ok(())
     }
 
+    async fn send_test_completed(&self) -> Result<(), Self::E> {
+        self.client
+            .send_agent_task_state(&self.name, TaskState::Completed)
+            .await
+            .context(K8sSnafu)?;
+        Ok(())
+    }
+
     async fn send_test_results(&self, results: TestResults) -> Result<(), Self::E> {
         self.client
             .send_test_results(&self.name, results)

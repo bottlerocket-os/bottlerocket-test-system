@@ -30,7 +30,7 @@ TAG_IMAGES = $(addprefix tag-, $(IMAGES))
 # Store targets to push images
 PUSH_IMAGES = $(addprefix push-, $(IMAGES))
 
-.PHONY: build sdk-openssl example-test-agent example-resource-agent \
+.PHONY: build sdk-openssl example-test-agent example-test-agent-cli example-resource-agent \
 	images fetch integ-test show-variables cargo-deny tools $(IMAGES) \
 	tag-images $(TAG_IMAGES) push-images $(PUSH_IMAGES) print-image-names \
 	help
@@ -97,6 +97,14 @@ example-resource-agent: show-variables fetch
 		--network none \
 		-f agent/resource-agent/examples/example_resource_agent/Dockerfile .
 
+# Build the container image for the example test-agent-cli program
+example-test-agent-cli: show-variables fetch
+	docker build $(DOCKER_BUILD_FLAGS) \
+		--build-arg ARCH="$(TESTSYS_BUILD_HOST_UNAME_ARCH)" \
+		--build-arg BUILDER_IMAGE="$(BUILDER_IMAGE)" \
+		--tag "example-test-agent-cli" \
+		-f agent/test-agent-cli/examples/example_test_agent_cli/Dockerfile .
+
 # Build the container image for the example duplicator resource-agent program
 duplicator-resource-agent: show-variables fetch
 	docker build $(DOCKER_BUILD_FLAGS) \
@@ -155,6 +163,7 @@ integ-test: $(if $(TESTSYS_SELFTEST_SKIP_IMAGE_BUILDS), ,controller example-test
 	$(shell pwd)/bin/download-kind.sh --platform $(TESTSYS_BUILD_HOST_PLATFORM) --goarch ${TESTSYS_BUILD_HOST_GOARCH}
 	docker tag example-test-agent example-test-agent:integ
 	docker tag controller controller:integ
+	docker tag example-test-agent-cli  example-test-agent-cli:integ
 	docker tag duplicator-resource-agent duplicator-resource-agent:integ
 	cargo test --features integ -- --test-threads=$(TESTSYS_SELFTEST_THREADS)
 
