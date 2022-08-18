@@ -209,24 +209,33 @@ impl TestManager {
     where
         S: Into<String>,
     {
-        let pod_api: Api<Pod> = self.namespaced_api();
-        let suffix = match state {
-            ResourceState::Creation => "creation",
-            ResourceState::Destruction => "destruction",
-        };
-        pod_api
-            .list(&ListParams {
-                label_selector: Some(format!("job-name={}-{}", resource.into(), suffix)),
-                ..Default::default()
-            })
-            .await
-            .context(error::KubeSnafu { action: "get pods" })?
-            .items
-            .first()
-            .context(error::NotFoundSnafu {
-                what: "pod for test",
-            })
-            .map(|pod| pod.clone())
+        let resource_crd = self.resource_client().get(&resource.into()).await;
+        match resource_crd {
+            // if the resource exists, retrieve the pod based on the truncated resource name + UID + resource state
+            Ok(resource_object) => {
+                let pod_api: Api<Pod> = self.namespaced_api();
+                return pod_api
+                    .list(&ListParams {
+                        label_selector: Some(format!(
+                            "job-name={}",
+                            resource_object.job_name(state)
+                        )),
+                        ..Default::default()
+                    })
+                    .await
+                    .context(error::KubeSnafu { action: "get pods" })?
+                    .items
+                    .first()
+                    .context(error::NotFoundSnafu {
+                        what: "pod for test",
+                    })
+                    .map(|pod| pod.clone());
+            }
+            // if the resource does not exist, return an error
+            Err(_) => Err(error::Error::NotFound {
+                what: "pod for test".to_string(),
+            }),
+        }
     }
 
     /// Get a pod for the testsys controller.
