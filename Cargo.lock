@@ -570,7 +570,7 @@ dependencies = [
  "resource-agent",
  "serde",
  "serde_json",
- "serde_plain 1.0.0",
+ "serde_plain",
  "sha2",
  "snafu",
  "test-agent",
@@ -587,7 +587,7 @@ version = "0.0.1"
 dependencies = [
  "model",
  "serde",
- "serde_plain 1.0.0",
+ "serde_plain",
 ]
 
 [[package]]
@@ -725,7 +725,7 @@ dependencies = [
  "selftest",
  "serde",
  "serde_json",
- "serde_plain 1.0.0",
+ "serde_plain",
  "terminal_size",
  "tokio",
  "yamlgen",
@@ -1663,7 +1663,7 @@ dependencies = [
  "selftest",
  "serde",
  "serde_json",
- "serde_plain 1.0.0",
+ "serde_plain",
  "serde_yaml",
  "snafu",
  "tabled 0.6.1",
@@ -2489,15 +2489,6 @@ dependencies = [
 
 [[package]]
 name = "serde_plain"
-version = "0.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "625fb0da2b006092b426a94acc1611bec52f2ec27bb27b266a9f93c29ee38eda"
-dependencies = [
- "serde",
-]
-
-[[package]]
-name = "serde_plain"
 version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "95455e7e29fada2052e72170af226fbe368a4ca33dee847875325d9fdb133858"
@@ -2796,7 +2787,7 @@ dependencies = [
  "serde",
  "serde_derive",
  "serde_json",
- "serde_plain 0.3.0",
+ "serde_plain",
  "snafu",
  "tar",
  "tempfile",
@@ -2823,7 +2814,7 @@ dependencies = [
  "selftest",
  "serde",
  "serde_json",
- "serde_plain 1.0.0",
+ "serde_plain",
  "serde_yaml",
  "snafu",
  "structopt",
@@ -3054,7 +3045,7 @@ dependencies = [
  "ring",
  "serde",
  "serde_json",
- "serde_plain 1.0.0",
+ "serde_plain",
  "snafu",
  "tempfile",
  "untrusted",
