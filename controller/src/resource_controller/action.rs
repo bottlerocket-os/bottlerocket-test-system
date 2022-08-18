@@ -104,7 +104,7 @@ async fn dependency_wait_action(r: &ResourceInterface) -> Result<Option<Creation
         let needed_resource = r.resource_client().get(needed).await?;
         if needed_resource.created_resource().is_none() {
             return Ok(Some(CreationAction::WaitForDependency(
-                needed_resource.name(),
+                needed_resource.name_any(),
             )));
         }
     }
@@ -129,7 +129,7 @@ async fn conflicting_wait_action(r: &ResourceInterface) -> Result<Option<Creatio
             .await
             .allow_not_found(|_| ())?;
         if let Some(conflict) = conflicting_resource {
-            return Ok(Some(CreationAction::WaitForConflict(conflict.name())));
+            return Ok(Some(CreationAction::WaitForConflict(conflict.name_any())));
         }
     }
     Ok(None)

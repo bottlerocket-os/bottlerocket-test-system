@@ -288,7 +288,7 @@ impl RunAwsEcs {
         println!("Created resource object '{}'", ec2_resource_name);
 
         for test in tests {
-            let name = test.name();
+            let name = test.name_any();
             let _ = test_client
                 .create(test)
                 .await

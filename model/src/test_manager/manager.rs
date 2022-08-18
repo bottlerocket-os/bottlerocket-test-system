@@ -281,16 +281,15 @@ impl TestManager {
         for object in objects {
             match object {
                 Crd::Test(test) => {
-                    self.test_client()
-                        .delete(test.name())
-                        .await
-                        .context(error::ClientSnafu {
+                    self.test_client().delete(test.name_any()).await.context(
+                        error::ClientSnafu {
                             action: "delete test",
-                        })?;
+                        },
+                    )?;
                 }
                 Crd::Resource(resource) => {
                     self.resource_client()
-                        .force_delete(resource.name())
+                        .force_delete(resource.name_any())
                         .await
                         .context(error::ClientSnafu {
                             action: "delete test",
@@ -353,7 +352,7 @@ impl TestManager {
         };
         let pod_api: Api<Pod> = self.namespaced_api();
         pod_api
-            .log_stream(&pod.name(), &log_params)
+            .log_stream(&pod.name_any(), &log_params)
             .await
             .context(error::KubeSnafu {
                 action: "stream logs",
@@ -378,7 +377,7 @@ impl TestManager {
         };
         let pod_api: Api<Pod> = self.namespaced_api();
         pod_api
-            .log_stream(&pod.name(), &log_params)
+            .log_stream(&pod.name_any(), &log_params)
             .await
             .context(error::KubeSnafu {
                 action: "stream logs",
@@ -398,7 +397,7 @@ impl TestManager {
             ..Default::default()
         };
         pod_api
-            .log_stream(&pod.name(), &log_params)
+            .log_stream(&pod.name_any(), &log_params)
             .await
             .context(error::KubeSnafu {
                 action: "stream logs",
@@ -413,7 +412,7 @@ impl TestManager {
             .await?
             .pop()
             .context(error::NotFoundSnafu { what: "test" })?
-            .name();
+            .name_any();
 
         let pods: Api<Pod> = self.namespaced_api();
         let mut cat = pods

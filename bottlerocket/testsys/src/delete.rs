@@ -316,10 +316,10 @@ async fn all_resources_deletion_order(k8s_client: &Client) -> Result<Topological
     for resource in resources {
         if let Some(depended_resources) = &resource.spec.depends_on {
             for depended_resource in depended_resources {
-                topo_sort.add_dependency(resource.name(), depended_resource.clone());
+                topo_sort.add_dependency(resource.name_any(), depended_resource.clone());
             }
         } else {
-            topo_sort.insert(resource.name());
+            topo_sort.insert(resource.name_any());
         }
     }
     Ok(topo_sort)

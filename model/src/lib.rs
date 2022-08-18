@@ -76,8 +76,8 @@ impl Crd {
 impl From<Crd> for CrdName {
     fn from(crd: Crd) -> Self {
         match crd {
-            Crd::Test(test) => CrdName::Test(test.name()),
-            Crd::Resource(resource) => CrdName::Resource(resource.name()),
+            Crd::Test(test) => CrdName::Test(test.name_any()),
+            Crd::Resource(resource) => CrdName::Resource(resource.name_any()),
         }
     }
 }

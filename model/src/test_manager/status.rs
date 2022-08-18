@@ -32,7 +32,7 @@ impl StatusSnapshot {
                     }
                     TaskState::Error => {
                         passed = false;
-                        failed_tests.push(test.name());
+                        failed_tests.push(test.name_any());
                     }
                     _ => continue,
                 },
@@ -173,7 +173,7 @@ impl From<&Crd> for Vec<ResultRow> {
                 }
             }
             Crd::Resource(resource) => {
-                let name = resource.name();
+                let name = resource.name_any();
                 let mut create_state = TaskState::Unknown;
                 let mut delete_state = TaskState::Unknown;
                 if let Some(status) = resource.status() {

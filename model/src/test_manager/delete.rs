@@ -52,11 +52,11 @@ impl TestManager {
                 action: "get all resources",
             })?;
         for resource in resources {
-            topo_sort.insert(CrdName::Resource(resource.name()));
+            topo_sort.insert(CrdName::Resource(resource.name_any()));
             if let Some(depended_resources) = &resource.spec.depends_on {
                 for depended_resource in depended_resources {
                     topo_sort.add_dependency(
-                        CrdName::Resource(resource.name()),
+                        CrdName::Resource(resource.name_any()),
                         CrdName::Resource(depended_resource.clone()),
                     );
                 }
@@ -68,11 +68,11 @@ impl TestManager {
         })?;
         for test in tests {
             if test.spec.resources.is_empty() {
-                topo_sort.insert(CrdName::Test(test.name()));
+                topo_sort.insert(CrdName::Test(test.name_any()));
             } else {
                 for resource in &test.spec.resources {
                     topo_sort.add_dependency(
-                        CrdName::Test(test.name()),
+                        CrdName::Test(test.name_any()),
                         CrdName::Resource(resource.clone()),
                     );
                 }
@@ -89,7 +89,7 @@ impl TestManager {
         for crd in &objects {
             match crd {
                 Crd::Test(test) => {
-                    let test_crd_name = CrdName::Test(test.name());
+                    let test_crd_name = CrdName::Test(test.name_any());
                     topo_sort.insert(test_crd_name.clone());
                     for resource in &test.spec.resources {
                         let dep_name = CrdName::Resource(resource.to_string());
@@ -100,7 +100,7 @@ impl TestManager {
                     }
                 }
                 Crd::Resource(resource) => {
-                    let resource_crd_name = CrdName::Resource(resource.name());
+                    let resource_crd_name = CrdName::Resource(resource.name_any());
                     topo_sort.insert(resource_crd_name.clone());
                     if let Some(resources) = &resource.spec.depends_on {
                         for resource in resources {

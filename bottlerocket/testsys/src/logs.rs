@@ -89,18 +89,22 @@ impl Logs {
             for pod in pods {
                 streams.push(
                     pod_api
-                        .log_stream(&pod.name(), &log_params)
+                        .log_stream(&pod.name_any(), &log_params)
                         .await
-                        .context(error::LogsSnafu { pod: pod.name() })?,
+                        .context(error::LogsSnafu {
+                            pod: pod.name_any(),
+                        })?,
                 );
             }
         }
         for pod in test_pods {
             streams.push(
                 pod_api
-                    .log_stream(&pod.name(), &log_params)
+                    .log_stream(&pod.name_any(), &log_params)
                     .await
-                    .context(error::LogsSnafu { pod: pod.name() })?,
+                    .context(error::LogsSnafu {
+                        pod: pod.name_any(),
+                    })?,
             );
         }
 

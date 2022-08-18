@@ -298,7 +298,7 @@ impl RunVmware {
         println!("Created resource object '{}'", vm_resource_name);
 
         for test in tests {
-            let name = test.name();
+            let name = test.name_any();
             let _ = test_client
                 .create(test)
                 .await
