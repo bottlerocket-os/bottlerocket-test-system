@@ -11,9 +11,9 @@ use tokio::time::Duration;
 const POD_TIMEOUT: Duration = Duration::from_secs(300);
 
 /// We will test:
-/// `testsys install`
-/// 'testsys run` (with a manifest)
-/// `testsys status`
+/// `cli install`
+/// 'cli run` (with a manifest)
+/// `cli status`
 /// Ensure templating of resources and tests works
 /// Ensure depends on for resources and tests works
 
@@ -22,7 +22,7 @@ async fn test_system() {
     let cluster_name = "integ-test";
     let cluster = Cluster::new(cluster_name).unwrap();
     cluster.load_image_to_cluster("controller:integ").unwrap();
-    let mut cmd = Command::cargo_bin("testsys").unwrap();
+    let mut cmd = Command::cargo_bin("cli").unwrap();
     cmd.args(&[
         "--kubeconfig",
         cluster.kubeconfig().to_str().unwrap(),
@@ -40,7 +40,7 @@ async fn test_system() {
         .load_image_to_cluster("duplicator-resource-agent:integ")
         .unwrap();
 
-    let mut cmd = Command::cargo_bin("testsys").unwrap();
+    let mut cmd = Command::cargo_bin("cli").unwrap();
     cmd.args(&[
         "--kubeconfig",
         cluster.kubeconfig().to_str().unwrap(),
@@ -50,7 +50,7 @@ async fn test_system() {
     ]);
     cmd.assert().success();
 
-    let mut cmd = Command::cargo_bin("testsys").unwrap();
+    let mut cmd = Command::cargo_bin("cli").unwrap();
     cmd.args(&[
         "--kubeconfig",
         cluster.kubeconfig().to_str().unwrap(),
@@ -98,7 +98,7 @@ async fn test_system() {
     ////////////////////////////////////////////////////////////////////////////////////////////////
     // Create a resource with destructionPolicy: never and do a best-effort assertion that the
     // destruction pod was not created.
-    let mut cmd = Command::cargo_bin("testsys").unwrap();
+    let mut cmd = Command::cargo_bin("cli").unwrap();
     cmd.args(&[
         "--kubeconfig",
         cluster.kubeconfig().to_str().unwrap(),
