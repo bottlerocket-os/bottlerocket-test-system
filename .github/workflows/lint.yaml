@@ -1,0 +1,19 @@
+name: Lint
+on:
+  pull_request:
+    paths:
+      - '**.md'
+      - '.markdownlint.yaml'
+      - '.github/workflows/lint.yaml'
+    types:
+      - opened
+      - reopened
+      - synchronize
+    branches:
+      - develop
+jobs:
+  checklint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - run: make mdlint
