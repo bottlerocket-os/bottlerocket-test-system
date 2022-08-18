@@ -238,7 +238,15 @@ async fn task_not_done_action(t: &TestInterface, is_task_state_running: bool) ->
             trace!("Test '{}' is running", t.name());
             Ok(Action::WaitForTest)
         }
-        JobState::Failed => Ok(Action::Error(ErrorState::JobFailure)),
+        JobState::Failed => {
+            t.test_client()
+                .send_agent_task_state(t.name(), TaskState::Error)
+                .await?;
+            t.test_client()
+                .send_agent_error(t.name(), "The job failed")
+                .await?;
+            Ok(Action::Error(ErrorState::JobFailure))
+        }
         JobState::Exited => Ok(Action::Error(ErrorState::JobExitBeforeDone)),
     }
 }
