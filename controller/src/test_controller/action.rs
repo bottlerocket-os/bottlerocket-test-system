@@ -106,7 +106,7 @@ pub(super) async fn determine_delete_action(t: &TestInterface) -> Result<Action>
     } else if t.test().has_finalizer(FINALIZER_MAIN) {
         Ok(Action::RemoveMainFinalizer)
     } else {
-        handle_bad_job_state(t, ErrorState::Zombie).await
+        Ok(Action::Error(ErrorState::Zombie))
     }
 }
 
@@ -196,14 +196,14 @@ async fn task_not_done_action(t: &TestInterface, is_task_state_running: bool) ->
                 if t.test().resource_error().is_some() {
                     Ok(Action::RegisterResourceCreationError(s))
                 } else {
-                    handle_bad_job_state(t, ErrorState::ResourceErrorExists(s)).await
+                    Ok(Action::Error(ErrorState::ResourceErrorExists(s)))
                 }
             }
             Resources::Ready => Ok(dependency_wait_action(t)
                 .await?
                 .unwrap_or(Action::StartTest)),
         },
-        JobState::None => handle_bad_job_state(t, ErrorState::HandleJobRemovedBeforeDone).await,
+        JobState::None => Ok(Action::Error(ErrorState::HandleJobRemovedBeforeDone)),
         JobState::Unknown => {
             trace!("Waiting for test agent '{}' container to start", t.name());
             Ok(Action::WaitForTest)
@@ -223,7 +223,7 @@ async fn task_not_done_action(t: &TestInterface, is_task_state_running: bool) ->
                     .unwrap_or(Ok(false))
                     .unwrap_or(false)
                 {
-                    return handle_bad_job_state(t, ErrorState::JobTimeout).await;
+                    return Ok(Action::Error(ErrorState::JobTimeout));
                 }
             }
             if t.test().agent_status().task_state == TaskState::Unknown
@@ -233,41 +233,12 @@ async fn task_not_done_action(t: &TestInterface, is_task_state_running: bool) ->
                     "Test '{}' failed to reach running state within time limit",
                     t.name()
                 );
-                return handle_bad_job_state(t, ErrorState::JobStart).await;
+                return Ok(Action::Error(ErrorState::JobStart));
             }
             trace!("Test '{}' is running", t.name());
             Ok(Action::WaitForTest)
         }
-        JobState::Failed => handle_bad_job_state(t, ErrorState::JobFailure).await,
-        JobState::Exited => handle_bad_job_state(t, ErrorState::JobExitBeforeDone).await,
+        JobState::Failed => Ok(Action::Error(ErrorState::JobFailure)),
+        JobState::Exited => Ok(Action::Error(ErrorState::JobExitBeforeDone)),
     }
-}
-
-/// Determines the error message based on the given ErrorState and sends this to the TestAgent
-async fn handle_bad_job_state(t: &TestInterface, error_state: ErrorState) -> Result<Action> {
-    let error_message = match error_state.clone() {
-        ErrorState::ResourceErrorExists(s) => s,
-        ErrorState::HandleJobRemovedBeforeDone => {
-            "The job was removed before the test completed".to_string()
-        }
-        ErrorState::JobTimeout => {
-            "The test agent did not finish within the specified time".to_string()
-        }
-        ErrorState::JobStart => "The job failed to start in time".to_string(),
-        ErrorState::JobFailure => "The job failed".to_string(),
-        ErrorState::JobExitBeforeDone => {
-            "The test agent exited before marking the test complete".to_string()
-        }
-        ErrorState::Zombie => {
-            "The main finalizer has been removed but the object still exists".to_string()
-        }
-        ErrorState::TestError(e) => e,
-    };
-    t.test_client()
-        .send_agent_task_state(t.name(), TaskState::Error)
-        .await?;
-    t.test_client()
-        .send_agent_error(t.name(), &error_message)
-        .await?;
-    Ok(Action::Error(error_state))
 }

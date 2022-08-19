@@ -8,7 +8,7 @@ use kube_runtime::controller::Action as RequeueAction;
 use log::{debug, error, trace};
 use model::clients::CrdClient;
 use model::constants::{ENV_TEST_NAME, FINALIZER_MAIN, FINALIZER_TEST_JOB};
-use model::Test;
+use model::{TaskState, Test};
 use std::ops::Deref;
 use std::sync::Arc;
 
@@ -89,6 +89,17 @@ pub(crate) async fn reconcile(
         }
         Action::Error(state) => {
             error!("Error state for test '{}': {}", t.name(), state);
+            t.test_client()
+                .send_agent_task_state(t.name(), TaskState::Error)
+                .await
+                .context(format!(
+                    "Unable to send error task state for '{}'",
+                    t.name()
+                ))?;
+            t.test_client()
+                .send_agent_error(t.name(), &state.to_string())
+                .await
+                .context(format!("Unable to send error message for '{}'", t.name()))?;
             Ok(requeue_slow())
         }
     }
