@@ -129,7 +129,7 @@ The controller sees these CRD instances and:
 * Launches Bottlerocket instances as the nodes in the cluster.
 * Runs Sonobuoy testing in the external cluster.
 
-![Architecture](testsys.jpg)
+![Architecture](images/testsys.jpg)
 
 ## Resources and Test Dependencies
 
@@ -188,4 +188,4 @@ This information goes in `configuration` and is interpreted by the target pod.
 
 The following diagram takes us through the sequence of events for a TestSys Test run with two resources, named A and B.
 
-![Sequene Diagram](sequence-diagram.png)
+![Sequene Diagram](images/sequence-diagram.png)
