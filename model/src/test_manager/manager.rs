@@ -448,6 +448,26 @@ impl TestManager {
         })?;
         Ok(())
     }
+
+    pub async fn describe_test<S>(
+        &self,
+        test_name: S,
+    ) -> Result<impl Stream<Item = core::result::Result<Bytes, Error>>>
+    where
+        S: Into<String>,
+    {
+         
+    }
+
+    pub async fn describe_resource<S>(
+        &self,
+        test_name: S,
+    ) -> Result<impl Stream<Item = core::result::Result<Bytes, Error>>> 
+    where
+        S: Into<String>,
+    {
+        
+    }
 }
 
 /// Takes a path to a yaml manifest of testsys crds (`Test` and `Resource`) and creates a set of
