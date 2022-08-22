@@ -58,10 +58,10 @@ impl TestManager {
         };
         // If the data already exists, update it with the new one using a `Patch`. If not create a
         // new one.
-        match api.get(&data.name()).await {
+        match api.get(&data.name_any()).await {
             Ok(deployment) => {
                 api.patch(
-                    &deployment.name(),
+                    &deployment.name_any(),
                     &PatchParams::default(),
                     &Patch::Merge(data),
                 )

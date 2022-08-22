@@ -214,7 +214,7 @@ impl ResourceClient {
                         ensure!(
                             status.destruction.task_state != TaskState::Error,
                             error::DeleteFailSnafu {
-                                name: resource.name()
+                                name: resource.name_any()
                             }
                         );
                     }

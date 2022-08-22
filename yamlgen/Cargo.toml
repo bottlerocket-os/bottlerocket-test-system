@@ -6,6 +6,6 @@ publish = false
 license = "MIT OR Apache-2.0"
 
 [build-dependencies]
-kube = { version = "0.73", default-features = false }
+kube = { version = "0.74", default-features = false }
 model = { version = "0.0.1", path = "../model" }
 serde_yaml = "0"

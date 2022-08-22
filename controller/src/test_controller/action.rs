@@ -178,7 +178,7 @@ async fn dependency_wait_action(t: &TestInterface) -> Result<Option<Action>> {
             .map(|results| results.outcome != Outcome::Pass)
             .unwrap_or(true)
         {
-            return Ok(Some(Action::WaitForDependency(needed_test.name())));
+            return Ok(Some(Action::WaitForDependency(needed_test.name_any())));
         }
     }
     Ok(None)

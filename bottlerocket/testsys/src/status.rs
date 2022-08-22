@@ -192,7 +192,7 @@ impl Results {
     }
 
     fn add_resource(&mut self, resource: &Resource) {
-        let name = resource.name();
+        let name = resource.name_any();
         let mut create_state = TaskState::Unknown;
         let mut delete_state = TaskState::Unknown;
         if let Some(status) = resource.status() {

@@ -39,7 +39,7 @@ impl Results {
             .ok_or(error::Error::TestMissing {
                 test_name: self.test_name.clone(),
             })?
-            .name();
+            .name_any();
 
         let ap = AttachParams::default();
         let mut cat = pods
