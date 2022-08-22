@@ -2,6 +2,7 @@ mod error;
 mod get_secret;
 mod init;
 mod retry_count;
+mod save_results;
 mod send_results;
 mod terminate;
 mod test_error;
@@ -35,6 +36,8 @@ enum Command {
     Init(init::Init),
     /// Get number of retries allowed
     RetryCount(retry_count::RetryCount),
+    /// Save test results
+    SaveResults(save_results::SaveResults),
     /// Send test results
     SendResults(send_results::SendResults),
     /// Mark Task state complete, handle keep running, save all results to a tar archive.
@@ -63,6 +66,7 @@ async fn run(args: Args) -> Result<()> {
         Command::GetSecret(get_secret) => get_secret.run(client).await,
         Command::Init(init) => init.run(client).await,
         Command::RetryCount(retry_count) => retry_count.run(client).await,
+        Command::SaveResults(save_results) => save_results.run(client).await,
         Command::SendResults(send_results) => send_results.run(client).await,
         Command::Terminate(terminate) => terminate.run(client).await,
         Command::TestError(test_error) => test_error.run(client).await,

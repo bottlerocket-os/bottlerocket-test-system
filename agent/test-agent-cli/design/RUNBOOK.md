@@ -47,11 +47,14 @@ test-agent-cli get-secret secret-key
 # Send the result of every test run to test object in Controller
 test-agent-cli send-result -o pass -p 1 -f 0 -s 0
 
+# Save the test results in tar archive
+test-agent-cli save-results -f results.txt -d my_results
+
 # Send any error encountered in test
 test-agent-cli send-error error-message
 
 # Mark the test as completed
-test-agent-cli terminate --results-dir results_directory
+test-agent-cli terminate
 ```
 
 Create a [Dockerfile](../examples/example_test_agent_cli/Dockerfile).

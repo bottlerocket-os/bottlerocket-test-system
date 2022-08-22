@@ -8,6 +8,7 @@ license = "MIT OR Apache-2.0"
 [dependencies]
 argh = "0.1"
 agent-common = { version = "0.0.1", path = "../agent-common" }
+copy_dir = "0.1"
 test-agent = { version = "0.0.1", path = "../test-agent" }
 tokio = { version = "1", features = ["macros", "rt-multi-thread", "fs"] }
 tokio-util = "0.7"

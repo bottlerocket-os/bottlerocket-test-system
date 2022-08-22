@@ -56,6 +56,7 @@ pub const FINALIZER_RESOURCE: &str = testsys!("resources-exist");
 pub const FINALIZER_TEST_JOB: &str = testsys!("test-job");
 
 pub const TESTSYS_RESULTS_FILE: &str = "/output.tar.gz";
+pub const TESTSYS_RESULTS_DIRECTORY: &str = "/output";
 
 // Used by the controller to truncate resource names
 pub const TRUNC_LEN: usize = 15;
