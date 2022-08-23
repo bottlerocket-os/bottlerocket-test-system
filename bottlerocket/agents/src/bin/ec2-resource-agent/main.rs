@@ -7,7 +7,7 @@ Provides EC2 instances to be used for Bottlerocket tests.
 mod ec2_provider;
 
 use crate::ec2_provider::{Ec2Creator, Ec2Destroyer};
-use bottlerocket_agents::init_agent_logger;
+use agent_utils::init_agent_logger;
 use resource_agent::clients::{DefaultAgentClient, DefaultInfoClient};
 use resource_agent::error::AgentResult;
 use resource_agent::{Agent, BootstrapData, Types};

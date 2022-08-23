@@ -32,13 +32,12 @@ spec:
 
 !*/
 
+use agent_utils::aws::aws_test_config;
+use agent_utils::{base64_decode_write_file, init_agent_logger};
 use async_trait::async_trait;
+use bottlerocket_agents::constants::{E2E_REPO_CONFIG_PATH, TEST_CLUSTER_KUBECONFIG_PATH};
 use bottlerocket_agents::error::Error;
 use bottlerocket_agents::sonobuoy::{delete_sonobuoy, rerun_failed_sonobuoy, run_sonobuoy};
-use bottlerocket_agents::{
-    aws_test_config, base64_decode_write_file, init_agent_logger, E2E_REPO_CONFIG_PATH,
-    TEST_CLUSTER_KUBECONFIG_PATH,
-};
 use bottlerocket_types::agent_config::{SonobuoyConfig, AWS_CREDENTIALS_SECRET_NAME};
 use log::{debug, info};
 use model::{SecretName, TestResults};

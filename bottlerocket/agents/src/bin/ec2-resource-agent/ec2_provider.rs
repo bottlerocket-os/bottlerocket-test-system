@@ -1,3 +1,5 @@
+use agent_utils::aws::{aws_resource_config, setup_resource_env};
+use agent_utils::json_display;
 use aws_sdk_ec2::client::fluent_builders::RunInstances;
 use aws_sdk_ec2::error::RunInstancesError;
 use aws_sdk_ec2::model::{
@@ -6,7 +8,6 @@ use aws_sdk_ec2::model::{
 };
 use aws_sdk_ec2::output::RunInstancesOutput;
 use aws_sdk_ec2::types::SdkError;
-use bottlerocket_agents::{aws_resource_config, json_display, setup_resource_env};
 use bottlerocket_types::agent_config::{ClusterType, Ec2Config, AWS_CREDENTIALS_SECRET_NAME};
 use log::{debug, info, trace, warn};
 use model::{Configuration, SecretName};
