@@ -753,6 +753,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "configuration-build-derive"
+version = "0.0.1"
+dependencies = [
+ "model",
+ "proc-macro2",
+ "quote",
+ "serde",
+ "serde_json",
+ "syn",
+]
+
+[[package]]
 name = "controller"
 version = "0.0.2"
 dependencies = [

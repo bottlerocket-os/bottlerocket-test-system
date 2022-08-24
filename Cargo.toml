@@ -5,6 +5,7 @@ members = [
     "agent/resource-agent",
     "agent/test-agent",
     "agent/test-agent-cli",
+    "agent/configuration-build-derive",
     "bottlerocket/agents",
     "cli",
     "bottlerocket/types",

@@ -45,3 +45,22 @@ pub trait Configuration:
         Ok(serde_json::from_value(value).context(error::ConfigDeserializationSnafu)?)
     }
 }
+
+#[derive(Serialize, Clone, Debug)]
+#[serde(untagged)]
+pub enum ConfigValue<T>
+where
+    T: Serialize + DeserializeOwned + Clone + Debug + Default + Send + Sync + Sized + 'static,
+{
+    Value(T),
+    TemplatedString(String),
+    None,
+}
+
+impl<T: Serialize + DeserializeOwned + Clone + Debug + Default + Send + Sync + Sized + 'static>
+    Default for ConfigValue<T>
+{
+    fn default() -> Self {
+        Self::None
+    }
+}

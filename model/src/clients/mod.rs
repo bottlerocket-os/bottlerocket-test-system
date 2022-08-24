@@ -10,3 +10,5 @@ mod test_client;
 
 pub use crd_client::CrdClient;
 pub use http_status_code::{AllowNotFound, HttpStatusCode, StatusCode};
+pub use resource_client::create_resource_crd;
+pub use test_client::create_test_crd;
