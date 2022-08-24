@@ -1,6 +1,8 @@
 use anyhow::{Error, Result};
 use clap::Parser;
+use model::clients::CrdClient;
 use model::test_manager::TestManager;
+use model::CrdExt;
 
 /// Retrieve the YAML description of a test or resource.
 #[derive(Debug, Parser)]
@@ -18,12 +20,12 @@ impl Describe {
     pub(crate) async fn run(self, client: TestManager) -> Result<()> {
         match (self.test, self.resource) {
             (Some(test), None) => {
-                let description = client.describe_test(test).await?;
-                println!("{}", description);
+                let test_yaml = client.test_client().get(test).await?.to_yaml()?;
+                println!("{}", test_yaml);
             }
             (None, Some(resource)) => {
-                let description = client.describe_resource(resource).await?;
-                println!("{}", description);
+                let resource_yaml = client.resource_client().get(resource).await?.to_yaml()?;
+                println!("{}", resource_yaml);
             }
             _ => return Err(Error::msg("Invalid arguments were provided. Exactly one of `--test` and `--resource` must be used.")),
         };

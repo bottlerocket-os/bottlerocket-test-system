@@ -203,4 +203,8 @@ impl CrdExt for Test {
     fn object_meta(&self) -> &ObjectMeta {
         &self.metadata
     }
+
+    fn to_yaml(&self) -> Result<String, serde_yaml::Error> {
+        serde_yaml::to_string(self)
+    }
 }

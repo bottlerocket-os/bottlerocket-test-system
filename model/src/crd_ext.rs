@@ -16,6 +16,9 @@ pub trait CrdExt {
         self.object_meta().name.as_deref().unwrap_or("")
     }
 
+    /// Returns this object's YAML representation as a String.
+    fn to_yaml(&self) -> Result<String, serde_yaml::Error>;
+
     /// Duplicate finalizers are problematic so we want to interact with them as a unique set.
     fn finalizer_set(&self) -> HashSet<String> {
         let option_vec = self.object_meta().finalizers.as_ref();

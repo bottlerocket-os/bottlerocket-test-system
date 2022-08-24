@@ -448,34 +448,6 @@ impl TestManager {
         })?;
         Ok(())
     }
-
-    pub async fn describe_test(&self, test_name: String) -> Result<String> {
-        let crds = self
-            .list(&SelectionParams::Name(CrdName::Test(test_name.clone())))
-            .await?;
-        match crds.first() {
-            Some(crd) => serde_yaml::to_string(crd).context(error::SerdeYamlSnafu {
-                action: format!("deserialize {}", test_name),
-            }),
-            None => Err(error::Error::NotFound { what: test_name }),
-        }
-    }
-
-    pub async fn describe_resource(&self, resource_name: String) -> Result<String> {
-        let crds = self
-            .list(&SelectionParams::Name(CrdName::Resource(
-                resource_name.clone(),
-            )))
-            .await?;
-        match crds.first() {
-            Some(crd) => serde_yaml::to_string(crd).context(error::SerdeYamlSnafu {
-                action: format!("deserialize {}", resource_name),
-            }),
-            None => Err(error::Error::NotFound {
-                what: resource_name,
-            }),
-        }
-    }
 }
 
 /// Takes a path to a yaml manifest of testsys crds (`Test` and `Resource`) and creates a set of
