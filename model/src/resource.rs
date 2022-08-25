@@ -208,10 +208,6 @@ impl CrdExt for Resource {
     fn object_meta(&self) -> &ObjectMeta {
         self.meta()
     }
-
-    fn to_yaml(&self) -> Result<String, serde_yaml::Error> {
-        serde_yaml::to_string(self)
-    }
 }
 
 #[derive(Serialize, Deserialize, Debug, Default, Eq, PartialEq, Clone, JsonSchema)]
