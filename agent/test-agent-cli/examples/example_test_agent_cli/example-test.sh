@@ -52,6 +52,13 @@ fi
 # Send the test results after consuming all the retries
 test-agent-cli send-result -o pass -p 1 -f 0 -s 0
 
+touch results.txt
+touch results.yaml
+mkdir my_results
+mkdir finished
+# Save the test results as a file or directory
+test-agent-cli save-results -f results.txt -f results.yaml -d my_results -d finished
+
 # Mark the test as completed.
-test-agent-cli terminate --results-dir results_directory
+test-agent-cli terminate
 

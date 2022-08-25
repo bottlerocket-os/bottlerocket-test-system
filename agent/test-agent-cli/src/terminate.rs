@@ -1,8 +1,8 @@
 use crate::error::{self, ArchiveSnafu, ClientSnafu, Result};
 use argh::FromArgs;
 use log::{error, info};
+use model::constants::TESTSYS_RESULTS_DIRECTORY;
 use snafu::ResultExt;
-use std::fs;
 use std::fs::File;
 use std::path::PathBuf;
 use std::time::Duration;
@@ -12,10 +12,7 @@ use tokio::time::sleep;
 
 #[derive(Debug, FromArgs, PartialEq)]
 #[argh(subcommand, name = "terminate", description = "complete the test")]
-pub(crate) struct Terminate {
-    #[argh(short = 'd', option, description = "results directory")]
-    results_dir: String,
-}
+pub(crate) struct Terminate {}
 
 impl Terminate {
     pub(crate) async fn run(&self, k8s_client: DefaultClient) -> Result<()> {
@@ -58,8 +55,7 @@ impl Terminate {
     }
 
     async fn tar_results(&self, k8s_client: &DefaultClient) -> Result<()> {
-        fs::create_dir_all("/".to_owned() + &self.results_dir).context(ArchiveSnafu)?;
-        let results_dir = PathBuf::from(r"/".to_owned() + &self.results_dir);
+        let results_dir = PathBuf::from(TESTSYS_RESULTS_DIRECTORY);
         let tar = File::create(k8s_client.results_file().await.context(ClientSnafu)?)
             .context(ArchiveSnafu)?;
 
