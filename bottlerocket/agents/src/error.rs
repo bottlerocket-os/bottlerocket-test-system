@@ -8,43 +8,12 @@ use aws_sdk_ssm::error::{
     CreateDocumentError, DescribeInstanceInformationError, ListCommandInvocationsError,
     SendCommandError, UpdateDocumentError,
 };
-use aws_sdk_sts::error::AssumeRoleError;
 use snafu::Snafu;
-use std::string::FromUtf8Error;
 use tokio::time::error::Elapsed;
 
 #[derive(Debug, Snafu)]
 #[snafu(visibility(pub))]
 pub enum Error {
-    #[snafu(display("Failed to generate credentials for role '{}': {}", role_arn, source))]
-    AssumeRole {
-        role_arn: String,
-        source: SdkError<AssumeRoleError>,
-    },
-
-    #[snafu(display("Failed to decode base64 blob: {}", source))]
-    Base64Decode { source: base64::DecodeError },
-
-    #[snafu(display("Could not convert '{}' secret to string: {}", what, source))]
-    Conversion { what: String, source: FromUtf8Error },
-
-    #[snafu(display("Credentials were missing for assumed role '{}'", role_arn))]
-    CredentialsMissing { role_arn: String },
-
-    #[snafu(display("Failed to setup environment variables: {}", what))]
-    EnvSetup { what: String },
-
-    #[snafu(display("Failed to write file at '{}': {}", path, source))]
-    WriteFile {
-        path: String,
-        source: std::io::Error,
-    },
-
-    #[snafu(display("Secret was missing: {}", source))]
-    SecretMissing {
-        source: agent_common::secrets::Error,
-    },
-
     #[snafu(display("Failed to create sonobuoy process: {}", source))]
     SonobuoyProcess { source: std::io::Error },
 
@@ -132,7 +101,7 @@ pub enum Error {
     #[snafu(display("Results location is invalid"))]
     ResultsLocation,
 
-    #[snafu(display("Unable to create task defininition: {}", source))]
+    #[snafu(display("Unable to create task definition: {}", source))]
     TaskDefinitionCreation {
         source: SdkError<RegisterTaskDefinitionError>,
     },
@@ -184,4 +153,8 @@ pub enum Error {
 
     #[snafu(display("The task definition is missing"))]
     TaskDefinitionMissing,
+
+    #[snafu(context(false))]
+    #[snafu(display("{}", source))]
+    Utils { source: agent_utils::Error },
 }

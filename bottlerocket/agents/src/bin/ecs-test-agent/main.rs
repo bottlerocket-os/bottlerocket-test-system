@@ -4,13 +4,15 @@ Tests whether an ECS task runs successfully.
 
 !*/
 
+use agent_utils::aws::aws_test_config;
+use agent_utils::init_agent_logger;
 use async_trait::async_trait;
 use aws_sdk_ec2::types::SdkError;
 use aws_sdk_ecs::error::{DescribeTaskDefinitionError, DescribeTaskDefinitionErrorKind};
 use aws_sdk_ecs::model::{Compatibility, ContainerDefinition, LaunchType, TaskStopCode};
 use aws_sdk_ecs::output::DescribeTaskDefinitionOutput;
+use bottlerocket_agents::constants::DEFAULT_TASK_DEFINITION;
 use bottlerocket_agents::error::{self, Error};
-use bottlerocket_agents::{aws_test_config, init_agent_logger, DEFAULT_TASK_DEFINITION};
 use bottlerocket_types::agent_config::{EcsTestConfig, AWS_CREDENTIALS_SECRET_NAME};
 use log::info;
 use model::{Outcome, SecretName, TestResults};

@@ -1,6 +1,7 @@
 [workspace]
 members = [
     "agent/agent-common",
+    "agent/utils",
     "agent/resource-agent",
     "agent/test-agent",
     "agent/test-agent-cli",

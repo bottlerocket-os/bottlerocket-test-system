@@ -7,7 +7,7 @@ Provides (or queries) an ECS cluster for use in Bottlerocket testing.
 mod ecs_provider;
 
 use crate::ecs_provider::{EcsCreator, EcsDestroyer};
-use bottlerocket_agents::init_agent_logger;
+use agent_utils::init_agent_logger;
 use resource_agent::clients::{DefaultAgentClient, DefaultInfoClient};
 use resource_agent::error::AgentResult;
 use resource_agent::{Agent, BootstrapData, Types};

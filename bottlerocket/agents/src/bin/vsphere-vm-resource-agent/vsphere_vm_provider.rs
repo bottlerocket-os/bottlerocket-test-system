@@ -1,8 +1,8 @@
 use crate::aws::{create_ssm_activation, ensure_ssm_service_role, wait_for_ssm_ready};
 use crate::tuf::download_target;
-use bottlerocket_agents::{
-    aws_resource_config, base64_decode_write_file, TEST_CLUSTER_KUBECONFIG_PATH,
-};
+use agent_utils::aws::aws_resource_config;
+use agent_utils::base64_decode_write_file;
+use bottlerocket_agents::constants::TEST_CLUSTER_KUBECONFIG_PATH;
 use bottlerocket_types::agent_config::{
     TufRepoConfig, VSphereVmConfig, AWS_CREDENTIALS_SECRET_NAME, VSPHERE_CREDENTIALS_SECRET_NAME,
 };

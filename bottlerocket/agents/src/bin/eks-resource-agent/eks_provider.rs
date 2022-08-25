@@ -1,13 +1,11 @@
+use agent_utils::aws::{aws_resource_config, setup_resource_env};
+use agent_utils::{impl_display_as_json, json_display, provider_error_for_cmd_output};
 use aws_sdk_ec2::model::{Filter, SecurityGroup, Subnet};
 use aws_sdk_ec2::types::SdkError;
 use aws_sdk_eks::error::{DescribeClusterError, DescribeClusterErrorKind};
 use aws_sdk_eks::model::{Cluster, IpFamily};
 use aws_sdk_eks::output::DescribeClusterOutput;
 use aws_types::SdkConfig;
-use bottlerocket_agents::{
-    aws_resource_config, impl_display_as_json, json_display, provider_error_for_cmd_output,
-    setup_resource_env,
-};
 use bottlerocket_types::agent_config::{
     CreationPolicy, EksClusterConfig, K8sVersion, AWS_CREDENTIALS_SECRET_NAME,
 };

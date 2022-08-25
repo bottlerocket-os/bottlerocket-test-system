@@ -9,7 +9,7 @@ mod tuf;
 mod vsphere_vm_provider;
 
 use crate::vsphere_vm_provider::{VMCreator, VMDestroyer};
-use bottlerocket_agents::init_agent_logger;
+use agent_utils::init_agent_logger;
 use resource_agent::clients::{DefaultAgentClient, DefaultInfoClient};
 use resource_agent::error::AgentResult;
 use resource_agent::{Agent, BootstrapData, Types};

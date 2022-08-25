@@ -1,9 +1,9 @@
+use agent_utils::aws::aws_resource_config;
 use aws_sdk_ec2::model::Filter;
 use aws_sdk_ec2::types::SdkError;
 use aws_sdk_iam::error::{GetInstanceProfileError, GetInstanceProfileErrorKind};
 use aws_sdk_iam::output::GetInstanceProfileOutput;
 use aws_types::sdk_config::SdkConfig;
-use bottlerocket_agents::aws_resource_config;
 use bottlerocket_types::agent_config::{EcsClusterConfig, AWS_CREDENTIALS_SECRET_NAME};
 use log::{error, info};
 use model::{Configuration, SecretName};

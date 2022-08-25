@@ -41,9 +41,10 @@ mod ssm;
 use crate::ssm::{
     create_or_update_ssm_document, ssm_run_command, wait_for_os_version_change, wait_for_ssm_ready,
 };
+use agent_utils::aws::aws_test_config;
+use agent_utils::init_agent_logger;
 use async_trait::async_trait;
 use bottlerocket_agents::error::{self, Error};
-use bottlerocket_agents::{aws_test_config, init_agent_logger};
 use bottlerocket_types::agent_config::{MigrationConfig, AWS_CREDENTIALS_SECRET_NAME};
 use log::{error, info};
 use maplit::hashmap;
