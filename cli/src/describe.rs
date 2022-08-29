@@ -7,11 +7,11 @@ use model::CrdExt;
 /// Retrieve the YAML description of a test or resource.
 #[derive(Debug, Parser)]
 pub(crate) struct Describe {
-    /// The name of the test we want the description from.
+    /// The name of the test to return the description from.
     #[clap(long, conflicts_with = "resource")]
     test: Option<String>,
 
-    /// The name of the resource we want the description from.
+    /// The name of the resource to return the description from.
     #[clap(long, conflicts_with = "test")]
     resource: Option<String>,
 }
