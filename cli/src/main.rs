@@ -6,6 +6,7 @@ This is the command line interface for setting up a TestSys Cluster and running 
 
 mod add_secret;
 mod delete;
+mod describe;
 mod install;
 mod logs;
 mod restart;
@@ -58,6 +59,8 @@ enum Command {
     Results(results::Results),
     /// Delete objects from a testsys cluster.
     Delete(delete::Delete),
+    /// Get the YAML representation of testsys objects.
+    Describe(describe::Describe),
 }
 
 #[tokio::main]
@@ -92,6 +95,7 @@ async fn run(args: Args) -> Result<()> {
         Command::Status(status) => status.run(client).await,
         Command::Results(results) => results.run(client).await,
         Command::Delete(delete) => delete.run(client).await,
+        Command::Describe(describe) => describe.run(client).await,
     }
 }
 

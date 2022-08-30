@@ -1,8 +1,9 @@
 use k8s_openapi::apimachinery::pkg::apis::meta::v1::ObjectMeta;
+use serde::Serialize;
 use std::collections::HashSet;
 
 /// Provides some conveniences for querying a `kube-rs` object.
-pub trait CrdExt {
+pub trait CrdExt: Serialize {
     /// Returns this objects `ObjectMeta` information (i.e. the `metadata` field). You implement
     /// this be returning `&self.metadata`. This allows the rest of this trait's functions to be
     /// implemented for you.
@@ -14,6 +15,11 @@ pub trait CrdExt {
     /// to avoid confusion with `ResourceExt`.
     fn object_name(&self) -> &str {
         self.object_meta().name.as_deref().unwrap_or("")
+    }
+
+    /// Returns this object's YAML representation as a String.
+    fn to_yaml(&self) -> Result<String, serde_yaml::Error> {
+        serde_yaml::to_string(self)
     }
 
     /// Duplicate finalizers are problematic so we want to interact with them as a unique set.
