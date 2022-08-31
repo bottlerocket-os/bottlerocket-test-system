@@ -6,10 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+## [0.0.2] - 2022-08-31
+
 ### Added
 
 - This changelog
 - Uninstall functionality for the TestManager [#450]
+- This includes all changes since 0.0.1
 
 [#450]: https://github.com/bottlerocket-os/bottlerocket-test-system/pull/450
 
