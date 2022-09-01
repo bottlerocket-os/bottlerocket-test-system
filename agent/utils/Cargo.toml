@@ -7,7 +7,7 @@ license = "MIT OR Apache-2.0"
 
 [dependencies]
 agent-common = { version = "0.0.2", path = "../../agent/agent-common" }
-aws-config = "0.47"
+aws-config = "0.48"
 aws-types = "0.47"
 aws-sdk-sts = "0.17"
 aws-smithy-types = "0.47"
