@@ -127,10 +127,6 @@ pub trait Client: Sized {
     /// going to re-run the failed test cases.
     async fn send_test_results(&self, results: TestResults) -> Result<(), Self::E>;
 
-    /// Add a TestResults object to the array of TestResults in the test CRD and set the task state
-    /// as `Done` indicating that no more retries or testing will occur.
-    async fn send_test_done(&self, results: TestResults) -> Result<(), Self::E>;
-
     /// Send an error to the k8s API.
     async fn send_error<E>(&self, error: E) -> Result<(), Self::E>
     where

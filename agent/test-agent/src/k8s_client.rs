@@ -111,14 +111,6 @@ impl Client for DefaultClient {
         Ok(())
     }
 
-    async fn send_test_done(&self, results: TestResults) -> Result<(), Self::E> {
-        self.client
-            .send_test_completed(&self.name, results)
-            .await
-            .context(K8sSnafu)?;
-        Ok(())
-    }
-
     async fn send_error<E>(&self, error: E) -> Result<(), Self::E>
     where
         E: Debug + Display + Send + Sync,
