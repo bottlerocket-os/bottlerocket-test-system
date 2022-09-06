@@ -131,7 +131,7 @@ where
 
         if let Err(e) = self
             .client
-            .send_test_done(test_results)
+            .send_test_results(test_results)
             .await
             .map_err(error::Error::Client)
         {
@@ -144,6 +144,16 @@ where
         // error to k8s, and return the error so that the process will exit with error.
         if let Err(e) = self.runner.terminate().await.map_err(error::Error::Runner) {
             error!("unable to terminate test runner: {}", e);
+            self.send_error_best_effort(&e).await;
+            return Err(e);
+        }
+
+        if let Err(e) = self
+            .client
+            .send_test_completed()
+            .await
+            .map_err(error::Error::Client)
+        {
             self.send_error_best_effort(&e).await;
             return Err(e);
         }

@@ -98,11 +98,6 @@ impl Client for MockClient {
         Ok(())
     }
 
-    async fn send_test_done(&self, results: TestResults) -> Result<(), Self::E> {
-        println!("MockClient::send_test_done: {:?}", results);
-        Ok(())
-    }
-
     async fn send_test_results(&self, results: TestResults) -> Result<(), Self::E> {
         println!("MockClient::send_test_results: {:?}", results);
         Ok(())
