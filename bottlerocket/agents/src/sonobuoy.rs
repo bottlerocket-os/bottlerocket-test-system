@@ -219,6 +219,7 @@ pub async fn delete_sonobuoy(kubeconfig_path: &str) -> Result<(), error::Error> 
     let status = Command::new("/usr/bin/sonobuoy")
         .args(kubeconfig_arg)
         .arg("delete")
+        .arg("--all")
         .arg("--wait")
         .status()
         .context(error::SonobuoyProcessSnafu)?;
