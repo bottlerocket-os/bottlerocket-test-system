@@ -3,7 +3,7 @@
 ## What is TestSys
 
 TestSys is a framework that leverages Kubernetes (K8s) to create resources and run tests.
-To learn more about how it works, see the [design](design/DESIGN.md) document.
+To learn more about how it works, see the [design](DESIGN.md) document.
 
 ### Navigating the `bottlerocket-test-system` repo
 
@@ -61,7 +61,7 @@ For tests, once necessary resources have been created (resources named in the `r
 For resources, once necessary resources have been created (resources named in the `depends_on` field of the resource spec), a K8s job is created and the `create` function of the agent is run.
 Once a resource is marked for deletion (`cli delete`), the `destroy` function of the resource is run, and the finalizers are removed so that the resource can be cleaned up by K8s.
 
-For more info, see the [design](design/DESIGN.md) document.
+For more info, see the [design](DESIGN.md) document.
 
 ### [Model](model)
 
