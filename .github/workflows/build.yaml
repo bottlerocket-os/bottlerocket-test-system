@@ -3,13 +3,13 @@ on:
   pull_request:
     paths-ignore:
       - '**.md'
-      - 'design/**'
+      - 'docs/**'
       - 'tools/**'
       - '.github/dependabot.yml'
   push:
     paths-ignore:
       - '**.md'
-      - 'design/**'
+      - 'docs/**'
       - 'tools/**'
       - '.github/dependabot.yml'
     branches: [develop]
