@@ -212,6 +212,10 @@ pub struct EcsClusterConfig {
 
     /// The role that should be assumed when creating the ecs cluster.
     pub assume_role: Option<String>,
+
+    /// The IAM instance profile name for the EC2 instances in the ECS cluster. If no value is
+    /// provided, then the ECS test agent will attempt to create an IAM instance profile.
+    pub iam_instance_profile_name: Option<String>,
 }
 
 impl Configuration for EcsClusterConfig {}

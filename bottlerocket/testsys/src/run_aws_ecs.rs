@@ -146,6 +146,11 @@ pub(crate) struct RunAwsEcs {
     /// The arn for the role that should be assumed by the agents.
     #[structopt(long)]
     assume_role: Option<String>,
+
+    /// The IAM instance profile name for the EC2 instances in the ECS cluster. If no value is
+    /// provided, then the ECS test agent will attempt to create an IAM instance profile.
+    #[structopt(long)]
+    iam_instance_profile_name: Option<String>,
 }
 
 impl RunAwsEcs {
@@ -326,6 +331,7 @@ impl RunAwsEcs {
                             region: Some(self.region.clone()),
                             vpc: self.vpc.clone(),
                             assume_role: self.assume_role.clone(),
+                            iam_instance_profile_name: self.iam_instance_profile_name.clone(),
                         }
                         .into_map()
                         .context(error::ConfigMapSnafu)?,

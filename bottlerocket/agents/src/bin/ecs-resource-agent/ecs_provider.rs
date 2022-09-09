@@ -110,8 +110,20 @@ impl Create for EcsCreator {
             .await
             .context(Resources::Clear, "The cluster could not be created.")?;
 
-        info!("Creating instance profile");
-        let iam_arn = create_iam_instance_profile(&iam_client).await?;
+        let iam_arn = match spec.configuration.iam_instance_profile_name {
+            Some(iam_instance_profile_name) => {
+                instance_profile_arn(&iam_client, &iam_instance_profile_name)
+                    .await
+                    .context(
+                        Resources::Clear,
+                        "The iam instance profile name was not found.",
+                    )?
+            }
+            None => {
+                info!("Creating instance profile");
+                create_iam_instance_profile(&iam_client).await?
+            }
+        };
 
         info!("Getting cluster information");
         let created_cluster = created_cluster(
@@ -142,7 +154,7 @@ async fn create_iam_instance_profile(iam_client: &aws_sdk_iam::Client) -> Provid
         .send()
         .await;
     if exists(get_instance_profile_result) {
-        instance_profile_arn(iam_client).await
+        instance_profile_arn(iam_client, IAM_INSTANCE_PROFILE_NAME).await
     } else {
         iam_client
             .create_role()
@@ -184,7 +196,7 @@ async fn create_iam_instance_profile(iam_client: &aws_sdk_iam::Client) -> Provid
                 Resources::Remaining,
                 "Unable to add role to instance profile",
             )?;
-        instance_profile_arn(iam_client).await
+        instance_profile_arn(iam_client, IAM_INSTANCE_PROFILE_NAME).await
     }
 }
 
@@ -200,10 +212,13 @@ fn exists(result: Result<GetInstanceProfileOutput, SdkError<GetInstanceProfileEr
     true
 }
 
-async fn instance_profile_arn(iam_client: &aws_sdk_iam::Client) -> ProviderResult<String> {
+async fn instance_profile_arn(
+    iam_client: &aws_sdk_iam::Client,
+    iam_instance_profile_name: &str,
+) -> ProviderResult<String> {
     iam_client
         .get_instance_profile()
-        .instance_profile_name(IAM_INSTANCE_PROFILE_NAME)
+        .instance_profile_name(iam_instance_profile_name)
         .send()
         .await
         .context(Resources::Remaining, "Unable to get instance profile.")?
