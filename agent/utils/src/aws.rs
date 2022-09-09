@@ -271,6 +271,16 @@ where
         resources,
         "Could not convert secret-access-key to String",
     )?;
+    if let Some(token) = aws_secret.get("session-token") {
+        env::set_var(
+            "AWS_SESSION_TOKEN",
+            resource_agent::provider::IntoProviderError::context(
+                String::from_utf8(token.to_owned()),
+                resources,
+                "Could not convert session-token to String",
+            )?,
+        );
+    };
 
     env::set_var("AWS_ACCESS_KEY_ID", access_key_id);
     env::set_var("AWS_SECRET_ACCESS_KEY", secret_access_key);
