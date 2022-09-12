@@ -14,167 +14,167 @@ spec:
     singular: test
   scope: Namespaced
   versions:
-    - additionalPrinterColumns:
-        - jsonPath: ".status.agent.taskState"
-          name: State
-          type: string
-        - jsonPath: ".status.agent.results.outcome"
-          name: Result
-          type: string
-      name: v1
-      schema:
-        openAPIV3Schema:
-          description: "Auto-generated derived type for TestSpec via `CustomResource`"
-          properties:
-            spec:
-              description: "A TestSys Test. The `CustomResource` derive also produces a struct named `Test` which represents a test CRD object in the k8s API."
-              properties:
-                agent:
-                  description: Information about the test agent.
-                  properties:
-                    capabilities:
-                      description: "Linux capabilities to add for the agent container, e.g. NET_ADMIN"
-                      items:
-                        type: string
-                      nullable: true
-                      type: array
-                    configuration:
-                      description: "The configuration to pass to the agent. This is 'open' to allow agents to define their own schemas."
-                      nullable: true
-                      type: object
-                      x-kubernetes-preserve-unknown-fields: true
-                    image:
-                      description: The URI of the agent container image.
+  - additionalPrinterColumns:
+    - jsonPath: .status.agent.taskState
+      name: State
+      type: string
+    - jsonPath: .status.agent.results.outcome
+      name: Result
+      type: string
+    name: v1
+    schema:
+      openAPIV3Schema:
+        description: Auto-generated derived type for TestSpec via `CustomResource`
+        properties:
+          spec:
+            description: A TestSys Test. The `CustomResource` derive also produces a struct named `Test` which represents a test CRD object in the k8s API.
+            properties:
+              agent:
+                description: Information about the test agent.
+                properties:
+                  capabilities:
+                    description: Linux capabilities to add for the agent container, e.g. NET_ADMIN
+                    items:
                       type: string
-                    keepRunning:
-                      description: Determine if the pod should keep running after it has finished or encountered and error.
-                      type: boolean
-                    name:
-                      description: The name of the agent.
-                      type: string
-                    pullSecret:
-                      description: The name of an image registry pull secret if one is needed to pull the agent image.
-                      nullable: true
-                      type: string
-                    secrets:
-                      additionalProperties:
-                        maxLength: 253
-                        minLength: 1
-                        pattern: "^[a-zA-Z0-9_-]{1,253}$"
-                        type: string
-                      description: "A map of `SecretType` -> `SecretName` where `SecretType` is defined by the agent that will use it, and `SecretName` is provided by the user. `SecretName` is constrained to ascii alphanumerics plus underscores and dashes."
-                      nullable: true
-                      type: object
-                    timeout:
-                      description: The maximum amount of time an agent should be left to run.
+                    nullable: true
+                    type: array
+                  configuration:
+                    description: The configuration to pass to the agent. This is 'open' to allow agents to define their own schemas.
+                    nullable: true
+                    type: object
+                    x-kubernetes-preserve-unknown-fields: true
+                  image:
+                    description: The URI of the agent container image.
+                    type: string
+                  keepRunning:
+                    description: Determine if the pod should keep running after it has finished or encountered and error.
+                    type: boolean
+                  name:
+                    description: The name of the agent.
+                    type: string
+                  pullSecret:
+                    description: The name of an image registry pull secret if one is needed to pull the agent image.
+                    nullable: true
+                    type: string
+                  secrets:
+                    additionalProperties:
                       maxLength: 253
                       minLength: 1
-                      nullable: true
-                      pattern: "^((([0-9]+)d)?(([0-9]+)h)?(([0-9]+)m)?(([0-9]+)s)?|\\d+)$"
+                      pattern: ^[a-zA-Z0-9_-]{1,253}$
                       type: string
-                  required:
-                    - configuration
-                    - image
-                    - keepRunning
-                    - name
-                    - timeout
-                  type: object
-                dependsOn:
-                  description: Other tests that must be completed before this one can be run.
-                  items:
+                    description: A map of `SecretType` -> `SecretName` where `SecretType` is defined by the agent that will use it, and `SecretName` is provided by the user. `SecretName` is constrained to ascii alphanumerics plus underscores and dashes.
+                    nullable: true
+                    type: object
+                  timeout:
+                    description: The maximum amount of time an agent should be left to run.
+                    maxLength: 253
+                    minLength: 1
+                    nullable: true
+                    pattern: ^((([0-9]+)d)?(([0-9]+)h)?(([0-9]+)m)?(([0-9]+)s)?|\d+)$
                     type: string
-                  nullable: true
-                  type: array
-                resources:
-                  description: The list of resources required by this test. The test controller will wait for these resources to become ready before running the test agent.
-                  items:
+                required:
+                - configuration
+                - image
+                - keepRunning
+                - name
+                - timeout
+                type: object
+              dependsOn:
+                description: Other tests that must be completed before this one can be run.
+                items:
+                  type: string
+                nullable: true
+                type: array
+              resources:
+                description: The list of resources required by this test. The test controller will wait for these resources to become ready before running the test agent.
+                items:
+                  type: string
+                type: array
+              retries:
+                description: The number of retries the agent is allowed to perform after a failed test.
+                format: uint32
+                minimum: 0.0
+                nullable: true
+                type: integer
+            required:
+            - agent
+            - resources
+            type: object
+          status:
+            description: The status field of the TestSys Test CRD. This is where the controller and agents will write information about the status of the test run.
+            nullable: true
+            properties:
+              agent:
+                description: Information written by the test agent.
+                properties:
+                  error:
+                    description: Due to structural OpenAPI constraints, the error message must be provided separately instead of as a value within the `RunState::Error` variant. If the `run_state` is `Error` then there *may* be an error message here. If there is an error message here and the `run_state` is *not* `Error`, the this is a bad state and the `error_message` should be ignored.
+                    nullable: true
                     type: string
-                  type: array
-                retries:
-                  description: The number of retries the agent is allowed to perform after a failed test.
-                  format: uint32
-                  minimum: 0.0
-                  nullable: true
-                  type: integer
-              required:
-                - agent
-                - resources
-              type: object
-            status:
-              description: The status field of the TestSys Test CRD. This is where the controller and agents will write information about the status of the test run.
-              nullable: true
-              properties:
-                agent:
-                  description: Information written by the test agent.
-                  properties:
-                    error:
-                      description: "Due to structural OpenAPI constraints, the error message must be provided separately instead of as a value within the `RunState::Error` variant. If the `run_state` is `Error` then there *may* be an error message here. If there is an error message here and the `run_state` is *not* `Error`, the this is a bad state and the `error_message` should be ignored."
-                      nullable: true
-                      type: string
-                    results:
-                      items:
-                        properties:
-                          numFailed:
-                            format: uint64
-                            minimum: 0.0
-                            type: integer
-                          numPassed:
-                            format: uint64
-                            minimum: 0.0
-                            type: integer
-                          numSkipped:
-                            format: uint64
-                            minimum: 0.0
-                            type: integer
-                          otherInfo:
-                            nullable: true
-                            type: string
-                          outcome:
-                            description: "The `Outcome` of a test run, reported by the test agent."
-                            enum:
-                              - pass
-                              - fail
-                              - timeout
-                              - unknown
-                            type: string
-                        required:
-                          - numFailed
-                          - numPassed
-                          - numSkipped
-                          - outcome
-                        type: object
-                      type: array
-                    taskState:
-                      description: The states that an agent declares about its task (e.g. running tests or creating/destroying resources).
-                      enum:
-                        - unknown
-                        - running
-                        - completed
-                        - error
-                      type: string
-                  required:
-                    - results
-                    - taskState
-                  type: object
-                controller:
-                  description: Information written by the controller.
-                  properties:
-                    resourceError:
-                      nullable: true
-                      type: string
-                  type: object
-              required:
-                - agent
-                - controller
-              type: object
-          required:
-            - spec
-          title: Test
-          type: object
-      served: true
-      storage: true
-      subresources:
-        status: {}
+                  results:
+                    items:
+                      properties:
+                        numFailed:
+                          format: uint64
+                          minimum: 0.0
+                          type: integer
+                        numPassed:
+                          format: uint64
+                          minimum: 0.0
+                          type: integer
+                        numSkipped:
+                          format: uint64
+                          minimum: 0.0
+                          type: integer
+                        otherInfo:
+                          nullable: true
+                          type: string
+                        outcome:
+                          description: The `Outcome` of a test run, reported by the test agent.
+                          enum:
+                          - pass
+                          - fail
+                          - timeout
+                          - unknown
+                          type: string
+                      required:
+                      - numFailed
+                      - numPassed
+                      - numSkipped
+                      - outcome
+                      type: object
+                    type: array
+                  taskState:
+                    description: The states that an agent declares about its task (e.g. running tests or creating/destroying resources).
+                    enum:
+                    - unknown
+                    - running
+                    - completed
+                    - error
+                    type: string
+                required:
+                - results
+                - taskState
+                type: object
+              controller:
+                description: Information written by the controller.
+                properties:
+                  resourceError:
+                    nullable: true
+                    type: string
+                type: object
+            required:
+            - agent
+            - controller
+            type: object
+        required:
+        - spec
+        title: Test
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}
 ---
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
@@ -190,189 +190,189 @@ spec:
     singular: resource
   scope: Namespaced
   versions:
-    - additionalPrinterColumns:
-        - jsonPath: ".spec.destructionPolicy"
-          name: DestructionPolicy
-          type: string
-        - jsonPath: ".status.creation.taskState"
-          name: CreationState
-          type: string
-        - jsonPath: ".status.destruction.taskState"
-          name: DestructionState
-          type: string
-      name: v1
-      schema:
-        openAPIV3Schema:
-          description: "Auto-generated derived type for ResourceSpec via `CustomResource`"
-          properties:
-            spec:
-              description: "A resource required by a test. For example, a compute instance or cluster. The `CustomResource` derive also produces a struct named `Resource` which represents a resource CRD object in the k8s API."
-              properties:
-                agent:
-                  description: Information about the resource agent.
-                  properties:
-                    capabilities:
-                      description: "Linux capabilities to add for the agent container, e.g. NET_ADMIN"
-                      items:
-                        type: string
-                      nullable: true
-                      type: array
-                    configuration:
-                      description: "The configuration to pass to the agent. This is 'open' to allow agents to define their own schemas."
-                      nullable: true
-                      type: object
-                      x-kubernetes-preserve-unknown-fields: true
-                    image:
-                      description: The URI of the agent container image.
+  - additionalPrinterColumns:
+    - jsonPath: .spec.destructionPolicy
+      name: DestructionPolicy
+      type: string
+    - jsonPath: .status.creation.taskState
+      name: CreationState
+      type: string
+    - jsonPath: .status.destruction.taskState
+      name: DestructionState
+      type: string
+    name: v1
+    schema:
+      openAPIV3Schema:
+        description: Auto-generated derived type for ResourceSpec via `CustomResource`
+        properties:
+          spec:
+            description: A resource required by a test. For example, a compute instance or cluster. The `CustomResource` derive also produces a struct named `Resource` which represents a resource CRD object in the k8s API.
+            properties:
+              agent:
+                description: Information about the resource agent.
+                properties:
+                  capabilities:
+                    description: Linux capabilities to add for the agent container, e.g. NET_ADMIN
+                    items:
                       type: string
-                    keepRunning:
-                      description: Determine if the pod should keep running after it has finished or encountered and error.
-                      type: boolean
-                    name:
-                      description: The name of the agent.
-                      type: string
-                    pullSecret:
-                      description: The name of an image registry pull secret if one is needed to pull the agent image.
-                      nullable: true
-                      type: string
-                    secrets:
-                      additionalProperties:
-                        maxLength: 253
-                        minLength: 1
-                        pattern: "^[a-zA-Z0-9_-]{1,253}$"
-                        type: string
-                      description: "A map of `SecretType` -> `SecretName` where `SecretType` is defined by the agent that will use it, and `SecretName` is provided by the user. `SecretName` is constrained to ascii alphanumerics plus underscores and dashes."
-                      nullable: true
-                      type: object
-                    timeout:
-                      description: The maximum amount of time an agent should be left to run.
+                    nullable: true
+                    type: array
+                  configuration:
+                    description: The configuration to pass to the agent. This is 'open' to allow agents to define their own schemas.
+                    nullable: true
+                    type: object
+                    x-kubernetes-preserve-unknown-fields: true
+                  image:
+                    description: The URI of the agent container image.
+                    type: string
+                  keepRunning:
+                    description: Determine if the pod should keep running after it has finished or encountered and error.
+                    type: boolean
+                  name:
+                    description: The name of the agent.
+                    type: string
+                  pullSecret:
+                    description: The name of an image registry pull secret if one is needed to pull the agent image.
+                    nullable: true
+                    type: string
+                  secrets:
+                    additionalProperties:
                       maxLength: 253
                       minLength: 1
-                      nullable: true
-                      pattern: "^((([0-9]+)d)?(([0-9]+)h)?(([0-9]+)m)?(([0-9]+)s)?|\\d+)$"
+                      pattern: ^[a-zA-Z0-9_-]{1,253}$
                       type: string
-                  required:
-                    - configuration
-                    - image
-                    - keepRunning
-                    - name
-                    - timeout
-                  type: object
-                conflictsWith:
-                  description: Creation of this resource will not begin until all conflicting resources have been deleted.
-                  items:
+                    description: A map of `SecretType` -> `SecretName` where `SecretType` is defined by the agent that will use it, and `SecretName` is provided by the user. `SecretName` is constrained to ascii alphanumerics plus underscores and dashes.
+                    nullable: true
+                    type: object
+                  timeout:
+                    description: The maximum amount of time an agent should be left to run.
+                    maxLength: 253
+                    minLength: 1
+                    nullable: true
+                    pattern: ^((([0-9]+)d)?(([0-9]+)h)?(([0-9]+)m)?(([0-9]+)s)?|\d+)$
                     type: string
-                  nullable: true
-                  type: array
-                dependsOn:
-                  description: Other resources that must to be created before this one can be created.
-                  items:
-                    type: string
-                  nullable: true
-                  type: array
-                destructionPolicy:
-                  default: onDeletion
-                  description: "Whether/when the resource controller will destroy the resource (`OnDeletion` is the default)."
-                  enum:
-                    - onDeletion
-                    - never
-                    - onTestSuccess
-                    - onTestCompletion
-                    - "null"
-                  nullable: true
+                required:
+                - configuration
+                - image
+                - keepRunning
+                - name
+                - timeout
+                type: object
+              conflictsWith:
+                description: Creation of this resource will not begin until all conflicting resources have been deleted.
+                items:
                   type: string
-              required:
-                - agent
-              type: object
-            status:
-              description: A status struct to be used by a resource agent.
-              nullable: true
-              properties:
-                agentInfo:
-                  description: Open content to be used by the resource agent to store state.
-                  nullable: true
-                  type: object
-                  x-kubernetes-preserve-unknown-fields: true
-                createdResource:
-                  description: A description of the resource that has been created by the resource agent.
-                  nullable: true
-                  type: object
-                  x-kubernetes-preserve-unknown-fields: true
-                creation:
-                  description: The state or the resource agent when creating resources.
-                  properties:
-                    error:
-                      nullable: true
-                      properties:
-                        error:
-                          description: The error message.
-                          type: string
-                        errorResources:
-                          description: "The status of left-behind resources, if any."
-                          enum:
-                            - orphaned
-                            - remaining
-                            - clear
-                            - unknown
-                          type: string
-                      required:
-                        - error
-                        - errorResources
-                      type: object
-                    taskState:
-                      description: The states that an agent declares about its task (e.g. running tests or creating/destroying resources).
-                      enum:
+                nullable: true
+                type: array
+              dependsOn:
+                description: Other resources that must to be created before this one can be created.
+                items:
+                  type: string
+                nullable: true
+                type: array
+              destructionPolicy:
+                default: onDeletion
+                description: Whether/when the resource controller will destroy the resource (`OnDeletion` is the default).
+                enum:
+                - onDeletion
+                - never
+                - onTestSuccess
+                - onTestCompletion
+                - 'null'
+                nullable: true
+                type: string
+            required:
+            - agent
+            type: object
+          status:
+            description: A status struct to be used by a resource agent.
+            nullable: true
+            properties:
+              agentInfo:
+                description: Open content to be used by the resource agent to store state.
+                nullable: true
+                type: object
+                x-kubernetes-preserve-unknown-fields: true
+              createdResource:
+                description: A description of the resource that has been created by the resource agent.
+                nullable: true
+                type: object
+                x-kubernetes-preserve-unknown-fields: true
+              creation:
+                description: The state or the resource agent when creating resources.
+                properties:
+                  error:
+                    nullable: true
+                    properties:
+                      error:
+                        description: The error message.
+                        type: string
+                      errorResources:
+                        description: The status of left-behind resources, if any.
+                        enum:
+                        - orphaned
+                        - remaining
+                        - clear
                         - unknown
-                        - running
-                        - completed
-                        - error
-                      type: string
-                  required:
-                    - taskState
-                  type: object
-                destruction:
-                  description: The state of the resource agent when destroying resources.
-                  properties:
-                    error:
-                      nullable: true
-                      properties:
-                        error:
-                          description: The error message.
-                          type: string
-                        errorResources:
-                          description: "The status of left-behind resources, if any."
-                          enum:
-                            - orphaned
-                            - remaining
-                            - clear
-                            - unknown
-                          type: string
-                      required:
-                        - error
-                        - errorResources
-                      type: object
-                    taskState:
-                      description: The states that an agent declares about its task (e.g. running tests or creating/destroying resources).
-                      enum:
+                        type: string
+                    required:
+                    - error
+                    - errorResources
+                    type: object
+                  taskState:
+                    description: The states that an agent declares about its task (e.g. running tests or creating/destroying resources).
+                    enum:
+                    - unknown
+                    - running
+                    - completed
+                    - error
+                    type: string
+                required:
+                - taskState
+                type: object
+              destruction:
+                description: The state of the resource agent when destroying resources.
+                properties:
+                  error:
+                    nullable: true
+                    properties:
+                      error:
+                        description: The error message.
+                        type: string
+                      errorResources:
+                        description: The status of left-behind resources, if any.
+                        enum:
+                        - orphaned
+                        - remaining
+                        - clear
                         - unknown
-                        - running
-                        - completed
-                        - error
-                      type: string
-                  required:
-                    - taskState
-                  type: object
-              required:
-                - agentInfo
-                - createdResource
-                - creation
-                - destruction
-              type: object
-          required:
-            - spec
-          title: Resource
-          type: object
-      served: true
-      storage: true
-      subresources:
-        status: {}
+                        type: string
+                    required:
+                    - error
+                    - errorResources
+                    type: object
+                  taskState:
+                    description: The states that an agent declares about its task (e.g. running tests or creating/destroying resources).
+                    enum:
+                    - unknown
+                    - running
+                    - completed
+                    - error
+                    type: string
+                required:
+                - taskState
+                type: object
+            required:
+            - agentInfo
+            - createdResource
+            - creation
+            - destruction
+            type: object
+        required:
+        - spec
+        title: Resource
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}

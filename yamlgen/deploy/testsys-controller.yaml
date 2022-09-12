@@ -21,58 +21,58 @@ metadata:
   name: testsys-controller-role
   namespace: testsys-bottlerocket-aws
 rules:
-  - apiGroups:
-      - testsys.bottlerocket.aws
-    resources:
-      - tests
-      - tests/status
-    verbs:
-      - create
-      - delete
-      - deletecollection
-      - get
-      - list
-      - patch
-      - update
-      - watch
-  - apiGroups:
-      - testsys.bottlerocket.aws
-    resources:
-      - resources
-      - resources/status
-    verbs:
-      - create
-      - delete
-      - deletecollection
-      - get
-      - list
-      - patch
-      - update
-      - watch
-  - apiGroups:
-      - apps
-    resources:
-      - deployments
-    verbs:
-      - create
-      - delete
-      - deletecollection
-      - get
-      - list
-      - patch
-      - update
-  - apiGroups:
-      - batch
-    resources:
-      - jobs
-    verbs:
-      - create
-      - delete
-      - deletecollection
-      - get
-      - list
-      - patch
-      - update
+- apiGroups:
+  - testsys.bottlerocket.aws
+  resources:
+  - tests
+  - tests/status
+  verbs:
+  - create
+  - delete
+  - deletecollection
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - testsys.bottlerocket.aws
+  resources:
+  - resources
+  - resources/status
+  verbs:
+  - create
+  - delete
+  - deletecollection
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - apps
+  resources:
+  - deployments
+  verbs:
+  - create
+  - delete
+  - deletecollection
+  - get
+  - list
+  - patch
+  - update
+- apiGroups:
+  - batch
+  resources:
+  - jobs
+  verbs:
+  - create
+  - delete
+  - deletecollection
+  - get
+  - list
+  - patch
+  - update
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
@@ -84,9 +84,9 @@ roleRef:
   kind: ClusterRole
   name: testsys-controller-role
 subjects:
-  - kind: ServiceAccount
-    name: testsys-controller-service-account
-    namespace: testsys-bottlerocket-aws
+- kind: ServiceAccount
+  name: testsys-controller-service-account
+  namespace: testsys-bottlerocket-aws
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -116,12 +116,12 @@ spec:
         nodeAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:
             nodeSelectorTerms:
-              - matchExpressions:
-                  - key: kubernetes.io/os
-                    operator: In
-                    values:
-                      - linux
+            - matchExpressions:
+              - key: kubernetes.io/os
+                operator: In
+                values:
+                - linux
       containers:
-        - image: "6456745674567.dkr.ecr.us-west-2.amazonaws.com/controller:v0.1.2"
-          name: controller
+      - image: 6456745674567.dkr.ecr.us-west-2.amazonaws.com/controller:v0.1.2
+        name: controller
       serviceAccountName: testsys-controller-service-account

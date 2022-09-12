@@ -1,3 +1,4 @@
+# This file is generated. Do not edit.
 ---
 apiVersion: v1
 kind: Namespace
@@ -20,23 +21,23 @@ metadata:
   name: testsys-test-agent-role
   namespace: testsys-bottlerocket-aws
 rules:
-  - apiGroups:
-      - testsys.bottlerocket.aws
-    resources:
-      - tests
-      - tests/status
-    verbs:
-      - get
-      - list
-      - patch
-      - update
-      - watch
-  - apiGroups:
-      - testsys.bottlerocket.aws
-    resources:
-      - resources
-    verbs:
-      - get
+- apiGroups:
+  - testsys.bottlerocket.aws
+  resources:
+  - tests
+  - tests/status
+  verbs:
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - testsys.bottlerocket.aws
+  resources:
+  - resources
+  verbs:
+  - get
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
@@ -48,9 +49,9 @@ roleRef:
   kind: ClusterRole
   name: testsys-test-agent-role
 subjects:
-  - kind: ServiceAccount
-    name: testsys-test-agent-account
-    namespace: testsys-bottlerocket-aws
+- kind: ServiceAccount
+  name: testsys-test-agent-account
+  namespace: testsys-bottlerocket-aws
 ---
 apiVersion: v1
 kind: ServiceAccount
@@ -66,17 +67,17 @@ metadata:
   name: testsys-resource-agent-role
   namespace: testsys-bottlerocket-aws
 rules:
-  - apiGroups:
-      - testsys.bottlerocket.aws
-    resources:
-      - resources
-      - resources/status
-    verbs:
-      - get
-      - list
-      - patch
-      - update
-      - watch
+- apiGroups:
+  - testsys.bottlerocket.aws
+  resources:
+  - resources
+  - resources/status
+  verbs:
+  - get
+  - list
+  - patch
+  - update
+  - watch
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
@@ -88,6 +89,6 @@ roleRef:
   kind: ClusterRole
   name: testsys-resource-agent-role
 subjects:
-  - kind: ServiceAccount
-    name: testsys-resource-agent-account
-    namespace: testsys-bottlerocket-aws
+- kind: ServiceAccount
+  name: testsys-resource-agent-account
+  namespace: testsys-bottlerocket-aws

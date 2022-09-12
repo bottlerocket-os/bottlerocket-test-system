@@ -21,6 +21,7 @@ use std::path::PathBuf;
 
 const YAMLGEN_DIR: &str = env!("CARGO_MANIFEST_DIR");
 const HEADER: &str = "# This file is generated. Do not edit.\n";
+const YAML_SEPARATOR: &str = "---\n";
 // FIXME: set this to an public ECR image eventually
 const DEFAULT_TESTSYS_CONTROLLER_IMAGE: &str =
     "6456745674567.dkr.ecr.us-west-2.amazonaws.com/controller:v0.1.2";
@@ -46,11 +47,13 @@ fn main() {
     let path = PathBuf::from(YAMLGEN_DIR)
         .join("deploy")
         .join("testsys-agent.yaml");
-    let testsys_agent = File::create(&path).unwrap();
+    let mut testsys_agent = File::create(&path).unwrap();
 
     // testsys-crd related K8S manifest
     testsys_crd.write_all(HEADER.as_bytes()).unwrap();
+    testsys_crd.write_all(YAML_SEPARATOR.as_bytes()).unwrap();
     serde_yaml::to_writer(&testsys_crd, &Test::crd()).unwrap();
+    testsys_crd.write_all(YAML_SEPARATOR.as_bytes()).unwrap();
     serde_yaml::to_writer(&testsys_crd, &Resource::crd()).unwrap();
 
     // Read the controller image and image-pull-secrets identifier from environment variables
@@ -61,10 +64,25 @@ fn main() {
 
     // testsys-controller related K8S manifest
     testsys_controller.write_all(HEADER.as_bytes()).unwrap();
+    testsys_controller
+        .write_all(YAML_SEPARATOR.as_bytes())
+        .unwrap();
     serde_yaml::to_writer(&testsys_controller, &testsys_namespace()).unwrap();
+    testsys_controller
+        .write_all(YAML_SEPARATOR.as_bytes())
+        .unwrap();
     serde_yaml::to_writer(&testsys_controller, &controller_service_account()).unwrap();
+    testsys_controller
+        .write_all(YAML_SEPARATOR.as_bytes())
+        .unwrap();
     serde_yaml::to_writer(&testsys_controller, &controller_cluster_role()).unwrap();
+    testsys_controller
+        .write_all(YAML_SEPARATOR.as_bytes())
+        .unwrap();
     serde_yaml::to_writer(&testsys_controller, &controller_cluster_role_binding()).unwrap();
+    testsys_controller
+        .write_all(YAML_SEPARATOR.as_bytes())
+        .unwrap();
     serde_yaml::to_writer(
         &testsys_controller,
         &controller_deployment(controller_image, controller_image_pull_secrets),
@@ -72,12 +90,20 @@ fn main() {
     .unwrap();
 
     // testsys-agent related K8S manifest
+    testsys_agent.write_all(HEADER.as_bytes()).unwrap();
+    testsys_agent.write_all(YAML_SEPARATOR.as_bytes()).unwrap();
     serde_yaml::to_writer(&testsys_agent, &testsys_namespace()).unwrap();
+    testsys_agent.write_all(YAML_SEPARATOR.as_bytes()).unwrap();
     serde_yaml::to_writer(&testsys_agent, &agent_service_account(AgentType::Test)).unwrap();
+    testsys_agent.write_all(YAML_SEPARATOR.as_bytes()).unwrap();
     serde_yaml::to_writer(&testsys_agent, &agent_cluster_role(AgentType::Test)).unwrap();
+    testsys_agent.write_all(YAML_SEPARATOR.as_bytes()).unwrap();
     serde_yaml::to_writer(&testsys_agent, &agent_cluster_role_binding(AgentType::Test)).unwrap();
+    testsys_agent.write_all(YAML_SEPARATOR.as_bytes()).unwrap();
     serde_yaml::to_writer(&testsys_agent, &agent_service_account(AgentType::Resource)).unwrap();
+    testsys_agent.write_all(YAML_SEPARATOR.as_bytes()).unwrap();
     serde_yaml::to_writer(&testsys_agent, &agent_cluster_role(AgentType::Resource)).unwrap();
+    testsys_agent.write_all(YAML_SEPARATOR.as_bytes()).unwrap();
     serde_yaml::to_writer(
         &testsys_agent,
         &agent_cluster_role_binding(AgentType::Resource),
