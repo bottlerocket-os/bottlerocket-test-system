@@ -133,6 +133,15 @@ where
         what: "access-key-id",
     })?;
 
+    if let Some(token) = aws_secret.get("session-token") {
+        env::set_var(
+            "AWS_SESSION_TOKEN",
+            String::from_utf8(token.to_owned()).context(error::ConversionSnafu {
+                what: "session-token",
+            })?,
+        );
+    };
+
     env::set_var("AWS_ACCESS_KEY_ID", access_key_id);
     env::set_var("AWS_SECRET_ACCESS_KEY", secret_access_key);
 
