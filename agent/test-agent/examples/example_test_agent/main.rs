@@ -2,7 +2,7 @@
 
 This is an example of how a test agent is implemented.
 This example program needs to run in a pod in a K8s cluster containing all the testsys-related CRDs.
-(See yamlgen/deploy/testsys.yaml)
+(See the `cargo make setup-test` target in the bottlerocket monorepo or `cli install` in this repo)
 
 All the program does is echo "hello" a custom number of times and with a time delay in between.
 See `ExampleConfig` for the different configuration values.

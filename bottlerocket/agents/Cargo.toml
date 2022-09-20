@@ -39,6 +39,3 @@ tokio = { version = "1", default-features = false, features = ["macros", "rt-mul
 tough = { version = "0.12", features = ["http"] }
 url = "2.3"
 uuid = { version = "1.0", default-features = false, features = ["serde", "v4"] }
-
-[build-dependencies]
-yamlgen = { version = "0.0.2", path = "../../yamlgen" }

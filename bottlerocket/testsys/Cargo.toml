@@ -32,9 +32,6 @@ topological-sort = "0.2"
 assert_cmd = "2.0"
 selftest = { version = "0.0.2", path = "../../selftest" }
 
-[build-dependencies]
-yamlgen = { version = "0.0.2", path = "../../yamlgen" }
-
 [features]
 # The `integ` feature enables integration tests. These tests require docker and kind.
 integ = []

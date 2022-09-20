@@ -9,7 +9,6 @@ dependencies = [
  "model",
  "snafu",
  "tempfile",
- "yamlgen",
 ]
 
 [[package]]
@@ -604,7 +603,6 @@ dependencies = [
  "tough",
  "url",
  "uuid",
- "yamlgen",
 ]
 
 [[package]]
@@ -754,7 +752,6 @@ dependencies = [
  "serde_plain",
  "terminal_size",
  "tokio",
- "yamlgen",
 ]
 
 [[package]]
@@ -777,7 +774,6 @@ dependencies = [
  "serde_json",
  "snafu",
  "tokio",
- "yamlgen",
 ]
 
 [[package]]
@@ -2255,7 +2251,6 @@ dependencies = [
  "serde_json",
  "snafu",
  "tokio",
- "yamlgen",
 ]
 
 [[package]]
@@ -2807,7 +2802,6 @@ dependencies = [
  "tar",
  "tempfile",
  "tokio",
- "yamlgen",
 ]
 
 [[package]]
@@ -2862,7 +2856,6 @@ dependencies = [
  "tokio",
  "tokio-util",
  "topological-sort",
- "yamlgen",
 ]
 
 [[package]]
@@ -3578,15 +3571,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "56c1936c4cc7a1c9ab21a1ebb602eb942ba868cbd44a99cb7cdc5892335e1c85"
 dependencies = [
  "linked-hash-map",
-]
-
-[[package]]
-name = "yamlgen"
-version = "0.0.2"
-dependencies = [
- "kube",
- "model",
- "serde_yaml",
 ]
 
 [[package]]

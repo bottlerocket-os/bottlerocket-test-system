@@ -22,9 +22,6 @@ tokio = { version = "1", features = ["macros", "rt-multi-thread", "fs"] }
 assert_cmd = "2.0"
 selftest = { path = "../selftest" }
 
-[build-dependencies]
-yamlgen = { path = "../yamlgen" }
-
 [features]
 # The `integ` feature enables integration tests. These tests require docker and kind.
 integ = []
