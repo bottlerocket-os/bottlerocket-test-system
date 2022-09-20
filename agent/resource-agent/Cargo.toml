@@ -19,6 +19,3 @@ tokio = { version = "1", default-features = false, features = ["time"] }
 env_logger = "0"
 nonzero_ext = "0.3"
 tokio = { version = "1", default-features = false, features = ["macros", "rt-multi-thread"] }
-
-[build-dependencies]
-yamlgen = { version = "0.0.2", path = "../../yamlgen" }

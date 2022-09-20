@@ -12,7 +12,6 @@ members = [
     "controller",
     "model",
     "selftest",
-    "yamlgen",
 ]
 
 resolver = "2"
