@@ -6,6 +6,17 @@ The format is inspired by [Keep a Changelog](https://keepachangelog.com/en/1.0.0
 Since this project is only a vessel for packaging a few binary tools, its adherence to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html) is loose at best.
 
+## [0.2.0] - 2022-09-20
+
+Update eksctl and sonobuoy.
+
+### Contents
+
+- boringtun v0.4.0 was removed
+- eksctl 0.112.0
+- kubeadm v1.21.6
+- sonobuoy v0.56.4
+
 ## [0.1.0] - 2022-05-11
 
 Initial version, x86_64-only for now.
@@ -19,4 +30,5 @@ Initial version, x86_64-only for now.
 
 <!-- example comparison for future releases 
 [0.2.0]: https://github.com/bottlerocket-os/bottlerocket-test-system/compare/tools-v0.1.0...tools-v0.2.0 -->
+[0.2.0]: https://github.com/bottlerocket-os/bottlerocket-test-system/compare/tools-v0.1.0...tools-v0.2.0
 [0.1.0]: https://github.com/bottlerocket-os/bottlerocket-test-system/tree/tools-v0.1.0
