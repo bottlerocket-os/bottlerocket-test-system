@@ -109,7 +109,6 @@ impl RunSonobuoy {
                     image: self.image.clone(),
                     pull_secret: self.pull_secret.clone(),
                     keep_running: self.keep_running,
-                    timeout: None,
                     configuration: Some(
                         SonobuoyConfig {
                             kubeconfig_base64: kubeconfig_string,
@@ -129,8 +128,7 @@ impl RunSonobuoy {
                             .insert(AWS_CREDENTIALS_SECRET_NAME.to_string(), secret_name.clone());
                         secrets_map
                     }),
-                    // FIXME: Add CLI option for setting this
-                    capabilities: None,
+                    ..Default::default()
                 },
             },
             status: None,

@@ -341,7 +341,6 @@ impl RunAwsK8s {
                     image: self.cluster_provider_image.clone(),
                     pull_secret: self.cluster_provider_pull_secret.clone(),
                     keep_running: self.keep_cluster_provider_running,
-                    timeout: None,
                     configuration: Some(
                         EksClusterConfig {
                             cluster_name: self.cluster_name.clone(),
@@ -355,7 +354,7 @@ impl RunAwsK8s {
                         .context(error::ConfigMapSnafu)?,
                     ),
                     secrets,
-                    capabilities: None,
+                    ..Default::default()
                 },
                 destruction_policy: self.cluster_destruction_policy,
             },
@@ -411,10 +410,9 @@ impl RunAwsK8s {
                     image: self.ec2_provider_image.clone(),
                     pull_secret: self.ec2_provider_pull_secret.clone(),
                     keep_running: self.keep_instance_provider_running,
-                    timeout: None,
                     configuration: Some(ec2_config),
                     secrets,
-                    capabilities: None,
+                    ..Default::default()
                 },
                 destruction_policy: DestructionPolicy::OnDeletion,
             },
@@ -457,7 +455,6 @@ impl RunAwsK8s {
                     image: self.test_agent_image.clone(),
                     pull_secret: self.test_agent_pull_secret.clone(),
                     keep_running: self.keep_running,
-                    timeout: None,
                     configuration: Some(
                         SonobuoyConfig {
                             kubeconfig_base64: format!(
@@ -475,8 +472,7 @@ impl RunAwsK8s {
                         .context(error::ConfigMapSnafu)?,
                     ),
                     secrets,
-                    // FIXME: Add CLI option for setting this
-                    capabilities: None,
+                    ..Default::default()
                 },
             },
             status: None,
@@ -527,10 +523,9 @@ impl RunAwsK8s {
                     image: migration_agent_image.to_string(),
                     pull_secret: migration_agent_pull_secret.clone(),
                     keep_running: self.keep_running,
-                    timeout: None,
                     configuration: Some(migration_config),
                     secrets,
-                    capabilities: None,
+                    ..Default::default()
                 },
             },
             status: None,

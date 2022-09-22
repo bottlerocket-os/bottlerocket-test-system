@@ -57,6 +57,8 @@ pub struct Agent {
     pub secrets: Option<BTreeMap<SecretType, SecretName>>,
     /// Linux capabilities to add for the agent container, e.g. NET_ADMIN
     pub capabilities: Option<Vec<String>>,
+    /// Whether the agent container needs to be privileged or not
+    pub privileged: Option<bool>,
 }
 
 impl Agent {
