@@ -351,7 +351,7 @@ impl RunAwsEcs {
         secrets: Option<BTreeMap<String, SecretName>>,
         cluster_resource_name: &str,
     ) -> Result<Resource> {
-        let ec2_config = Ec2Config {
+        let mut ec2_config = Ec2Config {
             node_ami: self.ami.clone(),
             // TODO - configurable
             instance_count: Some(2),
@@ -362,13 +362,21 @@ impl RunAwsEcs {
                 .iam_instance_profile_arn
                 .clone()
                 .unwrap_or_else(|| format!("${{{}.iamInstanceProfileArn}}", cluster_resource_name)),
-            subnet_id: format!("${{{}.publicSubnetId}}", cluster_resource_name),
+            subnet_ids: vec![],
             cluster_type: ClusterType::Ecs,
             assume_role: self.assume_role.clone(),
             ..Default::default()
         }
         .into_map()
         .context(error::ConfigMapSnafu)?;
+
+        let previous_value = ec2_config.insert(
+            "subnetIds".to_owned(),
+            Value::String(format!("${{{}.publicSubnetIds}}", cluster_resource_name)),
+        );
+        if previous_value.is_none() {
+            todo!("This is an error: fields in the Ec2Config struct have changed")
+        }
 
         Ok(Resource {
             metadata: ObjectMeta {
@@ -427,7 +435,10 @@ impl RunAwsEcs {
                             region: Some(format!("${{{}.region}}", cluster_resource_name)),
                             cluster_name: format!("${{{}.clusterName}}", cluster_resource_name),
                             task_count: self.task_count,
-                            subnet: format!("${{{}.publicSubnetId}}", cluster_resource_name),
+                            subnets: vec![format!(
+                                "${{{}.publicSubnetIds}}",
+                                cluster_resource_name
+                            )],
                             task_definition_name_and_revision: self
                                 .task_definition_name_and_revision
                                 .clone(),

@@ -68,11 +68,11 @@ pub struct CreatedCluster {
     /// The cluster DNS IP.
     pub cluster_dns_ip: String,
 
-    /// A single public subnet id. Will be `None` if no public ids exist.
-    pub public_subnet_id: Option<String>,
+    /// A vector of public subnet ids. Will be empty if no public ids exist.
+    pub public_subnet_ids: Vec<String>,
 
-    /// A single private subnet id. Will be `None` if no private ids exist.
-    pub private_subnet_id: Option<String>,
+    /// A vector of private subnet ids. Will be empty if no private ids exist.
+    pub private_subnet_ids: Vec<String>,
 
     /// Security groups necessary for ec2 instances
     pub security_groups: Vec<String>,
@@ -486,8 +486,8 @@ async fn created_cluster(
         endpoint,
         certificate,
         cluster_dns_ip,
-        public_subnet_id: first_subnet_id(&public_subnet_ids),
-        private_subnet_id: first_subnet_id(&private_subnet_ids),
+        public_subnet_ids,
+        private_subnet_ids,
         nodegroup_sg,
         controlplane_sg,
         clustershared_sg,
@@ -612,10 +612,6 @@ fn cluster_dns_ip_from_service_ipv6_cidr() {
         .unwrap(),
         "fd30:1c53:5f8a::a".to_string()
     )
-}
-
-fn first_subnet_id(subnet_ids: &[String]) -> Option<String> {
-    subnet_ids.get(0).map(|id| id.to_string())
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
