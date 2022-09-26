@@ -24,6 +24,7 @@ pub use resource::{
     ResourceStatus,
 };
 use serde::{Deserialize, Serialize};
+use std::collections::BTreeMap;
 pub use test::{
     AgentStatus, ControllerStatus, Outcome, Test, TestResults, TestSpec, TestStatus, TestUserState,
 };
@@ -69,6 +70,13 @@ impl Crd {
         match self {
             Self::Test(test) => test.metadata.name.to_owned(),
             Self::Resource(resource) => resource.metadata.name.to_owned(),
+        }
+    }
+
+    pub fn labels(&self) -> BTreeMap<String, String> {
+        match self {
+            Self::Test(test) => test.metadata.labels.to_owned().unwrap_or_default(),
+            Self::Resource(resource) => resource.metadata.labels.to_owned().unwrap_or_default(),
         }
     }
 }
