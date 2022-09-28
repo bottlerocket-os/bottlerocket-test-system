@@ -42,7 +42,7 @@ USER root
 RUN mkdir -p /usr/share/licenses/eksctl && \
     chown -R builder:builder /usr/share/licenses/eksctl
 
-ARG EKSCTL_VERSION=0.96.0
+ARG EKSCTL_VERSION=0.112.0
 ARG EKSCTL_SOURCE_URL="https://github.com/weaveworks/eksctl/archive/refs/tags/v${EKSCTL_VERSION}.tar.gz"
 
 ARG GOARCH
