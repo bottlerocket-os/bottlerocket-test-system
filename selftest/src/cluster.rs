@@ -1,7 +1,7 @@
 use crate::test_settings::TestSettings;
 use anyhow::{format_err, Context, Result};
-use k8s_openapi::api::core::v1::Pod;
 use k8s_openapi::serde::de::DeserializeOwned;
+use k8s_openapi::{api::core::v1::Pod, NamespaceResourceScope};
 use kube::{
     api::{DeleteParams, ListParams},
     config::{KubeConfigOptions, Kubeconfig},
@@ -159,22 +159,35 @@ impl Cluster {
             ))?
     }
 
+    /// Get a non-namespaced api for type T
+    pub async fn api<T>(&self) -> Result<Api<T>>
+    where
+        T: kube::Resource + Clone + DeserializeOwned + Debug,
+        <T as kube::Resource>::DynamicType: Default,
+    {
+        Ok(Api::all(self.k8s_client().await?))
+    }
+
+    /// Get a namespaced api for type T
+    pub async fn namespaced_api<T>(&self, namespace: &str) -> Result<Api<T>>
+    where
+        T: kube::Resource<Scope = NamespaceResourceScope> + Clone + DeserializeOwned + Debug,
+        <T as kube::Resource>::DynamicType: Default,
+    {
+        Ok(Api::namespaced(self.k8s_client().await?, namespace))
+    }
+
     /// Waits for a Kubernetes object to become available (retries on 404).
     pub async fn wait_for_object<T>(
         &self,
         name: &str,
-        namespace: Option<&str>,
+        api: Api<T>,
         duration: Duration,
     ) -> Result<()>
     where
         T: kube::Resource + Clone + DeserializeOwned + Debug,
         <T as kube::Resource>::DynamicType: Default,
     {
-        let k8s_client = self.k8s_client().await?;
-        let api = match namespace {
-            None => Api::all(k8s_client),
-            Some(namespace) => Api::<T>::namespaced(k8s_client, namespace),
-        };
         tokio::time::timeout(duration, self.wait_for_object_loop(api, name))
             .await
             .context("Timeout waiting for object '{}' to exist in the cluster")?
@@ -189,7 +202,7 @@ impl Cluster {
         duration: Duration,
     ) -> Result<()>
     where
-        T: kube::Resource + Clone + DeserializeOwned + Debug,
+        T: kube::Resource<Scope = NamespaceResourceScope> + Clone + DeserializeOwned + Debug,
         <T as kube::Resource>::DynamicType: Default,
     {
         tokio::time::timeout(duration, self.wait_for_404_loop::<T>(name, namespace))
@@ -214,7 +227,7 @@ impl Cluster {
     /// else.
     pub async fn object_exists<T>(&self, name: &str, namespace: Option<&str>) -> Result<bool>
     where
-        T: kube::Resource + Clone + DeserializeOwned + Debug,
+        T: kube::Resource<Scope = NamespaceResourceScope> + Clone + DeserializeOwned + Debug,
         <T as kube::Resource>::DynamicType: Default,
     {
         let k8s_client = self.k8s_client().await?;
@@ -279,7 +292,7 @@ impl Cluster {
     /// aside from a 404 is returned.
     async fn wait_for_404_loop<T>(&self, name: &str, namespace: Option<&str>) -> Result<()>
     where
-        T: kube::Resource + Clone + DeserializeOwned + Debug,
+        T: kube::Resource<Scope = NamespaceResourceScope> + Clone + DeserializeOwned + Debug,
         <T as kube::Resource>::DynamicType: Default,
     {
         loop {
@@ -325,7 +338,7 @@ impl Cluster {
 
     pub async fn find_by_label<T>(&self, key: &str, val: &str) -> Result<Vec<T>>
     where
-        T: kube::Resource + Clone + DeserializeOwned + Debug,
+        T: kube::Resource<Scope = NamespaceResourceScope> + Clone + DeserializeOwned + Debug,
         <T as kube::Resource>::DynamicType: Default,
     {
         let client = self.k8s_client().await?;
@@ -403,7 +416,7 @@ impl Cluster {
     /// Deletes a k8s object. Does not wait for deletion to complete.
     async fn delete_object<T, S>(&self, name: S) -> Result<()>
     where
-        T: kube::Resource + Clone + DeserializeOwned + Debug,
+        T: kube::Resource<Scope = NamespaceResourceScope> + Clone + DeserializeOwned + Debug,
         <T as kube::Resource>::DynamicType: Default,
         S: AsRef<str>,
     {

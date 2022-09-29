@@ -207,7 +207,11 @@ async fn handle_error_state(r: &ResourceInterface, a: ResourceAction, e: ErrorSt
 }
 
 /// `handle_reconciliation_error` is called when `reconcile` returns an error.
-pub(crate) fn handle_reconciliation_error(e: &ReconciliationError, _: Context) -> RequeueAction {
+pub(crate) fn handle_reconciliation_error(
+    _: Arc<Resource>,
+    e: &ReconciliationError,
+    _: Context,
+) -> RequeueAction {
     error!("Resource reconciliation error: {}", e);
     requeue()
 }

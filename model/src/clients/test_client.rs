@@ -167,7 +167,11 @@ mod test {
             .await
             .unwrap();
         cluster
-            .wait_for_object::<Namespace>(NAMESPACE, None, tokio::time::Duration::from_secs(10))
+            .wait_for_object::<Namespace>(
+                NAMESPACE,
+                cluster.api().await.unwrap(),
+                tokio::time::Duration::from_secs(10),
+            )
             .await
             .unwrap();
         let crd_api: Api<CustomResourceDefinition> = Api::all(k8s_client.clone());
@@ -178,7 +182,7 @@ mod test {
         cluster
             .wait_for_object::<CustomResourceDefinition>(
                 "tests.testsys.bottlerocket.aws",
-                None,
+                cluster.api().await.unwrap(),
                 tokio::time::Duration::from_secs(10),
             )
             .await

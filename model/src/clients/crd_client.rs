@@ -5,6 +5,7 @@ use crate::CrdExt;
 use core::fmt::Debug;
 use http::StatusCode;
 use json_patch::{AddOperation, PatchOperation, RemoveOperation, ReplaceOperation, TestOperation};
+use k8s_openapi::NamespaceResourceScope;
 use kube::api::{ListParams, Patch, PatchParams, PostParams};
 use kube::{Api, Resource};
 use log::trace;
@@ -17,7 +18,7 @@ use std::time::Duration;
 /// A trait with implementations of code that is shared between more than one CRD object.
 #[async_trait::async_trait]
 pub trait CrdClient: Sized {
-    type Crd: kube::Resource<DynamicType = ()>
+    type Crd: kube::Resource<DynamicType = (), Scope = NamespaceResourceScope>
         + Serialize
         + DeserializeOwned
         + Debug
