@@ -1,0 +1,21 @@
+[package]
+name = "builder-derive"
+version = "0.0.1"
+edition = "2018"
+publish = false
+license = "MIT OR Apache-2.0"
+
+[dependencies]
+syn = "1.0"
+quote = "1.0"
+proc-macro2 = "1.0"
+serde = "1"
+
+[lib]
+proc-macro = true
+
+[dev-dependencies]
+serde = "1"
+serde_json= "1"
+model = { path = "../../model"}
+configuration-derive = { path = "../configuration-derive"}

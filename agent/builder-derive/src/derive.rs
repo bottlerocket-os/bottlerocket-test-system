@@ -3,13 +3,11 @@ use syn::{self, Data, LitStr};
 
 extern crate quote;
 
-pub(crate) fn impl_configuration(ast: &syn::DeriveInput) -> TokenStream {
+pub(crate) fn builder_fn(ast: &syn::DeriveInput) -> TokenStream {
     let builder_name = format!("{}{}", &ast.ident.to_string(), "Builder");
     let builder_ident = Ident::new(&builder_name, Span::call_site());
     let ident = &ast.ident;
     quote! {
-       impl model::Configuration for #ident{}
-
        impl #ident{
            pub fn builder() -> #builder_ident {
                #builder_ident::new()
@@ -117,6 +115,7 @@ pub(crate) fn build_struct(ast: &syn::DeriveInput) -> TokenStream {
                     retries: Option<u32>,
                     keep_running: Option<bool>,
                     capabilities: Vec<String>,
+                    privileged: Option<bool>,
                 }
 
                 impl #build_ident{
@@ -231,6 +230,16 @@ pub(crate) fn build_struct(ast: &syn::DeriveInput) -> TokenStream {
                         self
                     }
 
+                    pub fn privileged(&mut self, privileged: bool) -> &mut Self {
+                        self.privileged = Some(privileged);
+                        self
+                    }
+
+                    pub fn set_privileged(&mut self, privileged: Option<bool>) -> &mut Self {
+                        self.privileged = privileged;
+                        self
+                    }
+
                     pub fn build<S1>(&self, name: S1) -> Result<model::Test, Box<dyn std::error::Error>>
                     where
                     S1: Into<String>,
@@ -250,10 +259,11 @@ pub(crate) fn build_struct(ast: &syn::DeriveInput) -> TokenStream {
                                     image: self.image.as_ref().cloned().ok_or_else(|| "Image is required to build a test".to_string())?,
                                     pull_secret: self.image_pull_secret.as_ref().cloned(),
                                     keep_running: self.keep_running.as_ref().cloned().unwrap_or(true),
-                                    timeout: None,
                                     configuration: Some(configuration),
                                     secrets: Some(self.secrets.clone()),
                                     capabilities: Some(self.capabilities.clone()),
+                                    privileged: self.privileged,
+                                    timeout: None
                                 },
                             },
                         ))
@@ -277,6 +287,7 @@ pub(crate) fn build_struct(ast: &syn::DeriveInput) -> TokenStream {
                     keep_running: Option<bool>,
                     capabilities: Vec<String>,
                     destruction_policy: Option<model::DestructionPolicy>,
+                    privileged: Option<bool>,
                 }
 
                 impl #build_ident{
@@ -391,6 +402,16 @@ pub(crate) fn build_struct(ast: &syn::DeriveInput) -> TokenStream {
                         self
                     }
 
+                    pub fn privileged(&mut self, privileged: bool) -> &mut Self {
+                        self.privileged = Some(privileged);
+                        self
+                    }
+
+                    pub fn set_privileged(&mut self, privileged: Option<bool>) -> &mut Self {
+                        self.privileged = privileged;
+                        self
+                    }
+
                     pub fn build<S1>(&self, name: S1) -> Result<model::Resource, Box<dyn std::error::Error>>
                     where
                     S1: Into<String>,
@@ -409,10 +430,11 @@ pub(crate) fn build_struct(ast: &syn::DeriveInput) -> TokenStream {
                                 image: self.image.as_ref().cloned().ok_or_else(|| "Image is required to build a test".to_string())?,
                                 pull_secret: self.image_pull_secret.as_ref().cloned(),
                                 keep_running: self.keep_running.as_ref().cloned().unwrap_or(true),
-                                timeout: None,
                                 configuration: Some(configuration),
                                 secrets: Some(self.secrets.clone()),
                                 capabilities: Some(self.capabilities.clone()),
+                                timeout: None,
+                                privileged: self.privileged,
                             },
                             destruction_policy: self.destruction_policy.as_ref().cloned().unwrap_or_default()
                         },

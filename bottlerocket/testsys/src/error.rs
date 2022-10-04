@@ -14,6 +14,12 @@ pub(crate) enum Error {
     ))]
     ArgumentMissing { arg: String },
 
+    #[snafu(display("Unable to build '{}': {}", what, source))]
+    Build {
+        what: String,
+        source: Box<dyn std::error::Error>,
+    },
+
     #[snafu(display("Unable to create client: {}", source))]
     ClientCreate { source: kube::Error },
 

@@ -1,4 +1,5 @@
-use configuration_build_derive::Configuration;
+use builder_derive::Builder;
+use configuration_derive::Configuration;
 use serde::{Deserialize, Serialize};
 use serde_plain::{
     derive_deserialize_from_fromstr, derive_display_from_serialize,
@@ -49,7 +50,7 @@ impl Default for SonobuoyMode {
 derive_display_from_serialize!(SonobuoyMode);
 derive_fromstr_from_deserialize!(SonobuoyMode);
 
-#[derive(Debug, Clone, Default, Serialize, Deserialize, Configuration)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize, Configuration, Builder)]
 #[serde(rename_all = "camelCase")]
 #[crd("Test")]
 pub struct SonobuoyConfig {
@@ -74,7 +75,7 @@ pub struct TufRepoConfig {
     pub targets_url: String,
 }
 
-#[derive(Debug, Clone, Default, Serialize, Deserialize, Configuration)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize, Configuration, Builder)]
 #[serde(rename_all = "camelCase")]
 #[crd("Test")]
 pub struct MigrationConfig {
@@ -86,7 +87,7 @@ pub struct MigrationConfig {
 }
 
 /// The configuration information for a eks instance provider.
-#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, Default, Configuration)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, Default, Configuration, Builder)]
 #[serde(rename_all = "camelCase")]
 #[crd("Resource")]
 pub struct EksClusterConfig {
@@ -147,7 +148,7 @@ impl Default for CreationPolicy {
 derive_display_from_serialize!(CreationPolicy);
 derive_fromstr_from_deserialize!(CreationPolicy);
 
-#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, Default, Configuration)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, Default, Configuration, Builder)]
 #[serde(rename_all = "camelCase")]
 #[crd("Resource")]
 pub struct Ec2Config {
@@ -210,7 +211,7 @@ impl Default for ClusterType {
 }
 
 /// The configuration information for an ecs instance provider.
-#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, Default, Configuration)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, Default, Configuration, Builder)]
 #[serde(rename_all = "camelCase")]
 #[crd("Resource")]
 pub struct EcsClusterConfig {
@@ -351,7 +352,7 @@ impl FromStr for K8sVersion {
 derive_serialize_from_display!(K8sVersion);
 derive_deserialize_from_fromstr!(K8sVersion, "k8s version such as v1.21 or 1.21.1");
 
-#[derive(Debug, Clone, Default, Serialize, Deserialize, Configuration)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize, Configuration, Builder)]
 #[serde(rename_all = "camelCase")]
 #[crd("Test")]
 pub struct EcsTestConfig {
@@ -374,7 +375,7 @@ fn default_count() -> i32 {
     1
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, Default, Configuration)]
+#[derive(Clone, Debug, Serialize, Deserialize, Default, Configuration, Builder)]
 #[serde(rename_all = "camelCase")]
 #[crd("Resource")]
 pub struct VSphereVmConfig {
