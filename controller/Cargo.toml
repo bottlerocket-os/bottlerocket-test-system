@@ -17,7 +17,7 @@ lazy_static = "1"
 log = "0.4"
 model = { version = "0.0.2", path = "../model" }
 parse_duration = "2.1"
-schemars = "0"
+schemars = "=0.8.10"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 snafu = "0.7"
