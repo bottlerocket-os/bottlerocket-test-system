@@ -1,5 +1,5 @@
 use anyhow::{Context, Result};
-use clap::Parser;
+use clap::{value_parser, Parser};
 use model::test_manager::{read_manifest, TestManager};
 use std::path::PathBuf;
 
@@ -7,7 +7,7 @@ use std::path::PathBuf;
 #[derive(Debug, Parser)]
 pub(crate) struct RunFile {
     /// Path to test crd YAML file.
-    #[clap(parse(from_os_str))]
+    #[clap(value_parser = value_parser!(PathBuf))]
     path: PathBuf,
 }
 

@@ -1,5 +1,5 @@
 use anyhow::{Context, Result};
-use clap::Parser;
+use clap::{value_parser, Parser};
 use model::test_manager::TestManager;
 use std::path::PathBuf;
 
@@ -10,7 +10,7 @@ pub(crate) struct Results {
     #[clap(short = 'n', long)]
     test_name: String,
     /// The place the test results should be written (results.tar.gz)
-    #[clap(long, parse(from_os_str), default_value = "results.tar.gz")]
+    #[clap(long, value_parser = value_parser!(PathBuf), default_value = "results.tar.gz")]
     destination: PathBuf,
 }
 

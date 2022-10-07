@@ -35,7 +35,7 @@ pub(crate) struct AddSecretMap {
     name: SecretName,
 
     /// Key value pairs for secrets. (Key=value)
-    #[clap(parse(try_from_str = parse_key_val))]
+    #[clap(value_parser = parse_key_val)]
     args: Vec<(String, String)>,
 }
 
