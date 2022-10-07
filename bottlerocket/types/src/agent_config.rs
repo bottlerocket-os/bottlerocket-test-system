@@ -157,8 +157,8 @@ pub struct Ec2Config {
     /// The instance profile that should be attached to these instances.
     pub instance_profile_arn: String,
 
-    /// The subnet the instances should be launched using.
-    pub subnet_id: String,
+    /// The subnets the instances should be launched using.
+    pub subnet_ids: Vec<String>,
 
     /// The type of cluster we are launching instances to.
     pub cluster_type: ClusterType,
@@ -347,7 +347,6 @@ pub struct EcsTestConfig {
     pub cluster_name: String,
     #[serde(default = "default_count")]
     pub task_count: i32,
-    pub subnet: String,
     /// The task definition (including the revision number) for a custom task to be run. If the task
     /// name is `foo` and the revision is `3`, use `foo:3`. If no
     /// `task_definition_name_and_revision` is provided, the agent will use the latest task

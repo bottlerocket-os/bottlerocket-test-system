@@ -47,11 +47,11 @@ pub struct CreatedCluster {
     /// The region of the cluster.
     pub region: String,
 
-    /// A public subnet id for this cluster.
-    pub public_subnet_id: Option<String>,
+    /// A vector of public subnet ids for this cluster.
+    pub public_subnet_ids: Vec<String>,
 
-    /// A private subnet id for this cluster.
-    pub private_subnet_id: Option<String>,
+    /// A vector of private subnet ids for this cluster.
+    pub private_subnet_ids: Vec<String>,
 
     /// The iam instance role that was created for ecs
     pub iam_instance_profile_arn: String,
@@ -251,14 +251,10 @@ async fn created_cluster(
     Ok(CreatedCluster {
         cluster_name: cluster_name.to_string(),
         region,
-        public_subnet_id: first_subnet_id(&public_subnet_ids),
-        private_subnet_id: first_subnet_id(&private_subnet_ids),
+        public_subnet_ids,
+        private_subnet_ids,
         iam_instance_profile_arn,
     })
-}
-
-fn first_subnet_id(subnet_ids: &[String]) -> Option<String> {
-    subnet_ids.get(0).map(|id| id.to_string())
 }
 
 async fn default_vpc(ec2_client: &aws_sdk_ec2::Client) -> ProviderResult<String> {

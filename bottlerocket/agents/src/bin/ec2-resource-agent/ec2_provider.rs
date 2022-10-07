@@ -134,46 +134,70 @@ impl Create for Ec2Creator {
             .unwrap_or(DEFAULT_INSTANCE_COUNT);
         info!("Creating {} instance(s)", instance_count);
 
-        let run_instances = ec2_client
-            .run_instances()
-            .min_count(instance_count)
-            .max_count(instance_count)
-            .subnet_id(&spec.configuration.subnet_id)
-            .set_security_group_ids(Some(spec.configuration.security_groups.clone()))
-            .image_id(spec.configuration.node_ami)
-            .instance_type(InstanceType::from(instance_type.as_str()))
-            .tag_specifications(tag_specifications(
-                &spec.configuration.cluster_type,
-                &spec.configuration.cluster_name,
-                &instance_uuid,
-            ))
-            .user_data(userdata(
-                &spec.configuration.cluster_type,
-                &spec.configuration.cluster_name,
-                &spec.configuration.endpoint,
-                &spec.configuration.certificate,
-                &spec.configuration.cluster_dns_ip,
-                &memo,
-            )?)
-            .iam_instance_profile(
-                IamInstanceProfileSpecification::builder()
-                    .arn(&spec.configuration.instance_profile_arn)
-                    .build(),
-            );
+        let mut run_instance_result = None;
+        for subnet_id in &spec.configuration.subnet_ids {
+            let run_instances = ec2_client
+                .run_instances()
+                .min_count(instance_count)
+                .max_count(instance_count)
+                .subnet_id(subnet_id)
+                .set_security_group_ids(Some(spec.configuration.security_groups.clone()))
+                .image_id(&spec.configuration.node_ami)
+                .instance_type(InstanceType::from(instance_type.as_str()))
+                .tag_specifications(tag_specifications(
+                    &spec.configuration.cluster_type,
+                    &spec.configuration.cluster_name,
+                    &instance_uuid,
+                ))
+                .user_data(userdata(
+                    &spec.configuration.cluster_type,
+                    &spec.configuration.cluster_name,
+                    &spec.configuration.endpoint,
+                    &spec.configuration.certificate,
+                    &spec.configuration.cluster_dns_ip,
+                    &memo,
+                )?)
+                .iam_instance_profile(
+                    IamInstanceProfileSpecification::builder()
+                        .arn(&spec.configuration.instance_profile_arn)
+                        .build(),
+                );
 
-        info!("Starting instances");
-        let run_instance_result = tokio::time::timeout(
-            Duration::from_secs(360),
-            wait_for_successful_run_instances(&run_instances),
-        )
-        .await
-        .context(
-            Resources::Clear,
-            "Failed to run instances within the time limit",
-        )?;
+            info!("Starting instances in subnet {}", subnet_id);
+            let run_instance_output = tokio::time::timeout(
+                Duration::from_secs(360),
+                wait_for_successful_run_instances(&run_instances),
+            )
+            .await
+            .context(
+                Resources::Clear,
+                "Failed to run instances within the time limit",
+            )?;
+            match run_instance_output {
+                Ok(result) => {
+                    info!("Created instances using subnet {}", subnet_id);
+                    run_instance_result = Some(result);
+                    break;
+                }
+                Err(err) => {
+                    warn!(
+                        "An error occurred while trying to create instances using subnet {}: {}",
+                        subnet_id, err
+                    );
+                }
+            }
+        }
 
-        let instances = run_instance_result
-            .context(resources_situation(&memo), "Failed to create instances")?
+        let result = match run_instance_result {
+            Some(result) => result,
+            None => {
+                return Err(ProviderError::new_with_context(
+                    Resources::Clear,
+                    "Failed to create instances in any of the provided subnets",
+                ))
+            }
+        };
+        let instances = result
             .instances
             .context(Resources::Remaining, "Results missing instances field")?;
         let mut instance_ids = HashSet::default();

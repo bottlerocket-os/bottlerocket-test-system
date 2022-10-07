@@ -377,7 +377,7 @@ impl RunAwsK8s {
             cluster_name: self.cluster_name.clone(),
             region: self.region.clone(),
             instance_profile_arn: format!("${{{}.iamInstanceProfileArn}}", cluster_resource_name),
-            subnet_id: format!("${{{}.privateSubnetId}}", cluster_resource_name),
+            subnet_ids: vec![],
             cluster_type: ClusterType::Eks,
             endpoint: Some(format!("${{{}.endpoint}}", cluster_resource_name)),
             certificate: Some(format!("${{{}.certificate}}", cluster_resource_name)),
@@ -392,6 +392,14 @@ impl RunAwsK8s {
         let previous_value = ec2_config.insert(
             "securityGroups".to_owned(),
             Value::String(format!("${{{}.securityGroups}}", cluster_resource_name)),
+        );
+        if previous_value.is_none() {
+            todo!("This is an error: fields in the Ec2Config struct have changed")
+        }
+
+        let previous_value = ec2_config.insert(
+            "subnetIds".to_owned(),
+            Value::String(format!("${{{}.privateSubnetIds}}", cluster_resource_name)),
         );
         if previous_value.is_none() {
             todo!("This is an error: fields in the Ec2Config struct have changed")
