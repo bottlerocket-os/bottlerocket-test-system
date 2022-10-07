@@ -42,7 +42,7 @@ where
 
     let mut config = aws_config::from_env()
         .retry_config(
-            RetryConfig::new()
+            RetryConfig::standard()
                 .with_retry_mode(RetryMode::Adaptive)
                 .with_max_attempts(15),
         )
@@ -86,7 +86,7 @@ where
         let region_provider = RegionProviderChain::first_try(Region::new(region.clone()));
         config = aws_config::from_env()
             .retry_config(
-                RetryConfig::new()
+                RetryConfig::standard()
                     .with_retry_mode(RetryMode::Adaptive)
                     .with_max_attempts(15),
             )
@@ -172,7 +172,7 @@ where
     let region_provider = RegionProviderChain::first_try(Region::new(region.clone()));
     let mut config = aws_config::from_env()
         .retry_config(
-            RetryConfig::new()
+            RetryConfig::standard()
                 .with_retry_mode(RetryMode::Adaptive)
                 .with_max_attempts(15),
         )
@@ -226,7 +226,7 @@ where
         let region_provider = RegionProviderChain::first_try(Region::new(region.clone()));
         config = aws_config::from_env()
             .retry_config(
-                RetryConfig::new()
+                RetryConfig::standard()
                     .with_retry_mode(RetryMode::Adaptive)
                     .with_max_attempts(15),
             )

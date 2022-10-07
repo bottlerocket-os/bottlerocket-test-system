@@ -3,6 +3,7 @@ use crate::clients::{AllowNotFound, CrdClient};
 use crate::constants::{LABEL_COMPONENT, NAMESPACE};
 use crate::{Crd, CrdName, Resource, Test};
 use k8s_openapi::api::core::v1::Pod;
+use k8s_openapi::NamespaceResourceScope;
 use kube::api::{ListParams, Patch, PatchParams, PostParams};
 use kube::{Api, Resource as KubeResource, ResourceExt};
 use serde::{de::DeserializeOwned, Serialize};
@@ -16,12 +17,7 @@ impl TestManager {
     const BACKOFF_MS: u64 = 500;
 
     /// Create or update an existing k8s object
-    pub(super) async fn create_or_update<T>(
-        &self,
-        namespaced: bool,
-        data: &T,
-        what: &str,
-    ) -> Result<()>
+    pub(super) async fn create_or_update<T>(&self, api: Api<T>, data: &T, what: &str) -> Result<()>
     where
         T: KubeResource + Clone + DeserializeOwned + Serialize + Debug,
         <T as KubeResource>::DynamicType: Default,
@@ -29,7 +25,7 @@ impl TestManager {
         let mut error = None;
 
         for _ in 0..Self::MAX_RETRIES {
-            match self.create_or_update_internal(namespaced, data, what).await {
+            match self.create_or_update_internal(&api, data, what).await {
                 Ok(()) => return Ok(()),
                 Err(e) => error = Some(e),
             }
@@ -43,7 +39,7 @@ impl TestManager {
 
     pub(super) async fn create_or_update_internal<T>(
         &self,
-        namespaced: bool,
+        api: &Api<T>,
         data: &T,
         what: &str,
     ) -> Result<()>
@@ -51,11 +47,6 @@ impl TestManager {
         T: KubeResource + Clone + DeserializeOwned + Serialize + Debug,
         <T as KubeResource>::DynamicType: Default,
     {
-        let api = if namespaced {
-            self.namespaced_api::<T>()
-        } else {
-            self.api::<T>()
-        };
         // If the data already exists, update it with the new one using a `Patch`. If not create a
         // new one.
         match api.get(&data.name_any()).await {
@@ -86,7 +77,7 @@ impl TestManager {
     /// Creates a namespaced api of type `T`
     pub(super) fn namespaced_api<T>(&self) -> Api<T>
     where
-        T: KubeResource,
+        T: KubeResource<Scope = NamespaceResourceScope>,
         <T as KubeResource>::DynamicType: Default,
     {
         Api::<T>::namespaced(self.k8s_client.clone(), NAMESPACE)

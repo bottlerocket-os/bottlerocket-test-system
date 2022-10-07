@@ -103,7 +103,7 @@ impl TestManager {
             type_: Some("kubernetes.io/dockerconfigjson".to_string()),
         };
 
-        self.create_or_update(true, &secret, "controller pull secret")
+        self.create_or_update(self.api(), &secret, "controller pull secret")
             .await?;
         Ok(secret)
     }
@@ -125,7 +125,7 @@ impl TestManager {
             string_data: Some(data.into_iter().collect()),
             type_: None,
         };
-        self.create_or_update(true, &secret, "secret").await?;
+        self.create_or_update(self.api(), &secret, "secret").await?;
         Ok(secret)
     }
 

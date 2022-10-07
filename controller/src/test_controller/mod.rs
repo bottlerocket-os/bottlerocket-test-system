@@ -7,6 +7,8 @@ use kube::api::ListParams;
 use kube_runtime::controller::Action as RequeueAction;
 use kube_runtime::{controller, Controller};
 use log::{debug, error};
+use model::Test;
+use std::sync::Arc;
 
 mod action;
 mod context;
@@ -30,7 +32,7 @@ pub(super) async fn run_test_controller(client: kube::Client) {
 }
 
 /// `handle_reconciliation_error` is called when `reconcile` returns an error.
-fn handle_reconciliation_error(e: &ReconciliationError, _: Context) -> RequeueAction {
+fn handle_reconciliation_error(_: Arc<Test>, e: &ReconciliationError, _: Context) -> RequeueAction {
     error!("Reconciliation error: {}", e);
     requeue()
 }
