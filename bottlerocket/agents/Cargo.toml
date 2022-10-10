@@ -38,4 +38,4 @@ test-agent = { version = "0.0.2", path = "../../agent/test-agent" }
 tokio = { version = "1", default-features = false, features = ["macros", "rt-multi-thread", "time"] }
 tough = { version = "0.12", features = ["http"] }
 url = "2.3"
-uuid = { version = "1.0", default-features = false, features = ["serde", "v4"] }
+uuid = { version = "1.2", default-features = false, features = ["serde", "v4"] }
