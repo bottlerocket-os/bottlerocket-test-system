@@ -118,86 +118,9 @@ impl Create for Ec2Creator {
         .await?;
         let ec2_client = aws_sdk_ec2::Client::new(&shared_config);
 
-        // Determine the instance type to use. If provided use that one. Otherwise, for `x86_64` use `m5.large`
-        // and for `aarch64` use `m6g.large`
-        let instance_type = if let Some(instance_type) = spec.configuration.instance_type {
-            instance_type
-        } else {
-            instance_type(&ec2_client, &spec.configuration.node_ami, &memo).await?
-        };
-        info!("Using instance type '{}'", instance_type);
+        let run_instance_result = run_instances(&spec, &ec2_client, instance_uuid, &memo).await?;
 
-        // Run the ec2 instances
-        let instance_count = spec
-            .configuration
-            .instance_count
-            .unwrap_or(DEFAULT_INSTANCE_COUNT);
-        info!("Creating {} instance(s)", instance_count);
-
-        let mut run_instance_result = None;
-        for subnet_id in &spec.configuration.subnet_ids {
-            let run_instances = ec2_client
-                .run_instances()
-                .min_count(instance_count)
-                .max_count(instance_count)
-                .subnet_id(subnet_id)
-                .set_security_group_ids(Some(spec.configuration.security_groups.clone()))
-                .image_id(&spec.configuration.node_ami)
-                .instance_type(InstanceType::from(instance_type.as_str()))
-                .tag_specifications(tag_specifications(
-                    &spec.configuration.cluster_type,
-                    &spec.configuration.cluster_name,
-                    &instance_uuid,
-                ))
-                .user_data(userdata(
-                    &spec.configuration.cluster_type,
-                    &spec.configuration.cluster_name,
-                    &spec.configuration.endpoint,
-                    &spec.configuration.certificate,
-                    &spec.configuration.cluster_dns_ip,
-                    &memo,
-                )?)
-                .iam_instance_profile(
-                    IamInstanceProfileSpecification::builder()
-                        .arn(&spec.configuration.instance_profile_arn)
-                        .build(),
-                );
-
-            info!("Starting instances in subnet {}", subnet_id);
-            let run_instance_output = tokio::time::timeout(
-                Duration::from_secs(360),
-                wait_for_successful_run_instances(&run_instances),
-            )
-            .await
-            .context(
-                Resources::Clear,
-                "Failed to run instances within the time limit",
-            )?;
-            match run_instance_output {
-                Ok(result) => {
-                    info!("Created instances using subnet {}", subnet_id);
-                    run_instance_result = Some(result);
-                    break;
-                }
-                Err(err) => {
-                    warn!(
-                        "An error occurred while trying to create instances using subnet {}: {}",
-                        subnet_id, err
-                    );
-                }
-            }
-        }
-
-        let result = match run_instance_result {
-            Some(result) => result,
-            None => {
-                return Err(ProviderError::new_with_context(
-                    Resources::Clear,
-                    "Failed to create instances in any of the provided subnets",
-                ))
-            }
-        };
-        let instances = result
+        let instances = run_instance_result
             .instances
             .context(Resources::Remaining, "Results missing instances field")?;
         let mut instance_ids = HashSet::default();
@@ -242,6 +165,87 @@ impl Create for Ec2Creator {
         // Return the ids for the created instances.
         Ok(CreatedEc2Instances { ids: instance_ids })
     }
+}
+
+async fn run_instances(
+    spec: &Spec<Ec2Config>,
+    ec2_client: &aws_sdk_ec2::Client,
+    instance_uuid: String,
+    memo: &ProductionMemo,
+) -> Result<RunInstancesOutput, ProviderError> {
+    // Determine the instance type to use. If provided use that one. Otherwise, for `x86_64` use `m5.large`
+    // and for `aarch64` use `m6g.large`
+    let instance_types = if !spec.configuration.instance_types.is_empty() {
+        spec.configuration.instance_types.clone()
+    } else {
+        vec![instance_type(ec2_client, &spec.configuration.node_ami, memo).await?]
+    };
+    let instance_count = spec
+        .configuration
+        .instance_count
+        .unwrap_or(DEFAULT_INSTANCE_COUNT);
+
+    info!("Creating {} instance(s)", instance_count);
+    for instance_type in instance_types {
+        info!("Using instance type '{}'", instance_type);
+
+        // Run the ec2 instances
+        for subnet_id in &spec.configuration.subnet_ids {
+            let run_instances = ec2_client
+                .run_instances()
+                .min_count(instance_count)
+                .max_count(instance_count)
+                .subnet_id(subnet_id)
+                .set_security_group_ids(Some(spec.configuration.security_groups.clone()))
+                .image_id(&spec.configuration.node_ami)
+                .instance_type(InstanceType::from(instance_type.as_str()))
+                .tag_specifications(tag_specifications(
+                    &spec.configuration.cluster_type,
+                    &spec.configuration.cluster_name,
+                    &instance_uuid,
+                ))
+                .user_data(userdata(
+                    &spec.configuration.cluster_type,
+                    &spec.configuration.cluster_name,
+                    &spec.configuration.endpoint,
+                    &spec.configuration.certificate,
+                    &spec.configuration.cluster_dns_ip,
+                    memo,
+                )?)
+                .iam_instance_profile(
+                    IamInstanceProfileSpecification::builder()
+                        .arn(&spec.configuration.instance_profile_arn)
+                        .build(),
+                );
+
+            info!("Starting instances in subnet {}", subnet_id);
+            let run_instance_output = tokio::time::timeout(
+                Duration::from_secs(360),
+                wait_for_successful_run_instances(&run_instances),
+            )
+            .await
+            .context(
+                Resources::Clear,
+                "Failed to run instances within the time limit",
+            )?;
+            match run_instance_output {
+                Ok(result) => {
+                    info!("Created instances using subnet {}", subnet_id);
+                    return Ok(result);
+                }
+                Err(err) => {
+                    warn!(
+                    "An error occurred while trying to create instances of type {} using subnet {}: {}",
+                    instance_type, subnet_id, err
+                );
+                }
+            }
+        }
+    }
+    Err(ProviderError::new_with_context(
+        Resources::Clear,
+        "Failed to create instances of any of the provided types in any of the provided subnets",
+    ))
 }
 
 async fn wait_for_successful_run_instances(

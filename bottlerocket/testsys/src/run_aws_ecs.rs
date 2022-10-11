@@ -355,7 +355,11 @@ impl RunAwsEcs {
             node_ami: self.ami.clone(),
             // TODO - configurable
             instance_count: Some(2),
-            instance_type: self.instance_type.clone(),
+            instance_types: self
+                .instance_type
+                .clone()
+                .map(|instance_type| vec![instance_type])
+                .unwrap_or_default(),
             cluster_name: self.cluster_name.clone(),
             region: self.region.clone(),
             instance_profile_arn: self
