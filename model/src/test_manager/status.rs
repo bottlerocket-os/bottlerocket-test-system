@@ -3,12 +3,16 @@ use k8s_openapi::api::core::v1::PodStatus;
 use kube::{core::object::HasStatus, ResourceExt};
 use serde::Serialize;
 use tabled::object::Segment;
-use tabled::{Alignment, MaxWidth, MinWidth, Modify, Style, Table, Tabled};
+use tabled::{
+    Alignment, Concat, Extract, MaxWidth, MinWidth, Modify, Style, Table, TableIteratorExt, Tabled,
+};
 
 /// `StatusSnapshot` represents the status of a set of testsys objects (including the controller).
 /// `StatusSnapshot::to_string()` is used to create a table representation of the status.
 /// `StatusSnapshot` can also be used with `json::to_string()` to create a json representation of
 /// the testsys objects.
+/// To add a new column to the status table, `new_column` can be used.
+/// `status.new_column("extra column", |crd| crd.name());`
 #[derive(Debug, Serialize)]
 pub struct StatusSnapshot {
     finished: bool,
@@ -16,6 +20,8 @@ pub struct StatusSnapshot {
     failed_tests: Vec<String>,
     controller_status: Option<PodStatus>,
     crds: Vec<Crd>,
+    #[serde(skip)]
+    additional_columns: Vec<AdditionalColumn>,
 }
 
 impl StatusSnapshot {
@@ -61,7 +67,19 @@ impl StatusSnapshot {
             failed_tests,
             controller_status,
             crds,
+            additional_columns: Default::default(),
         }
+    }
+
+    pub fn new_column<S1>(&mut self, header: S1, f: fn(&Crd) -> Option<String>) -> &mut Self
+    where
+        S1: Into<String>,
+    {
+        self.additional_columns.push(AdditionalColumn {
+            header: header.into(),
+            value: f,
+        });
+        self
     }
 }
 
@@ -86,6 +104,8 @@ impl std::fmt::Display for StatusSnapshot {
 
 impl From<&StatusSnapshot> for Table {
     fn from(status: &StatusSnapshot) -> Self {
+        let mut crds = status.crds.clone();
+        crds.sort_by_key(|crd| crd.name());
         let mut results = Vec::new();
         if let Some(controller_status) = &status.controller_status {
             results.push(ResultRow {
@@ -100,12 +120,41 @@ impl From<&StatusSnapshot> for Table {
                 failed: None,
             });
         }
-        for crd in &status.crds {
+        for crd in &crds {
             results.extend::<Vec<ResultRow>>(crd.into());
         }
-        results.sort_by(|a, b| a.name.cmp(&b.name));
 
-        Table::new(results)
+        // An extra line for the controller if it's status is being reported.
+        let controller_line = if status.controller_status.is_some() {
+            Some("".to_string())
+        } else {
+            None
+        };
+
+        status
+            .additional_columns
+            .iter()
+            // Create a table for each additional column so they can all be merged into a single table.
+            .map(|additional_column| {
+                // Add the requested header and a blank string for the controller line in the status table.
+                vec![additional_column.header.clone()]
+                    .into_iter()
+                    .chain(controller_line.clone())
+                    // Add a row for each crd based on the function provided.
+                    .chain(
+                        status
+                            .crds
+                            .iter()
+                            .map(|crd| (additional_column.value)(crd).unwrap_or_default()),
+                    )
+                    // Convert the data for this column into a table.
+                    .table()
+                    .with(Extract::segment(1.., 0..))
+            })
+            // Add each additional column to the standard results table (`Table::new(results)`).
+            .fold(Table::new(results), |table1, table2| {
+                table1.with(Concat::horizontal(table2))
+            })
             .with(Style::blank())
             .with(Modify::new(Segment::all()).with(Alignment::left()))
     }
@@ -196,5 +245,18 @@ impl From<&Crd> for Vec<ResultRow> {
             }
         };
         results
+    }
+}
+
+struct AdditionalColumn {
+    header: String,
+    value: fn(&Crd) -> Option<String>,
+}
+
+impl std::fmt::Debug for AdditionalColumn {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("AdditionalColumn")
+            .field("header", &self.header)
+            .finish()
     }
 }
