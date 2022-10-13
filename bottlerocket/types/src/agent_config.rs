@@ -146,7 +146,7 @@ pub struct Ec2Config {
     /// The type of instance to spin up. m5.large is recommended for x86_64 and m6g.large is
     /// recommended for arm64 on eks. c3.large is recommended for ecs. If no value is provided
     /// the recommended type will be used.
-    pub instance_type: Option<String>,
+    pub instance_types: Vec<String>,
 
     /// The name of the cluster we are creating instances for.
     pub cluster_name: String,
