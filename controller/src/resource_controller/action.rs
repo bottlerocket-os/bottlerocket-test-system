@@ -1,3 +1,4 @@
+use crate::constants::parse_duration;
 use crate::error::Result;
 use crate::job::{JobState, TEST_START_TIME_LIMIT};
 use crate::resource_controller::context::ResourceInterface;
@@ -7,7 +8,6 @@ use log::{debug, trace};
 use model::clients::{AllowNotFound, CrdClient, TestClient};
 use model::constants::{FINALIZER_CREATION_JOB, FINALIZER_MAIN, FINALIZER_RESOURCE};
 use model::{CrdExt, DestructionPolicy, ResourceAction, TaskState, TestUserState};
-use parse_duration::parse;
 
 /// The action that the controller needs to take in order to reconcile the [`Resource`].
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -155,7 +155,7 @@ async fn creation_not_done_action(
                     .agent
                     .timeout
                     .as_ref()
-                    .map(|timeout| parse(timeout).map(|timeout| std_duration > timeout))
+                    .map(|timeout| parse_duration(timeout).map(|timeout| std_duration > timeout))
                     .unwrap_or(Ok(false))
                     .unwrap_or(false)
                 {
@@ -299,7 +299,7 @@ async fn destruction_not_done_action(
                     .agent
                     .timeout
                     .as_ref()
-                    .map(|timeout| parse(timeout).map(|timeout| std_duration > timeout))
+                    .map(|timeout| parse_duration(timeout).map(|timeout| std_duration > timeout))
                     .unwrap_or(Ok(false))
                     .unwrap_or(false)
                 {
