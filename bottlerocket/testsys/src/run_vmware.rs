@@ -1,6 +1,6 @@
 use crate::error::{self, Result};
 use bottlerocket_types::agent_config::{
-    MigrationConfig, SonobuoyConfig, SonobuoyMode, TufRepoConfig, VSphereClusterInfo,
+    MigrationConfig, SonobuoyConfig, SonobuoyMode, TufRepoConfig, VSphereK8sClusterInfo,
     VSphereVmConfig, AWS_CREDENTIALS_SECRET_NAME, VSPHERE_CREDENTIALS_SECRET_NAME,
 };
 use kube::ResourceExt;
@@ -330,7 +330,7 @@ impl RunVmware {
             vcenter_network: self.network.clone(),
             vcenter_resource_pool: self.resource_pool.clone(),
             vcenter_workload_folder: self.workload_folder.clone(),
-            cluster: VSphereClusterInfo {
+            cluster: VSphereK8sClusterInfo {
                 name: self.cluster_name.clone(),
                 control_plane_endpoint_ip: self.cluster_endpoint.clone(),
                 kubeconfig_base64: encoded_kubeconfig.to_string(),

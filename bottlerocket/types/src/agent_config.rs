@@ -15,7 +15,7 @@ pub const VSPHERE_CREDENTIALS_SECRET_NAME: &str = "vsphereCredentials";
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, Default)]
 #[serde(rename_all = "camelCase")]
-pub struct VSphereClusterInfo {
+pub struct VSphereK8sClusterInfo {
     pub name: String,
     pub control_plane_endpoint_ip: String,
     pub kubeconfig_base64: String,
@@ -68,7 +68,7 @@ pub struct SonobuoyConfig {
     pub assume_role: Option<String>,
 }
 
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, Eq, PartialEq, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TufRepoConfig {
     pub metadata_url: String,
@@ -125,6 +125,54 @@ impl Default for EksctlConfig {
             encoded_config: "".to_string(),
         }
     }
+}
+
+/// The configuration information for a vSphere K8s cluster provider.
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, Default, Configuration, Builder)]
+#[serde(rename_all = "camelCase")]
+#[crd("Resource")]
+pub struct VSphereK8sClusterConfig {
+    /// vSphere K8s cluster name.
+    pub name: String,
+
+    /// Cluster's control plane endpoint IP
+    pub control_plane_endpoint_ip: String,
+
+    /// Base64-encoded Kubeconfig for the K8s cluster if it already exists
+    pub kubeconfig_base64: Option<String>,
+
+    /// Whether this agent will create the cluster or not
+    pub creation_policy: Option<CreationPolicy>,
+
+    /// Version of the the K8s cluster (e.g. "1.22", "1.23")
+    pub version: Option<K8sVersion>,
+
+    /// Name of the OVA to download from TUF for creating the VMs to host cluster components
+    pub ova_name: String,
+
+    /// TUF repository where the OVA can be found
+    pub tuf_repo: TufRepoConfig,
+
+    /// URL of the vCenter instance to connect to
+    pub vcenter_host_url: String,
+
+    /// vCenter datacenter
+    pub vcenter_datacenter: String,
+
+    /// vCenter datastore
+    pub vcenter_datastore: String,
+
+    /// vCenter network
+    pub vcenter_network: String,
+
+    /// vCenter resource pool
+    pub vcenter_resource_pool: String,
+
+    /// Workloads folder to create the K8s cluster control plane in
+    pub vcenter_workload_folder: String,
+
+    /// Base64-encoded Kubeconfig for the CAPI management cluster
+    pub mgmt_cluster_kubeconfig_base64: String,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
@@ -407,7 +455,7 @@ pub struct VSphereVmConfig {
     pub vcenter_workload_folder: String,
 
     /// vSphere cluster information
-    pub cluster: VSphereClusterInfo,
+    pub cluster: VSphereK8sClusterInfo,
 
     /// The role that should be assumed when creating the vms.
     pub assume_role: Option<String>,

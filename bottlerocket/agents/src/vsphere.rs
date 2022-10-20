@@ -43,7 +43,9 @@ where
             .to_owned(),
     )
     .context(resource, "Could not convert secret-access-key to String")?;
-    env::set_var("GOVC_USERNAME", username);
-    env::set_var("GOVC_PASSWORD", password);
+    env::set_var("GOVC_USERNAME", &username);
+    env::set_var("GOVC_PASSWORD", &password);
+    env::set_var("EKSA_VSPHERE_USERNAME", username);
+    env::set_var("EKSA_VSPHERE_PASSWORD", password);
     Ok(())
 }

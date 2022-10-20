@@ -136,14 +136,15 @@ impl Create for VMCreator {
 
         let vsphere_cluster = spec.configuration.cluster.clone();
         debug!("Decoding and writing out kubeconfig for vSphere cluster");
-        if let Some(kubeconfig_base64) = vsphere_cluster.kubeconfig_base64 {
-            base64_decode_write_file(&kubeconfig_base64, TEST_CLUSTER_KUBECONFIG_PATH)
-                .await
-                .context(
-                    Resources::Clear,
-                    "Failed to write out kubeconfig for vSphere cluster",
-                )?;
-        }
+        base64_decode_write_file(
+            &vsphere_cluster.kubeconfig_base64,
+            TEST_CLUSTER_KUBECONFIG_PATH,
+        )
+        .await
+        .context(
+            Resources::Clear,
+            "Failed to write out kubeconfig for vSphere cluster",
+        )?;
         let kubeconfig_arg = vec!["--kubeconfig", TEST_CLUSTER_KUBECONFIG_PATH];
         let kubeconfig = Kubeconfig::read_from(TEST_CLUSTER_KUBECONFIG_PATH)
             .context(resources, "Unable to read kubeconfig")?;
