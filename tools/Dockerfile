@@ -85,7 +85,7 @@ USER root
 RUN mkdir -p /usr/share/licenses/kubernetes && \
     chown -R builder:builder /usr/share/licenses/kubernetes
 
-ARG K8S_VERSION=1.21.6
+ARG K8S_VERSION=1.23.13
 ARG K8S_SOURCE_URL="https://github.com/kubernetes/kubernetes/archive/refs/tags/v${K8S_VERSION}.tar.gz"
 
 ARG GOARCH
