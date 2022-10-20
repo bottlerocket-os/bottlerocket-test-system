@@ -9,3 +9,5 @@ This `lib.rs` provides code that is used by multiple agent binaries or used by t
 pub mod constants;
 pub mod error;
 pub mod sonobuoy;
+pub mod tuf;
+pub mod vsphere;

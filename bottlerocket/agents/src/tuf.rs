@@ -1,3 +1,4 @@
+use bottlerocket_types::agent_config::TufRepoConfig;
 use resource_agent::provider::{IntoProviderError, ProviderResult, Resources};
 use std::fs::File;
 use std::path::{Path, PathBuf};
@@ -6,7 +7,29 @@ use url::Url;
 
 const ROOT_FILE_NAME: &str = "1.root.json";
 
-pub(crate) fn download_target(
+/// Parse both TUF urls for downloading OVAs
+pub fn tuf_repo_urls(
+    tuf_repo: &TufRepoConfig,
+    resources: &Resources,
+) -> ProviderResult<(Url, Url)> {
+    let metadata_url = Url::parse(&tuf_repo.metadata_url).context(
+        resources,
+        format!(
+            "Failed to parse TUF repo's metadata URL '{}'",
+            tuf_repo.metadata_url
+        ),
+    )?;
+    let targets_url = Url::parse(&tuf_repo.targets_url).context(
+        resources,
+        format!(
+            "Failed to parse TUF repo's targets URL '{}'",
+            tuf_repo.targets_url
+        ),
+    )?;
+    Ok((metadata_url, targets_url))
+}
+
+pub fn download_target(
     resources: Resources,
     metadata_url: &Url,
     targets_url: &Url,
@@ -41,7 +64,7 @@ pub(crate) fn download_target(
     Ok(())
 }
 
-fn download_root<P>(
+pub fn download_root<P>(
     resources: Resources,
     metadata_base_url: &Url,
     outdir: P,
