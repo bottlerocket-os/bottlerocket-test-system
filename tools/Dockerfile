@@ -90,6 +90,7 @@ ARG K8S_SOURCE_URL="https://github.com/kubernetes/kubernetes/archive/refs/tags/v
 
 ARG GOARCH
 ARG KUBEADM_BINARY_URL="https://dl.k8s.io/release/v${K8S_VERSION}/bin/linux/${GOARCH}/kubeadm"
+ARG KUBECTL_BINARY_URL="https://dl.k8s.io/release/v${K8S_VERSION}/bin/linux/${GOARCH}/kubectl"
 
 USER builder
 WORKDIR /home/builder/
@@ -114,6 +115,11 @@ RUN curl -L ${KUBEADM_BINARY_URL} \
     grep kubeadm_${K8S_VERSION}_${GOOS}_${GOARCH} \
       /hashes/kubernetes | sha512sum --check - && \
     install -m 0755 kubeadm_${K8S_VERSION}_${GOOS}_${GOARCH} /tmp/kubeadm
+RUN curl -L ${KUBECTL_BINARY_URL} \
+      -o kubectl_${K8S_VERSION}_${GOOS}_${GOARCH} && \
+    grep kubectl_${K8S_VERSION}_${GOOS}_${GOARCH} \
+      /hashes/kubernetes | sha512sum --check - && \
+    install -m 0755 kubectl_${K8S_VERSION}_${GOOS}_${GOARCH} /tmp/kubectl
 
 # =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^=
 FROM build-go as sonobuoy-build
@@ -191,8 +197,9 @@ COPY --from=aws-iam-authenticator-build /usr/share/licenses/aws-iam-authenticato
 COPY --from=eksctl-build /tmp/eksctl /eksctl
 COPY --from=eksctl-build /usr/share/licenses/eksctl /licenses/eksctl
 
-# kubeadm
+# kubeadm and kubectl
 COPY --from=kubernetes-build /tmp/kubeadm /kubeadm
+COPY --from=kubernetes-build /tmp/kubectl /kubectl
 COPY --from=kubernetes-build /usr/share/licenses/kubernetes /licenses/kubernetes
 
 # sonobuoy
