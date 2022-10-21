@@ -42,11 +42,12 @@ impl JobBuilder<'_> {
         let vars = env_vars(self.environment_variables);
         let labels = create_labels(self.job_type, &self.agent.name, self.job_name);
         // Set up the container's security context
-        let security_context = self.agent.capabilities.as_ref().map(|c| SecurityContext {
-            capabilities: Some(Capabilities {
+        let security_context = Some(SecurityContext {
+            capabilities: self.agent.capabilities.as_ref().map(|c| Capabilities {
                 add: Some(c.to_owned()),
                 ..Capabilities::default()
             }),
+            privileged: self.agent.privileged,
             ..SecurityContext::default()
         });
 

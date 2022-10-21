@@ -354,10 +354,10 @@ impl RunVmware {
                     image: self.vm_provider_image.clone(),
                     pull_secret: self.vm_provider_pull_secret.clone(),
                     keep_running: self.keep_instance_provider_running,
-                    timeout: None,
                     configuration: Some(vm_config),
                     secrets,
                     capabilities: Some(self.capabilities.clone()),
+                    ..Default::default()
                 },
                 destruction_policy: DestructionPolicy::OnDeletion,
             },
@@ -388,7 +388,6 @@ impl RunVmware {
                     image: self.test_agent_image.clone(),
                     pull_secret: self.test_agent_pull_secret.clone(),
                     keep_running: self.keep_running,
-                    timeout: None,
                     configuration: Some(
                         SonobuoyConfig {
                             kubeconfig_base64: encoded_kubeconfig.to_string(),
@@ -404,6 +403,7 @@ impl RunVmware {
                     ),
                     secrets: Some(secrets),
                     capabilities: Some(self.capabilities.clone()),
+                    ..Default::default()
                 },
             },
             status: None,
@@ -450,10 +450,10 @@ impl RunVmware {
                     image: migration_agent_image.to_string(),
                     pull_secret: migration_agent_pull_secret.clone(),
                     keep_running: self.keep_running,
-                    timeout: None,
                     configuration: Some(migration_config),
                     secrets: Some(secrets),
                     capabilities: Some(self.capabilities.clone()),
+                    ..Default::default()
                 },
             },
             status: None,

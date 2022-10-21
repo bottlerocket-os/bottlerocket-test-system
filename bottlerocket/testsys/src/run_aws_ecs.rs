@@ -324,7 +324,6 @@ impl RunAwsEcs {
                     image: self.cluster_provider_image.clone(),
                     pull_secret: self.cluster_provider_pull_secret.clone(),
                     keep_running: self.keep_cluster_provider_running,
-                    timeout: None,
                     configuration: Some(
                         EcsClusterConfig {
                             cluster_name: self.cluster_name.to_owned(),
@@ -337,7 +336,7 @@ impl RunAwsEcs {
                         .context(error::ConfigMapSnafu)?,
                     ),
                     secrets,
-                    capabilities: None,
+                    ..Default::default()
                 },
                 ..Default::default()
             },
@@ -396,10 +395,9 @@ impl RunAwsEcs {
                     image: self.ec2_provider_image.clone(),
                     pull_secret: self.ec2_provider_pull_secret.clone(),
                     keep_running: self.keep_instance_provider_running,
-                    timeout: None,
                     configuration: Some(ec2_config),
                     secrets,
-                    capabilities: None,
+                    ..Default::default()
                 },
                 destruction_policy: DestructionPolicy::OnDeletion,
             },
@@ -433,7 +431,6 @@ impl RunAwsEcs {
                     image: self.test_agent_image.clone(),
                     pull_secret: self.test_agent_pull_secret.clone(),
                     keep_running: self.keep_running,
-                    timeout: None,
                     configuration: Some(
                         EcsTestConfig {
                             region: Some(format!("${{{}.region}}", cluster_resource_name)),
@@ -448,7 +445,7 @@ impl RunAwsEcs {
                         .context(error::ConfigMapSnafu)?,
                     ),
                     secrets,
-                    capabilities: None,
+                    ..Default::default()
                 },
             },
             status: None,
@@ -499,10 +496,9 @@ impl RunAwsEcs {
                     image: migration_agent_image.to_string(),
                     pull_secret: migration_agent_pull_secret.clone(),
                     keep_running: self.keep_running,
-                    timeout: None,
                     configuration: Some(migration_config),
                     secrets,
-                    capabilities: None,
+                    ..Default::default()
                 },
             },
             status: None,
