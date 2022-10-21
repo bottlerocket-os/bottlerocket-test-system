@@ -9,7 +9,7 @@ license = "MIT OR Apache-2.0"
 anyhow = "1.0"
 clap = { version = "4.0", features = ["derive"] }
 env_logger = "0.9"
-futures = "0.3.24"
+futures = "0.3.25"
 log = "0.4"
 model = { path = "../model" }
 serde = "1"
