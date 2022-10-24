@@ -40,7 +40,9 @@ FROM build-go as eksctl-build
 
 USER root
 RUN mkdir -p /usr/share/licenses/eksctl && \
-    chown -R builder:builder /usr/share/licenses/eksctl
+    chown -R builder:builder /usr/share/licenses/eksctl && \
+    mkdir -p /usr/share/licenses/eksctl-anywhere && \
+    chown -R builder:builder /usr/share/licenses/eksctl-anywhere
 
 ARG EKSCTL_VERSION=0.112.0
 ARG EKSCTL_SOURCE_URL="https://github.com/weaveworks/eksctl/archive/refs/tags/v${EKSCTL_VERSION}.tar.gz"
@@ -48,8 +50,15 @@ ARG EKSCTL_SOURCE_URL="https://github.com/weaveworks/eksctl/archive/refs/tags/v$
 ARG GOARCH
 ARG EKSCTL_BINARY_URL="https://github.com/weaveworks/eksctl/releases/download/v${EKSCTL_VERSION}/eksctl_Linux_${GOARCH}.tar.gz"
 
+ARG EKSA_VERSION=0.11.4
+ARG EKSA_SOURCE_URL="https://github.com/aws/eks-anywhere/archive/refs/tags/v${EKSA_VERSION}.tar.gz"
+ARG EKSA_RELEASE_NUMBER=21
+# TODO EKS-A currently does not provide an ARM64 binary, add the hash for it when they do
+ARG EKSA_BINARY_URL="https://anywhere-assets.eks.amazonaws.com/releases/eks-a/${EKSA_RELEASE_NUMBER}/artifacts/eks-a/v${EKSA_VERSION}/${GOOS}/amd64/eksctl-anywhere-v${EKSA_VERSION}-${GOOS}-amd64.tar.gz"
+
 USER builder
 WORKDIR /home/builder/
+# eksctl
 RUN mkdir eksctl && curl -L ${EKSCTL_SOURCE_URL} \
       -o eksctl_${EKSCTL_VERSION}.tar.gz && \
     grep eksctl_${EKSCTL_VERSION}.tar.gz \
@@ -78,6 +87,32 @@ RUN curl -L "${EKSCTL_BINARY_URL}" \
     tar -xf eksctl_${EKSCTL_VERSION}_${GOOS}_${GOARCH}.tar.gz -C /tmp && \
     rm eksctl_${EKSCTL_VERSION}_${GOOS}_${GOARCH}.tar.gz
 
+# eksctl-anywhere
+# TODO Try and build this; it's not straightforward with the tight coupling between EKS-A releases and its bundles
+WORKDIR /home/builder/
+RUN mkdir eksctl-anywhere && curl -L ${EKSA_SOURCE_URL} \
+      -o eksctl_anywhere_${EKSA_VERSION}.tar.gz && \
+    grep eksctl_anywhere_${EKSA_VERSION}.tar.gz \
+      /hashes/eksctl | sha512sum --check - && \
+    tar -xf eksctl_anywhere_${EKSA_VERSION}.tar.gz --strip-components 1 -C eksctl-anywhere && \
+    rm eksctl_anywhere_${EKSA_VERSION}.tar.gz
+
+USER root
+WORKDIR /home/builder/eksctl-anywhere/
+RUN go mod vendor
+RUN cp -p LICENSE /usr/share/licenses/eksctl-anywhere && \
+    /usr/libexec/tools/bottlerocket-license-scan \
+      --clarify /clarify.toml \
+      --spdx-data /usr/libexec/tools/spdx-data \
+      --out-dir /usr/share/licenses/eksctl-anywhere/vendor \
+      go-vendor ./vendor
+RUN curl -L "${EKSA_BINARY_URL}" \
+      -o eksctl_anywhere_${EKSA_VERSION}_${EKSA_RELEASE_NUMBER}_${GOOS}_amd64.tar.gz && \
+    grep eksctl_anywhere_${EKSA_VERSION}_${EKSA_RELEASE_NUMBER}_${GOOS}_amd64.tar.gz \
+      /hashes/eksctl | sha512sum --check - && \
+    tar -xzf eksctl_anywhere_${EKSA_VERSION}_${EKSA_RELEASE_NUMBER}_${GOOS}_amd64.tar.gz -C /tmp && \
+    rm eksctl_anywhere_${EKSA_VERSION}_${EKSA_RELEASE_NUMBER}_${GOOS}_amd64.tar.gz
+
 # =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^=
 FROM build-go as kubernetes-build
 
@@ -85,11 +120,12 @@ USER root
 RUN mkdir -p /usr/share/licenses/kubernetes && \
     chown -R builder:builder /usr/share/licenses/kubernetes
 
-ARG K8S_VERSION=1.21.6
+ARG K8S_VERSION=1.23.13
 ARG K8S_SOURCE_URL="https://github.com/kubernetes/kubernetes/archive/refs/tags/v${K8S_VERSION}.tar.gz"
 
 ARG GOARCH
 ARG KUBEADM_BINARY_URL="https://dl.k8s.io/release/v${K8S_VERSION}/bin/linux/${GOARCH}/kubeadm"
+ARG KUBECTL_BINARY_URL="https://dl.k8s.io/release/v${K8S_VERSION}/bin/linux/${GOARCH}/kubectl"
 
 USER builder
 WORKDIR /home/builder/
@@ -114,6 +150,11 @@ RUN curl -L ${KUBEADM_BINARY_URL} \
     grep kubeadm_${K8S_VERSION}_${GOOS}_${GOARCH} \
       /hashes/kubernetes | sha512sum --check - && \
     install -m 0755 kubeadm_${K8S_VERSION}_${GOOS}_${GOARCH} /tmp/kubeadm
+RUN curl -L ${KUBECTL_BINARY_URL} \
+      -o kubectl_${K8S_VERSION}_${GOOS}_${GOARCH} && \
+    grep kubectl_${K8S_VERSION}_${GOOS}_${GOARCH} \
+      /hashes/kubernetes | sha512sum --check - && \
+    install -m 0755 kubectl_${K8S_VERSION}_${GOOS}_${GOARCH} /tmp/kubectl
 
 # =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^=
 FROM build-go as sonobuoy-build
@@ -191,8 +232,13 @@ COPY --from=aws-iam-authenticator-build /usr/share/licenses/aws-iam-authenticato
 COPY --from=eksctl-build /tmp/eksctl /eksctl
 COPY --from=eksctl-build /usr/share/licenses/eksctl /licenses/eksctl
 
-# kubeadm
+# eksctl-anywhere
+COPY --from=eksctl-build /tmp/eksctl-anywhere /eksctl-anywhere
+COPY --from=eksctl-build /usr/share/licenses/eksctl-anywhere /licenses/eksctl-anywhere
+
+# kubeadm and kubectl
 COPY --from=kubernetes-build /tmp/kubeadm /kubeadm
+COPY --from=kubernetes-build /tmp/kubectl /kubectl
 COPY --from=kubernetes-build /usr/share/licenses/kubernetes /licenses/kubernetes
 
 # sonobuoy
