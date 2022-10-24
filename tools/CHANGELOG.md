@@ -6,16 +6,18 @@ The format is inspired by [Keep a Changelog](https://keepachangelog.com/en/1.0.0
 Since this project is only a vessel for packaging a few binary tools, its adherence to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html) is loose at best.
 
-## [0.2.0] - 2022-09-20
+## [0.2.0] - 2022-10-24
 
-Update eksctl and sonobuoy.
+Update eksctl, sonobuoy, kubeadm
+Add kubectl, eksctl-anywhere
 
 ### Contents
 
 - boringtun v0.4.0 was removed
 - eksctl 0.112.0
-- kubeadm v1.21.6
+- kubeadm v1.23.13
 - sonobuoy v0.56.4
+- eksctl-anywhere 0.11.4-21
 
 ## [0.1.0] - 2022-05-11
 
