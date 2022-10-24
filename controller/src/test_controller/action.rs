@@ -1,3 +1,4 @@
+use crate::constants::parse_duration;
 use crate::error::Result;
 use crate::job::{JobState, TEST_START_TIME_LIMIT};
 use crate::test_controller::context::TestInterface;
@@ -7,7 +8,6 @@ use log::trace;
 use model::clients::{CrdClient, HttpStatusCode, StatusCode};
 use model::constants::{FINALIZER_MAIN, FINALIZER_TEST_JOB, NAMESPACE};
 use model::{CrdExt, Outcome, Resource, ResourceAction, TaskState};
-use parse_duration::parse;
 use std::fmt::{Display, Formatter};
 
 /// The action that the controller needs to take in order to reconcile the `Test`.
@@ -219,7 +219,7 @@ async fn task_not_done_action(t: &TestInterface, is_task_state_running: bool) ->
                     .agent
                     .timeout
                     .as_ref()
-                    .map(|timeout| parse(timeout).map(|timeout| std_duration > timeout))
+                    .map(|timeout| parse_duration(timeout).map(|timeout| std_duration > timeout))
                     .unwrap_or(Ok(false))
                     .unwrap_or(false)
                 {
