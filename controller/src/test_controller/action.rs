@@ -1,7 +1,7 @@
-use crate::constants::parse_duration;
 use crate::error::Result;
 use crate::job::{JobState, TEST_START_TIME_LIMIT};
 use crate::test_controller::context::TestInterface;
+use crate::utils::parse_duration;
 use anyhow::Context;
 use kube::{Api, ResourceExt};
 use log::trace;

@@ -1,7 +1,7 @@
-use crate::constants::parse_duration;
 use crate::error::Result;
 use crate::job::{JobState, TEST_START_TIME_LIMIT};
 use crate::resource_controller::context::ResourceInterface;
+use crate::utils::parse_duration;
 use kube::core::object::HasSpec;
 use kube::ResourceExt;
 use log::{debug, trace};
