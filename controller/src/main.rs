@@ -29,6 +29,7 @@ mod error;
 mod job;
 mod resource_controller;
 mod test_controller;
+mod utils;
 
 #[tokio::main]
 async fn main() {
