@@ -91,24 +91,40 @@ impl Configuration for MigrationConfig {}
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct EksClusterConfig {
-    /// The name of the eks cluster to create or an existing cluster.
-    pub cluster_name: String,
-
     /// Whether this agent will create the cluster or not.
     pub creation_policy: Option<CreationPolicy>,
 
-    /// The AWS region to create the cluster. If no value is provided `us-west-2` will be used.
-    pub region: Option<String>,
-
-    /// The availability zones. (e.g. us-west-2a,us-west-2b)
-    pub zones: Option<Vec<String>>,
-
-    /// The eks version of the the cluster (e.g. "1.14", "1.15", "1.16"). Make sure this is
-    /// quoted so that it is interpreted as a JSON/YAML string (not a number).
-    pub version: Option<K8sVersion>,
-
     /// The role that should be assumed when creating the cluster.
     pub assume_role: Option<String>,
+
+    #[serde(flatten)]
+    pub config: EksctlConfig,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum EksctlConfig {
+    File {
+        encoded_config: String,
+    },
+    Args {
+        cluster_name: String,
+        region: Option<String>,
+        /// The availability zones. (e.g. us-west-2a,us-west-2b)
+        zones: Option<Vec<String>>,
+
+        /// The eks version of the the cluster (e.g. "1.14", "1.15", "1.16"). Make sure this is
+        /// quoted so that it is interpreted as a JSON/YAML string (not a number).
+        version: Option<K8sVersion>,
+    },
+}
+
+impl Default for EksctlConfig {
+    fn default() -> Self {
+        Self::File {
+            encoded_config: "".to_string(),
+        }
+    }
 }
 
 impl Configuration for EksClusterConfig {}

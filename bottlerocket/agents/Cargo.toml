@@ -32,6 +32,7 @@ resource-agent = { version = "0.0.2", path = "../../agent/resource-agent" }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 serde_plain = "1"
+serde_yaml = "0.8"
 sha2 = "0.10"
 snafu = "0.7"
 test-agent = { version = "0.0.2", path = "../../agent/test-agent" }
