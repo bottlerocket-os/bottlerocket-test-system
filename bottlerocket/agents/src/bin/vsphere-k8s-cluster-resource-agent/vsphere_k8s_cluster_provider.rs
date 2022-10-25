@@ -1,5 +1,6 @@
 use agent_utils::base64_decode_write_file;
 use bottlerocket_agents::constants::TEST_CLUSTER_KUBECONFIG_PATH;
+use bottlerocket_agents::is_cluster_creation_required;
 use bottlerocket_agents::tuf::{download_target, tuf_repo_urls};
 use bottlerocket_agents::vsphere::vsphere_credentials;
 use bottlerocket_types::agent_config::{
@@ -109,9 +110,9 @@ impl Create for VSphereK8sClusterCreator {
         )?;
 
         // Check whether cluster creation is necessary
-        let (do_create, message) = is_cluster_creation_required(
+        let (do_create, message) = is_vsphere_k8s_cluster_creation_required(
             &spec.configuration,
-            spec.configuration.creation_policy.unwrap_or_default(),
+            &spec.configuration.creation_policy.unwrap_or_default(),
         )
         .await?;
         memo.current_status = message;
@@ -188,43 +189,12 @@ async fn write_validate_mgmt_kubeconfig(
         .context(resources, "Unable create K8s client from kubeconfig")
 }
 
-async fn is_cluster_creation_required(
+async fn is_vsphere_k8s_cluster_creation_required(
     config: &VSphereK8sClusterConfig,
-    creation_policy: CreationPolicy,
+    creation_policy: &CreationPolicy,
 ) -> ProviderResult<(bool, String)> {
     let cluster_exists = does_cluster_exist(config).await?;
-    match creation_policy {
-        CreationPolicy::Create if cluster_exists =>
-            Err(
-                ProviderError::new_with_context(
-                    Resources::Clear, format!(
-                        "The cluster '{}' already existed and creation policy '{:?}' requires that it not exist",
-                        config.name,
-                        creation_policy
-                    )
-                )
-            ),
-        CreationPolicy::Never if !cluster_exists =>
-            Err(
-                ProviderError::new_with_context(
-                    Resources::Clear, format!(
-                        "The cluster '{}' does not exist and creation policy '{:?}' requires that it exist",
-                        config.name,
-                        creation_policy
-                    )
-                )
-            ),
-        CreationPolicy::Create  =>{
-            Ok((true, format!("Creation policy is '{:?}' and cluster '{}' does not exist: creating cluster", creation_policy, config.name)))
-        },
-        CreationPolicy::IfNotExists if !cluster_exists => {
-            Ok((true, format!("Creation policy is '{:?}' and cluster '{}' does not exist: creating cluster", creation_policy, config.name)))
-        },
-        CreationPolicy::IfNotExists |
-        CreationPolicy::Never => {
-            Ok((false, format!("Creation policy is '{:?}' and cluster '{}' exists: not creating cluster", creation_policy, config.name)))
-        },
-    }
+    is_cluster_creation_required(&cluster_exists, &config.name, creation_policy).await
 }
 
 async fn does_cluster_exist(config: &VSphereK8sClusterConfig) -> ProviderResult<bool> {

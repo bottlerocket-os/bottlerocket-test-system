@@ -6,6 +6,7 @@ use aws_sdk_eks::error::{DescribeClusterError, DescribeClusterErrorKind};
 use aws_sdk_eks::model::{Cluster, IpFamily};
 use aws_sdk_eks::output::DescribeClusterOutput;
 use aws_types::SdkConfig;
+use bottlerocket_agents::is_cluster_creation_required;
 use bottlerocket_types::agent_config::{
     CreationPolicy, EksClusterConfig, EksctlConfig, K8sVersion, AWS_CREDENTIALS_SECRET_NAME,
 };
@@ -324,7 +325,7 @@ impl Create for EksCreator {
         .await?;
         let aws_clients = AwsClients::new(&shared_config).await;
 
-        let (do_create, message) = is_cluster_creation_required(
+        let (do_create, message) = is_eks_cluster_creation_required(
             &cluster_config.cluster_name(),
             spec.configuration.creation_policy.unwrap_or_default(),
             &aws_clients,
@@ -382,44 +383,13 @@ impl Create for EksCreator {
 /// explains why that we can use for logging or memo status. Returns an error if the creation policy
 /// requires us to create a cluster when it already exists, or creation policy forbids us to create
 /// a cluster and it does not exist.
-async fn is_cluster_creation_required(
+async fn is_eks_cluster_creation_required(
     cluster_name: &str,
     creation_policy: CreationPolicy,
     aws_clients: &AwsClients,
 ) -> ProviderResult<(bool, String)> {
     let cluster_exists: bool = does_cluster_exist(cluster_name, aws_clients).await?;
-    match creation_policy {
-        CreationPolicy::Create if cluster_exists =>
-            Err(
-                ProviderError::new_with_context(
-                    Resources::Clear, format!(
-                        "The cluster '{}' already existed and creation policy '{:?}' requires that it not exist",
-                        cluster_name,
-                        creation_policy
-                    )
-                )
-            ),
-        CreationPolicy::Never if !cluster_exists =>
-            Err(
-                ProviderError::new_with_context(
-                    Resources::Clear, format!(
-                        "The cluster '{}' does not exist and creation policy '{:?}' requires that it exist",
-                        cluster_name,
-                        creation_policy
-                )
-            )
-        ),
-        CreationPolicy::Create  =>{
-            Ok((true, format!("Creation policy is '{:?}' and cluster '{}' does not exist: creating cluster", creation_policy, cluster_name)))
-        },
-        CreationPolicy::IfNotExists if !cluster_exists => {
-            Ok((true, format!("Creation policy is '{:?}' and cluster '{}' does not exist: creating cluster", creation_policy, cluster_name)))
-        },
-        CreationPolicy::IfNotExists |
-        CreationPolicy::Never => {
-            Ok((false, format!("Creation policy is '{:?}' and cluster '{}' exists: not creating cluster", creation_policy, cluster_name)))
-        },
-    }
+    is_cluster_creation_required(&cluster_exists, cluster_name, &creation_policy).await
 }
 
 fn cluster_iam_identity_mapping(cluster_name: &str, region: &str) -> ProviderResult<String> {
