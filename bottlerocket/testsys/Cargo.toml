@@ -6,7 +6,7 @@ publish = false
 license = "MIT OR Apache-2.0"
 
 [dependencies]
-base64 = "0.13.0"
+base64 = "0.13.1"
 bottlerocket-types = { version = "0.0.2", path = "../types" }
 env_logger = "0.9"
 futures = "0.3.25"
