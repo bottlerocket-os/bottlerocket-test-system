@@ -2,18 +2,20 @@ use super::error::{self, Result};
 use super::HttpStatusCode;
 use crate::clients::crd_client::JsonPatch;
 use crate::clients::CrdClient;
-use crate::constants::FINALIZER_RESOURCE;
+use crate::constants::{FINALIZER_RESOURCE, NAMESPACE};
 use crate::resource::{ResourceAction, ResourceError};
-use crate::{Configuration, Resource, ResourceStatus, TaskState};
+use crate::{Configuration, Resource, ResourceSpec, ResourceStatus, TaskState};
 use async_recursion::async_recursion;
 use futures::stream::{self, StreamExt};
 use http::StatusCode;
 use kube::core::object::HasStatus;
+use kube::core::ObjectMeta;
 use kube::{Api, ResourceExt};
 use log::trace;
 use regex::Regex;
 use serde_json::{Map, Value};
 use snafu::{ensure, OptionExt, ResultExt};
+use std::collections::BTreeMap;
 use std::time::Duration;
 
 const TEMPLATE_PATTERN_REGEX: &str = r"^\$\{(.+)\.(.+)\}$";
@@ -322,6 +324,26 @@ impl CrdClient for ResourceClient {
 
     fn api(&self) -> &Api<Self::Crd> {
         &self.api
+    }
+}
+
+pub fn create_resource_crd<S1>(
+    name: S1,
+    labels: Option<&BTreeMap<String, String>>,
+    resource_spec: ResourceSpec,
+) -> Resource
+where
+    S1: Into<String>,
+{
+    Resource {
+        metadata: ObjectMeta {
+            name: Some(name.into()),
+            namespace: Some(NAMESPACE.into()),
+            labels: labels.cloned(),
+            ..Default::default()
+        },
+        spec: resource_spec,
+        status: None,
     }
 }
 

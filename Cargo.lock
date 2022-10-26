@@ -611,8 +611,11 @@ dependencies = [
 name = "bottlerocket-types"
 version = "0.0.2"
 dependencies = [
+ "builder-derive",
+ "configuration-derive",
  "model",
  "serde",
+ "serde_json",
  "serde_plain",
  "serde_yaml",
 ]
@@ -626,6 +629,19 @@ dependencies = [
  "lazy_static",
  "memchr",
  "regex-automata",
+]
+
+[[package]]
+name = "builder-derive"
+version = "0.0.1"
+dependencies = [
+ "configuration-derive",
+ "model",
+ "proc-macro2",
+ "quote",
+ "serde",
+ "serde_json",
+ "syn",
 ]
 
 [[package]]
@@ -750,6 +766,14 @@ dependencies = [
  "serde_plain",
  "terminal_size",
  "tokio",
+]
+
+[[package]]
+name = "configuration-derive"
+version = "0.0.1"
+dependencies = [
+ "quote",
+ "syn",
 ]
 
 [[package]]

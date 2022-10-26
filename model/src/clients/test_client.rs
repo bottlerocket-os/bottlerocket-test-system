@@ -1,8 +1,11 @@
 use super::error::Result;
 use crate::clients::crd_client::JsonPatch;
 use crate::clients::CrdClient;
-use crate::{AgentStatus, TaskState, Test, TestResults, TestStatus};
+use crate::constants::NAMESPACE;
+use crate::{AgentStatus, TaskState, Test, TestResults, TestSpec, TestStatus};
+use kube::core::ObjectMeta;
 use kube::Api;
+use std::collections::BTreeMap;
 
 /// An API Client for TestSys Test CRD objects.
 ///
@@ -121,6 +124,26 @@ impl CrdClient for TestClient {
 
     fn api(&self) -> &Api<Self::Crd> {
         &self.api
+    }
+}
+
+pub fn create_test_crd<S1>(
+    name: S1,
+    labels: Option<&BTreeMap<String, String>>,
+    test_spec: TestSpec,
+) -> Test
+where
+    S1: Into<String>,
+{
+    Test {
+        metadata: ObjectMeta {
+            name: Some(name.into()),
+            namespace: Some(NAMESPACE.into()),
+            labels: labels.cloned(),
+            ..Default::default()
+        },
+        spec: test_spec,
+        status: None,
     }
 }
 

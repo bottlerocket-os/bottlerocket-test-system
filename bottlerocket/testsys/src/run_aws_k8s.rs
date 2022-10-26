@@ -3,16 +3,13 @@ use bottlerocket_types::agent_config::{
     ClusterType, CreationPolicy, Ec2Config, EksClusterConfig, EksctlConfig, K8sVersion,
     MigrationConfig, SonobuoyConfig, SonobuoyMode, TufRepoConfig, AWS_CREDENTIALS_SECRET_NAME,
 };
+use kube::Client;
 use kube::ResourceExt;
-use kube::{api::ObjectMeta, Client};
 use maplit::btreemap;
 use model::clients::{CrdClient, ResourceClient, TestClient};
-use model::constants::NAMESPACE;
-use model::{
-    Agent, Configuration, DestructionPolicy, Resource, ResourceSpec, SecretName, Test, TestSpec,
-};
-use serde_json::Value;
-use snafu::{OptionExt, ResultExt};
+use model::{DestructionPolicy, Resource, SecretName, Test};
+use snafu::OptionExt;
+use snafu::ResultExt;
 use std::collections::BTreeMap;
 use std::fs::read_to_string;
 use structopt::StructOpt;
@@ -352,36 +349,18 @@ impl RunAwsK8s {
                 version: self.cluster_version,
             }
         };
-        Ok(Resource {
-            metadata: ObjectMeta {
-                name: Some(name.to_string()),
-                namespace: Some(NAMESPACE.into()),
-                ..Default::default()
-            },
-            spec: ResourceSpec {
-                depends_on: None,
-                conflicts_with: None,
-                agent: Agent {
-                    name: "eks-provider".to_string(),
-                    image: self.cluster_provider_image.clone(),
-                    pull_secret: self.cluster_provider_pull_secret.clone(),
-                    keep_running: self.keep_cluster_provider_running,
-                    configuration: Some(
-                        EksClusterConfig {
-                            config: eksctl_config,
-                            creation_policy: Some(self.cluster_creation_policy),
-                            assume_role: self.assume_role.clone(),
-                        }
-                        .into_map()
-                        .context(error::ConfigMapSnafu)?,
-                    ),
-                    secrets,
-                    ..Default::default()
-                },
-                destruction_policy: self.cluster_destruction_policy,
-            },
-            status: None,
-        })
+        EksClusterConfig::builder()
+            .image(&self.cluster_provider_image)
+            .set_image_pull_secret(self.cluster_provider_pull_secret.clone())
+            .creation_policy(self.cluster_creation_policy)
+            .config(eksctl_config)
+            .set_secrets(secrets)
+            .destruction_policy(self.cluster_destruction_policy)
+            .keep_running(self.keep_cluster_provider_running)
+            .build(name)
+            .context(error::BuildSnafu {
+                what: name.to_string(),
+            })
     }
 
     fn ec2_resource(
@@ -390,68 +369,35 @@ impl RunAwsK8s {
         secrets: Option<BTreeMap<String, SecretName>>,
         cluster_resource_name: &str,
     ) -> Result<Resource> {
-        let mut ec2_config = Ec2Config {
-            node_ami: self.ami.clone(),
-            // TODO - configurable
-            instance_count: Some(2),
-            instance_types: self
-                .instance_type
-                .clone()
-                .map(|instance_type| vec![instance_type])
-                .unwrap_or_default(),
-            cluster_name: format!("${{{}.clusterName}}", cluster_resource_name),
-            region: self.region.clone(),
-            instance_profile_arn: format!("${{{}.iamInstanceProfileArn}}", cluster_resource_name),
-            subnet_ids: vec![],
-            cluster_type: ClusterType::Eks,
-            endpoint: Some(format!("${{{}.endpoint}}", cluster_resource_name)),
-            certificate: Some(format!("${{{}.certificate}}", cluster_resource_name)),
-            cluster_dns_ip: Some(format!("${{{}.clusterDnsIp}}", cluster_resource_name)),
-            security_groups: vec![],
-            assume_role: self.assume_role.clone(),
-        }
-        .into_map()
-        .context(error::ConfigMapSnafu)?;
-
-        // TODO - we have change the raw map to reference/template a non string field.
-        let previous_value = ec2_config.insert(
-            "securityGroups".to_owned(),
-            Value::String(format!("${{{}.securityGroups}}", cluster_resource_name)),
-        );
-        if previous_value.is_none() {
-            todo!("This is an error: fields in the Ec2Config struct have changed")
-        }
-
-        let previous_value = ec2_config.insert(
-            "subnetIds".to_owned(),
-            Value::String(format!("${{{}.privateSubnetIds}}", cluster_resource_name)),
-        );
-        if previous_value.is_none() {
-            todo!("This is an error: fields in the Ec2Config struct have changed")
-        }
-
-        Ok(Resource {
-            metadata: ObjectMeta {
-                name: Some(name.to_string()),
-                namespace: Some(NAMESPACE.into()),
-                ..Default::default()
-            },
-            spec: ResourceSpec {
-                depends_on: Some(vec![cluster_resource_name.to_owned()]),
-                conflicts_with: None,
-                agent: Agent {
-                    name: "ec2-provider".to_string(),
-                    image: self.ec2_provider_image.clone(),
-                    pull_secret: self.ec2_provider_pull_secret.clone(),
-                    keep_running: self.keep_instance_provider_running,
-                    configuration: Some(ec2_config),
-                    secrets,
-                    ..Default::default()
-                },
-                destruction_policy: DestructionPolicy::OnDeletion,
-            },
-            status: None,
-        })
+        Ec2Config::builder()
+            .image(&self.ec2_provider_image)
+            .set_image_pull_secret(self.ec2_provider_pull_secret.clone())
+            .node_ami(&self.ami)
+            .instance_count(2)
+            .instance_types(
+                self.instance_type
+                    .clone()
+                    .map(|instance_type| vec![instance_type])
+                    .unwrap_or_default(),
+            )
+            .cluster_name_template(cluster_resource_name, "clusterName")
+            .region_template(cluster_resource_name, "region")
+            .instance_profile_arn_template(cluster_resource_name, "iamInstanceProfileArn")
+            .subnet_ids_template(cluster_resource_name, "privateSubnetIds")
+            .cluster_type(ClusterType::Eks)
+            .endpoint_template(cluster_resource_name, "endpoint")
+            .certificate_template(cluster_resource_name, "certificate")
+            .cluster_dns_ip_template(cluster_resource_name, "clusterDnsIp")
+            .security_groups_template(cluster_resource_name, "securityGroups")
+            .assume_role(self.assume_role.clone())
+            .depends_on(cluster_resource_name)
+            .set_secrets(secrets)
+            .keep_running(self.keep_instance_provider_running)
+            .destruction_policy(DestructionPolicy::OnDeletion)
+            .build(name)
+            .context(error::BuildSnafu {
+                what: name.to_string(),
+            })
     }
 
     fn sonobuoy_test(
@@ -471,46 +417,25 @@ impl RunAwsK8s {
             None => None,
         };
 
-        Ok(Test {
-            metadata: ObjectMeta {
-                name: Some(name.to_string()),
-                namespace: Some(NAMESPACE.into()),
-                ..Default::default()
-            },
-            spec: TestSpec {
-                resources: vec![
-                    ec2_resource_name.to_string(),
-                    cluster_resource_name.to_string(),
-                ],
-                depends_on,
-                retries: self.retry_failed_attempts,
-                agent: Agent {
-                    name: "sonobuoy-test-agent".to_string(),
-                    image: self.test_agent_image.clone(),
-                    pull_secret: self.test_agent_pull_secret.clone(),
-                    keep_running: self.keep_running,
-                    configuration: Some(
-                        SonobuoyConfig {
-                            kubeconfig_base64: format!(
-                                "${{{}.encodedKubeconfig}}",
-                                cluster_resource_name
-                            ),
-                            plugin: self.sonobuoy_plugin.clone(),
-                            mode: self.sonobuoy_mode,
-                            e2e_repo_config_base64: e2e_repo_config_string,
-                            kubernetes_version: None,
-                            kube_conformance_image: self.kubernetes_conformance_image.clone(),
-                            assume_role: self.assume_role.clone(),
-                        }
-                        .into_map()
-                        .context(error::ConfigMapSnafu)?,
-                    ),
-                    secrets,
-                    ..Default::default()
-                },
-            },
-            status: None,
-        })
+        SonobuoyConfig::builder()
+            .resources(ec2_resource_name)
+            .resources(cluster_resource_name)
+            .set_depends_on(depends_on)
+            .set_retries(self.retry_failed_attempts)
+            .image(&self.test_agent_image)
+            .set_image_pull_secret(self.test_agent_pull_secret.clone())
+            .keep_running(self.keep_running)
+            .kubeconfig_base64_template(cluster_resource_name, "encodedKubeconfig")
+            .plugin(&self.sonobuoy_plugin)
+            .mode(self.sonobuoy_mode)
+            .e2e_repo_config_base64(e2e_repo_config_string)
+            .kube_conformance_image(self.kubernetes_conformance_image.clone())
+            .assume_role(self.assume_role.clone())
+            .set_secrets(secrets)
+            .build(name)
+            .context(error::BuildSnafu {
+                what: name.to_string(),
+            })
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -526,43 +451,22 @@ impl RunAwsK8s {
         migration_agent_image: &str,
         migration_agent_pull_secret: &Option<String>,
     ) -> Result<Test> {
-        let mut migration_config = MigrationConfig {
-            aws_region: format!("${{{}.region}}", cluster_resource_name),
-            instance_ids: Default::default(),
-            migrate_to_version: version.to_string(),
-            tuf_repo,
-            assume_role: self.assume_role.clone(),
-        }
-        .into_map()
-        .context(error::ConfigMapSnafu)?;
-        migration_config.insert(
-            "instanceIds".to_string(),
-            Value::String(format!("${{{}.ids}}", ec2_resource_name)),
-        );
-        Ok(Test {
-            metadata: ObjectMeta {
-                name: Some(name.to_string()),
-                namespace: Some(NAMESPACE.into()),
-                ..Default::default()
-            },
-            spec: TestSpec {
-                resources: vec![
-                    ec2_resource_name.to_owned(),
-                    cluster_resource_name.to_owned(),
-                ],
-                depends_on,
-                retries: None,
-                agent: Agent {
-                    name: "eks-test-agent".to_string(),
-                    image: migration_agent_image.to_string(),
-                    pull_secret: migration_agent_pull_secret.clone(),
-                    keep_running: self.keep_running,
-                    configuration: Some(migration_config),
-                    secrets,
-                    ..Default::default()
-                },
-            },
-            status: None,
-        })
+        MigrationConfig::builder()
+            .aws_region_template(cluster_resource_name, "region")
+            .instance_ids_template(ec2_resource_name, "instanceIds")
+            .migrate_to_version(version)
+            .tuf_repo(tuf_repo)
+            .assume_role(self.assume_role.clone())
+            .resources(ec2_resource_name)
+            .resources(cluster_resource_name)
+            .set_depends_on(depends_on)
+            .image(migration_agent_image)
+            .set_image_pull_secret(migration_agent_pull_secret.clone())
+            .keep_running(self.keep_running)
+            .set_secrets(secrets)
+            .build(name)
+            .context(error::BuildSnafu {
+                what: name.to_string(),
+            })
     }
 }
