@@ -14,6 +14,7 @@ macro_rules! testsys {
 pub const API_VERSION: &str = testsys!("v1");
 pub const NAMESPACE: &str = "testsys-bottlerocket-aws";
 pub const TESTSYS: &str = testsys!();
+pub const TESTSYS_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 // Component names
 pub const CONTROLLER: &str = "controller";
