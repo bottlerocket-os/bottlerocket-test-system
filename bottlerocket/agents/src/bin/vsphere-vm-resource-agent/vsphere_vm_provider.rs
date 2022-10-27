@@ -1,10 +1,11 @@
 use crate::aws::{create_ssm_activation, ensure_ssm_service_role, wait_for_ssm_ready};
-use crate::tuf::download_target;
 use agent_utils::aws::aws_resource_config;
 use agent_utils::base64_decode_write_file;
 use bottlerocket_agents::constants::TEST_CLUSTER_KUBECONFIG_PATH;
+use bottlerocket_agents::tuf::{download_target, tuf_repo_urls};
+use bottlerocket_agents::vsphere::vsphere_credentials;
 use bottlerocket_types::agent_config::{
-    TufRepoConfig, VSphereVmConfig, AWS_CREDENTIALS_SECRET_NAME, VSPHERE_CREDENTIALS_SECRET_NAME,
+    VSphereVmConfig, AWS_CREDENTIALS_SECRET_NAME, VSPHERE_CREDENTIALS_SECRET_NAME,
 };
 use k8s_openapi::api::core::v1::Service;
 use kube::api::ListParams;
@@ -26,7 +27,6 @@ use std::fs::File;
 use std::path::Path;
 use std::process::Command;
 use std::time::Duration;
-use url::Url;
 
 /// The default number of VMs to spin up.
 const DEFAULT_VM_COUNT: i32 = 2;
@@ -401,24 +401,6 @@ impl Create for VMCreator {
     }
 }
 
-fn tuf_repo_urls(tuf_repo: &TufRepoConfig, resources: &Resources) -> ProviderResult<(Url, Url)> {
-    let metadata_url = Url::parse(&tuf_repo.metadata_url).context(
-        resources,
-        format!(
-            "Failed to parse TUF repo's metadata URL '{}'",
-            tuf_repo.metadata_url
-        ),
-    )?;
-    let targets_url = Url::parse(&tuf_repo.targets_url).context(
-        resources,
-        format!(
-            "Failed to parse TUF repo's targets URL '{}'",
-            tuf_repo.targets_url
-        ),
-    )?;
-    Ok((metadata_url, targets_url))
-}
-
 fn userdata(
     endpoint: &str,
     cluster_dns_ip: &str,
@@ -572,52 +554,7 @@ impl Destroy for VMDestroyer {
     }
 }
 
-// Helper for getting the vsphere credentials and setting up GOVC_USERNAME and GOVC_PASSWORD env vars
-async fn vsphere_credentials<I>(
-    client: &I,
-    vsphere_secret_name: &SecretName,
-    resource: &Resources,
-) -> ProviderResult<()>
-where
-    I: InfoClient,
-{
-    let vsphere_secret = client.get_secret(vsphere_secret_name).await.context(
-        Resources::Clear,
-        format!("Error getting secret '{}'", vsphere_secret_name),
-    )?;
-
-    let username = String::from_utf8(
-        vsphere_secret
-            .get("username")
-            .context(
-                resource,
-                format!(
-                    "vsphere username missing from secret '{}'",
-                    vsphere_secret_name
-                ),
-            )?
-            .to_owned(),
-    )
-    .context(resource, "Could not convert vsphere username to String")?;
-    let password = String::from_utf8(
-        vsphere_secret
-            .get("password")
-            .context(
-                resource,
-                format!(
-                    "vsphere password missing from secret '{}'",
-                    vsphere_secret_name
-                ),
-            )?
-            .to_owned(),
-    )
-    .context(resource, "Could not convert secret-access-key to String")?;
-    env::set_var("GOVC_USERNAME", username);
-    env::set_var("GOVC_PASSWORD", password);
-    Ok(())
-}
-
-fn set_govc_env_vars(config: &VSphereVmConfig) {
+pub fn set_govc_env_vars(config: &VSphereVmConfig) {
     env::set_var("GOVC_URL", &config.vcenter_host_url);
     env::set_var("GOVC_DATACENTER", &config.vcenter_datacenter);
     env::set_var("GOVC_DATASTORE", &config.vcenter_datastore);

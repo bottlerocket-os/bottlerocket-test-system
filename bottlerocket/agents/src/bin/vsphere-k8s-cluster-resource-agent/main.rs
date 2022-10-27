@@ -1,13 +1,12 @@
 /*!
 
-Provides Bottlerocket VMWare vSphere VMs to serve as Kubernetes nodes via `govc`.
+This resource agent provisions vSphere K8s clusters via CAPI with EKS-Anywhere
 
 !*/
 
-mod aws;
-mod vsphere_vm_provider;
+mod vsphere_k8s_cluster_provider;
 
-use crate::vsphere_vm_provider::{VMCreator, VMDestroyer};
+use crate::vsphere_k8s_cluster_provider::{VSphereK8sClusterCreator, VSphereK8sClusterDestroyer};
 use agent_utils::init_agent_logger;
 use resource_agent::clients::{DefaultAgentClient, DefaultInfoClient};
 use resource_agent::error::AgentResult;
@@ -36,6 +35,12 @@ async fn run(data: BootstrapData) -> AgentResult<()> {
         info_client: PhantomData::<DefaultInfoClient>::default(),
         agent_client: PhantomData::<DefaultAgentClient>::default(),
     };
-    let agent = Agent::new(types, data, VMCreator {}, VMDestroyer {}).await?;
+    let agent = Agent::new(
+        types,
+        data,
+        VSphereK8sClusterCreator {},
+        VSphereK8sClusterDestroyer {},
+    )
+    .await?;
     agent.run().await
 }
