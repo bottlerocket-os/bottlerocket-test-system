@@ -6,9 +6,9 @@ publish = false
 license = "MIT OR Apache-2.0"
 
 [dependencies]
-syn = "1.0"
-quote = "1.0"
-proc-macro2 = "1.0"
+syn = "1"
+quote = "1"
+proc-macro2 = "1"
 serde = "1"
 
 [lib]
