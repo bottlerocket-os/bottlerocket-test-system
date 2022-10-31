@@ -12,7 +12,7 @@ macro_rules! testsys {
 
 // System identifiers
 pub const API_VERSION: &str = testsys!("v1");
-pub const NAMESPACE: &str = "testsys-bottlerocket-aws";
+pub const NAMESPACE: &str = "testsys";
 pub const TESTSYS: &str = testsys!();
 pub const TESTSYS_VERSION: &str = env!("CARGO_PKG_VERSION");
 

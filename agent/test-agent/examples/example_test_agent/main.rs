@@ -17,7 +17,7 @@ apiVersion: testsys.system/v1
 kind: Test
 metadata:
   name: hello-world
-  namespace: testsys-bottlerocket-aws
+  namespace: testsys
 spec:
   image: "<CONTAINER IMAGE URL>"
   configuration:

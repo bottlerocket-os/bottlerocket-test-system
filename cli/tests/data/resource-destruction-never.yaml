@@ -2,7 +2,7 @@ apiVersion: testsys.system/v1
 kind: Resource
 metadata:
   name: never-destroy
-  namespace: testsys-bottlerocket-aws
+  namespace: testsys
 spec:
   dependsOn: []
   destructionPolicy: never

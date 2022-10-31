@@ -16,7 +16,7 @@ apiVersion: testsys.system/v1
 kind: Test
 metadata:
   name: sonobuoy-e2e-full
-  namespace: testsys-bottlerocket-aws
+  namespace: testsys
 spec:
   agent:
     configuration:

@@ -164,7 +164,7 @@ apiVersion: testsys.system/v1
 kind: Test
 metadata:
   name: hello-bones
-  namespace: testsys-bottlerocket-aws
+  namespace: testsys
 spec:
   agent:
     name: hello-agent
@@ -316,7 +316,7 @@ apiVersion: testsys.system/v1
 kind: Resource
 metadata:
   name: duplicator
-  namespace: testsys-bottlerocket-aws
+  namespace: testsys
 spec:
   agent:
     name: dup-agent
@@ -330,7 +330,7 @@ apiVersion: testsys.system/v1
 kind: Test
 metadata:
   name: hello-bones
-  namespace: testsys-bottlerocket-aws
+  namespace: testsys
 spec:
   agent:
     name: hello-agent

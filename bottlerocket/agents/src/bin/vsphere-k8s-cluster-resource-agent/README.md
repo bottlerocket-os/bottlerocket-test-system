@@ -9,7 +9,7 @@ apiVersion: testsys.system/v1
 kind: Resource
 metadata:
   name: my-vsphere-cluster
-  namespace: testsys-bottlerocket-aws
+  namespace: testsys
 spec:
   agent:
     name: vsphere-k8s-cluster-resource-agent

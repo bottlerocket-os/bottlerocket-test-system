@@ -18,7 +18,7 @@ apiVersion: testsys.system/v1
 kind: Test
 metadata:
   name: upgrade-ec2-test
-  namespace: testsys-bottlerocket-aws
+  namespace: testsys
 spec:
   agent:
     configuration:
