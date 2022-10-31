@@ -1,9 +1,9 @@
 ---
-apiVersion: testsys.bottlerocket.aws/v1
+apiVersion: testsys.system/v1
 kind: Resource
 metadata:
   name: dup-2
-  namespace: testsys-bottlerocket-aws
+  namespace: testsys
 spec:
   agent:
     name: dup-2-agent
@@ -13,11 +13,11 @@ spec:
       info: 3
   dependsOn: []
 ---
-apiVersion: testsys.bottlerocket.aws/v1
+apiVersion: testsys.system/v1
 kind: Test
 metadata:
   name: hello-bones-2
-  namespace: testsys-bottlerocket-aws
+  namespace: testsys
 spec:
   agent:
     name: hello-agent

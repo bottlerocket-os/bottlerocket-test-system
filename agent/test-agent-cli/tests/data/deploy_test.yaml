@@ -1,8 +1,8 @@
-apiVersion: testsys.bottlerocket.aws/v1
+apiVersion: testsys.system/v1
 kind: Test
 metadata:
   name: hello-world-cli
-  namespace: testsys-bottlerocket-aws
+  namespace: testsys
 spec:
   retries: 5
   agent:

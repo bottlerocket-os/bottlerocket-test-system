@@ -3,7 +3,7 @@
 /// the system. When given a string literal parameter it adds `/parameter` to the end.
 macro_rules! testsys {
     () => {
-        "testsys.bottlerocket.aws"
+        "testsys.system"
     };
     ($s:literal) => {
         concat!(testsys!(), "/", $s)
@@ -12,7 +12,7 @@ macro_rules! testsys {
 
 // System identifiers
 pub const API_VERSION: &str = testsys!("v1");
-pub const NAMESPACE: &str = "testsys-bottlerocket-aws";
+pub const NAMESPACE: &str = "testsys";
 pub const TESTSYS: &str = testsys!();
 pub const TESTSYS_VERSION: &str = env!("CARGO_PKG_VERSION");
 
@@ -64,7 +64,7 @@ pub const TRUNC_LEN: usize = 15;
 
 #[test]
 fn testsys_constants_macro_test() {
-    assert_eq!("testsys.bottlerocket.aws", testsys!());
-    assert_eq!("testsys.bottlerocket.aws/v1", API_VERSION);
-    assert_eq!("testsys.bottlerocket.aws/foo", testsys!("foo"));
+    assert_eq!("testsys.system", testsys!());
+    assert_eq!("testsys.system/v1", API_VERSION);
+    assert_eq!("testsys.system/foo", testsys!("foo"));
 }

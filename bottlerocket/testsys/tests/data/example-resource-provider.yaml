@@ -1,8 +1,8 @@
-apiVersion: testsys.bottlerocket.aws/v1
+apiVersion: testsys.system/v1
 kind: Resource
 metadata:
   name: robot-provider
-  namespace: testsys-bottlerocket-aws
+  namespace: testsys
 spec:
   dependsOn: []
   agent:

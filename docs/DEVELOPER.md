@@ -160,11 +160,11 @@ The yaml file tells the controller and the test agent how the test should be run
 
 ```bash
 echo '---
-apiVersion: testsys.bottlerocket.aws/v1
+apiVersion: testsys.system/v1
 kind: Test
 metadata:
   name: hello-bones
-  namespace: testsys-bottlerocket-aws
+  namespace: testsys
 spec:
   agent:
     name: hello-agent
@@ -312,11 +312,11 @@ Any field can be configured to take values from other resources by using `${<res
 
 ```bash
 echo '---
-apiVersion: testsys.bottlerocket.aws/v1
+apiVersion: testsys.system/v1
 kind: Resource
 metadata:
   name: duplicator
-  namespace: testsys-bottlerocket-aws
+  namespace: testsys
 spec:
   agent:
     name: dup-agent
@@ -326,11 +326,11 @@ spec:
       info: 3
   dependsOn: []
 ---
-apiVersion: testsys.bottlerocket.aws/v1
+apiVersion: testsys.system/v1
 kind: Test
 metadata:
   name: hello-bones
-  namespace: testsys-bottlerocket-aws
+  namespace: testsys
 spec:
   agent:
     name: hello-agent

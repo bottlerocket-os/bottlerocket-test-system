@@ -61,7 +61,7 @@ We also set our kubeconfig context to the testsys namespace for convenience.
 
 ```shell
 testsys install --controller-uri controller:eks
-kubectl config set-context --current --namespace="testsys-bottlerocket-aws"
+kubectl config set-context --current --namespace="testsys"
 ```
 
 We will be creating an EKS cluster and EC2 instances, so we need to create a Kubernetes secret with our AWS credentials.
