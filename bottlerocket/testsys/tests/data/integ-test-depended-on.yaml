@@ -1,5 +1,5 @@
 ---
-apiVersion: testsys.bottlerocket.aws/v1
+apiVersion: testsys.system/v1
 kind: Resource
 metadata:
   name: dup-2
@@ -13,7 +13,7 @@ spec:
       info: 3
   dependsOn: []
 ---
-apiVersion: testsys.bottlerocket.aws/v1
+apiVersion: testsys.system/v1
 kind: Test
 metadata:
   name: hello-bones-2

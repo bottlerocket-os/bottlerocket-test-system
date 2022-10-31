@@ -424,7 +424,7 @@ mod test {
             .unwrap();
         cluster
             .wait_for_object::<CustomResourceDefinition>(
-                "resources.testsys.bottlerocket.aws",
+                "resources.testsys.system",
                 cluster.api().await.unwrap(),
                 tokio::time::Duration::from_secs(10),
             )

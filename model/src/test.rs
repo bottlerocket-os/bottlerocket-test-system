@@ -15,7 +15,7 @@ use std::borrow::Cow;
 #[kube(
     derive = "Default",
     derive = "PartialEq",
-    group = "testsys.bottlerocket.aws",
+    group = "testsys.system",
     kind = "Test",
     namespaced,
     plural = "tests",

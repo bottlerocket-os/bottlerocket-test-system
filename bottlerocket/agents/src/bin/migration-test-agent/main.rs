@@ -14,7 +14,7 @@ cluster. This can also be done without YAML using the `testsys` command line int
 
 
 ```yaml
-apiVersion: testsys.bottlerocket.aws/v1
+apiVersion: testsys.system/v1
 kind: Test
 metadata:
   name: upgrade-ec2-test

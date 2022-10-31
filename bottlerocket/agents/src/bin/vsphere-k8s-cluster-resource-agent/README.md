@@ -5,7 +5,7 @@ This TestSys resource agent is responsible for provisioning vSphere K8s clusters
 ## Example configuration for the resource agent
 
 ```yaml
-apiVersion: testsys.bottlerocket.aws/v1
+apiVersion: testsys.system/v1
 kind: Resource
 metadata:
   name: my-vsphere-cluster

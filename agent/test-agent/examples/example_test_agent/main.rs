@@ -13,7 +13,7 @@ root directory of this repository.
 An example manifest for deploying the test definition for this test-agent to a K8s cluster:
 
 ```yaml
-apiVersion: testsys.bottlerocket.aws/v1
+apiVersion: testsys.system/v1
 kind: Test
 metadata:
   name: hello-world
