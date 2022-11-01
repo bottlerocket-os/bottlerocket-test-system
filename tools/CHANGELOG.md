@@ -6,6 +6,10 @@ The format is inspired by [Keep a Changelog](https://keepachangelog.com/en/1.0.0
 Since this project is only a vessel for packaging a few binary tools, its adherence to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html) is loose at best.
 
+## [0.2.1] - 2022-11-01
+
+Update bottlerocket sdk to v0.28.0
+  
 ## [0.2.0] - 2022-10-24
 
 Update eksctl, sonobuoy, kubeadm
