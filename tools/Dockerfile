@@ -95,11 +95,13 @@ RUN mkdir eksctl-anywhere && curl -L ${EKSA_SOURCE_URL} \
     grep eksctl_anywhere_${EKSA_VERSION}.tar.gz \
       /hashes/eksctl | sha512sum --check - && \
     tar -xf eksctl_anywhere_${EKSA_VERSION}.tar.gz --strip-components 1 -C eksctl-anywhere && \
-    rm eksctl_anywhere_${EKSA_VERSION}.tar.gz
+    rm eksctl_anywhere_${EKSA_VERSION}.tar.gz && \
+    sed -i 's/v0.2.0-alpha.6/v0.2.1/' eksctl-anywhere/go.mod && \
+    rm eksctl-anywhere/go.sum
 
 USER root
 WORKDIR /home/builder/eksctl-anywhere/
-RUN go mod vendor
+RUN go mod tidy && go mod vendor
 RUN cp -p LICENSE /usr/share/licenses/eksctl-anywhere && \
     /usr/libexec/tools/bottlerocket-license-scan \
       --clarify /clarify.toml \
