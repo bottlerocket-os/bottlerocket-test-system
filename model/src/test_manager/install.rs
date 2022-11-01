@@ -8,7 +8,8 @@ use crate::system::{
 use crate::test_manager::TestManager;
 use crate::{Resource, Test};
 use k8s_openapi::api::core::v1::Namespace;
-use kube::{Api, CustomResourceExt};
+use k8s_openapi::apiextensions_apiserver::pkg::apis::apiextensions::v1::CustomResourceDefinition;
+use kube::{Api, CustomResourceExt, ResourceExt};
 use snafu::ResultExt;
 
 impl TestManager {
@@ -130,7 +131,20 @@ impl TestManager {
             .delete(NAMESPACE, &Default::default())
             .await
             .context(error::KubeSnafu {
-                action: "delete testsys namespace",
+                action: "delete TestSys namespace",
+            })?;
+        let crd_api: Api<CustomResourceDefinition> = self.api();
+        crd_api
+            .delete(&Test::crd().name_any(), &Default::default())
+            .await
+            .context(error::KubeSnafu {
+                action: "delete TestSys Test CRD",
+            })?;
+        crd_api
+            .delete(&Resource::crd().name_any(), &Default::default())
+            .await
+            .context(error::KubeSnafu {
+                action: "delete TestSys Resource CRD",
             })?;
         Ok(())
     }
