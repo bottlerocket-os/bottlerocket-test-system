@@ -15,7 +15,7 @@ ENV PATH="${GOROOT}/bin:${PATH}"
 ENV GOPROXY="${GOPROXY}"
 
 ADD ./hashes /hashes
-COPY ./clarify.toml clarify.toml
+COPY ./clarify.toml /clarify.toml
 
 # =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^=
 # Shared build stage used to build Rust binaries.
