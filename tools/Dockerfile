@@ -18,24 +18,6 @@ ADD ./hashes /hashes
 COPY ./clarify.toml /clarify.toml
 
 # =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^=
-# Shared build stage used to build Rust binaries.
-ARG BUILDER_IMAGE
-FROM ${BUILDER_IMAGE} as build-rust
-ARG ARCH
-
-USER root
-RUN mkdir -p /home/builder && \
-    chown -R builder:builder /home/builder
-USER builder
-WORKDIR /home/builder
-
-# We need these environment variables set for building the `openssl-sys` crate
-ENV PKG_CONFIG_PATH=/${ARCH}-bottlerocket-linux-musl/sys-root/usr/lib/pkgconfig
-ENV PKG_CONFIG_ALLOW_CROSS=1
-ENV CARGO_HOME=/home/builder/.cargo
-ENV OPENSSL_STATIC=true
-
-# =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^=
 FROM build-go as eksctl-build
 
 USER root
