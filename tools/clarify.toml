@@ -84,6 +84,13 @@ license-files = [
     { path = "LICENSE", hash = 0x709001e3 },
 ]
 
+[clarify."gopkg.in/yaml.v1"]
+expression = "MIT AND Apache-2.0"
+license-files = [
+    { path = "LICENSE", hash = 0x9c545105 },
+    { path = "LICENSE.libyaml", hash = 0xa2e4ce3 },
+]
+
 [clarify."honnef.co/go/tools"]
 expression = "MIT AND BSD-3-Clause"
 license-files = [
