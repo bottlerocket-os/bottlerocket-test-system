@@ -198,7 +198,7 @@ pub(crate) fn build_struct(ast: &syn::DeriveInput) -> TokenStream {
                         self
                     }
 
-                    pub fn retries<S1>(&mut self, retries: u32) -> &mut Self {
+                    pub fn retries(&mut self, retries: u32) -> &mut Self {
                         self.retries = Some(retries);
                         self
                     }
