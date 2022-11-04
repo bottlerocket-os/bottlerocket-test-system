@@ -1,5 +1,5 @@
 use crate::aws::{create_ssm_activation, ensure_ssm_service_role, wait_for_ssm_ready};
-use agent_utils::aws::aws_resource_config;
+use agent_utils::aws::aws_config;
 use agent_utils::base64_decode_write_file;
 use bottlerocket_agents::constants::TEST_CLUSTER_KUBECONFIG_PATH;
 use bottlerocket_agents::tuf::{download_target, tuf_repo_urls};
@@ -108,14 +108,15 @@ impl Create for VMCreator {
         memo.aws_secret_name = spec.secrets.get(AWS_CREDENTIALS_SECRET_NAME).cloned();
         memo.assume_role = spec.configuration.assume_role.clone();
 
-        let shared_config = aws_resource_config(
-            client,
+        let shared_config = aws_config(
             &spec.secrets.get(AWS_CREDENTIALS_SECRET_NAME),
             &spec.configuration.assume_role,
             &None,
-            Resources::Clear,
+            &None,
+            false,
         )
-        .await?;
+        .await
+        .context(Resources::Clear, "Error creating config")?;
 
         let ssm_client = aws_sdk_ssm::Client::new(&shared_config);
         let iam_client = aws_sdk_iam::Client::new(&shared_config);
@@ -460,14 +461,15 @@ impl Destroy for VMDestroyer {
         };
         let spec = spec.context(resources, "Missing vSphere resource agent spec")?;
 
-        let shared_config = aws_resource_config(
-            client,
+        let shared_config = aws_config(
             &memo.aws_secret_name.as_ref(),
             &memo.assume_role,
             &None,
-            Resources::Clear,
+            &None,
+            false,
         )
-        .await?;
+        .await
+        .context(Resources::Clear, "Error creating config")?;
         let ssm_client = aws_sdk_ssm::Client::new(&shared_config);
 
         // Get vSphere credentials to authenticate to vCenter via govmomi

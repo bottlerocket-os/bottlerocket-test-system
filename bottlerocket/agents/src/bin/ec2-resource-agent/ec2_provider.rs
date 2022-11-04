@@ -1,4 +1,4 @@
-use agent_utils::aws::{aws_resource_config, setup_resource_env};
+use agent_utils::aws::aws_config;
 use agent_utils::json_display;
 use aws_sdk_ec2::client::fluent_builders::RunInstances;
 use aws_sdk_ec2::error::RunInstancesError;
@@ -99,23 +99,18 @@ impl Create for Ec2Creator {
             .await
             .context(&memo, "Error storing uuid in info client")?;
 
-        // Write aws credentials if we need them so we can run eksctl
-        if let Some(aws_secret_name) = spec.secrets.get(AWS_CREDENTIALS_SECRET_NAME) {
-            setup_resource_env(client, aws_secret_name, memo.as_resources()).await?;
-            memo.aws_secret_name = Some(aws_secret_name.clone());
-        }
-
         memo.aws_secret_name = spec.secrets.get(AWS_CREDENTIALS_SECRET_NAME).cloned();
         memo.assume_role = spec.configuration.assume_role.clone();
 
-        let shared_config = aws_resource_config(
-            client,
+        let shared_config = aws_config(
             &spec.secrets.get(AWS_CREDENTIALS_SECRET_NAME),
             &spec.configuration.assume_role,
+            &None,
             &Some(spec.configuration.region.clone()),
-            Resources::Clear,
+            false,
         )
-        .await?;
+        .await
+        .context(Resources::Clear, "Error creating config")?;
         let ec2_client = aws_sdk_ec2::Client::new(&shared_config);
 
         let run_instance_result = run_instances(&spec, &ec2_client, instance_uuid, &memo).await?;
@@ -519,14 +514,15 @@ impl Destroy for Ec2Destroyer {
             memo.clone().instance_ids
         };
 
-        let shared_config = aws_resource_config(
-            client,
+        let shared_config = aws_config(
             &memo.aws_secret_name.as_ref(),
             &memo.assume_role,
+            &None,
             &Some(memo.region.clone()),
-            Resources::Clear,
+            false,
         )
-        .await?;
+        .await
+        .context(Resources::Clear, "Error creating config")?;
         let ec2_client = aws_sdk_ec2::Client::new(&shared_config);
 
         // If we don't have any instances to delete make sure there weren't any instances

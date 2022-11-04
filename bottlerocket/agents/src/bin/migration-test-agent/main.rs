@@ -41,7 +41,7 @@ mod ssm;
 use crate::ssm::{
     create_or_update_ssm_document, ssm_run_command, wait_for_os_version_change, wait_for_ssm_ready,
 };
-use agent_utils::aws::aws_test_config;
+use agent_utils::aws::aws_config;
 use agent_utils::init_agent_logger;
 use async_trait::async_trait;
 use bottlerocket_agents::error::{self, Error};
@@ -78,12 +78,12 @@ impl test_agent::Runner for MigrationTestRunner {
     }
 
     async fn run(&mut self) -> Result<TestResults, Self::E> {
-        let shared_config = aws_test_config(
-            self,
-            &self.aws_secret_name,
+        let shared_config = aws_config(
+            &self.aws_secret_name.as_ref(),
             &self.config.assume_role,
             &None,
             &Some(self.config.aws_region.clone()),
+            false,
         )
         .await?;
         let ssm_client = aws_sdk_ssm::Client::new(&shared_config);
