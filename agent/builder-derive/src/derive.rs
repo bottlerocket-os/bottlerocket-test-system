@@ -42,9 +42,9 @@ pub(crate) fn build_struct(ast: &syn::DeriveInput) -> TokenStream {
 
     // Get a list of fields and their types
     let fields = data.fields.iter().filter_map(|field| {
-        let doc = field.attrs.iter().filter(|v| {
+        let attrs = field.attrs.iter().filter(|v| {
             v.parse_meta()
-                .map(|meta| meta.path().is_ident("doc"))
+                .map(|meta| meta.path().is_ident("doc") || meta.path().is_ident("serde"))
                 .unwrap_or(false)
         });
         let field_name = match field.ident.as_ref() {
@@ -54,7 +54,7 @@ pub(crate) fn build_struct(ast: &syn::DeriveInput) -> TokenStream {
         let field_ident = Ident::new(&field_name, Span::call_site());
         let ty = field.ty.clone();
         Some(quote! {
-            #(#doc)*
+            #(#attrs)*
             #field_ident: model::ConfigValue<#ty>,
         })
     });
