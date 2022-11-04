@@ -106,15 +106,25 @@ pub(crate) fn build_struct(ast: &syn::DeriveInput) -> TokenStream {
                 #[serde(rename_all = "camelCase")]
                 pub struct #build_ident{
                     #(#fields)*
+                    #[serde(skip)]
                     depends_on: Vec<String>,
+                    #[serde(skip)]
                     resources: Vec<String>,
+                    #[serde(skip)]
                     labels: std::collections::BTreeMap<String,String>,
+                    #[serde(skip)]
                     image: Option<String>,
+                    #[serde(skip)]
                     image_pull_secret: Option<String>,
+                    #[serde(skip)]
                     secrets: std::collections::BTreeMap<String, model::SecretName>,
+                    #[serde(skip)]
                     retries: Option<u32>,
+                    #[serde(skip)]
                     keep_running: Option<bool>,
+                    #[serde(skip)]
                     capabilities: Vec<String>,
+                    #[serde(skip)]
                     privileged: Option<bool>,
                 }
 
@@ -198,7 +208,7 @@ pub(crate) fn build_struct(ast: &syn::DeriveInput) -> TokenStream {
                         self
                     }
 
-                    pub fn retries<S1>(&mut self, retries: u32) -> &mut Self {
+                    pub fn retries(&mut self, retries: u32) -> &mut Self {
                         self.retries = Some(retries);
                         self
                     }
@@ -278,15 +288,25 @@ pub(crate) fn build_struct(ast: &syn::DeriveInput) -> TokenStream {
                 #[serde(rename_all = "camelCase")]
                 pub struct #build_ident{
                     #(#fields)*
+                    #[serde(skip)]
                     depends_on: Vec<String>,
+                    #[serde(skip)]
                     conflicts_with: Vec<String>,
+                    #[serde(skip)]
                     labels: std::collections::BTreeMap<String,String>,
+                    #[serde(skip)]
                     image: Option<String>,
+                    #[serde(skip)]
                     image_pull_secret: Option<String>,
+                    #[serde(skip)]
                     secrets: std::collections::BTreeMap<String, model::SecretName>,
+                    #[serde(skip)]
                     keep_running: Option<bool>,
+                    #[serde(skip)]
                     capabilities: Vec<String>,
+                    #[serde(skip)]
                     destruction_policy: Option<model::DestructionPolicy>,
+                    #[serde(skip)]
                     privileged: Option<bool>,
                 }
 
