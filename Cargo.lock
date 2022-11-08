@@ -633,7 +633,7 @@ dependencies = [
 
 [[package]]
 name = "builder-derive"
-version = "0.0.1"
+version = "0.0.3"
 dependencies = [
  "configuration-derive",
  "model",
@@ -770,7 +770,7 @@ dependencies = [
 
 [[package]]
 name = "configuration-derive"
-version = "0.0.1"
+version = "0.0.3"
 dependencies = [
  "quote",
  "syn",
