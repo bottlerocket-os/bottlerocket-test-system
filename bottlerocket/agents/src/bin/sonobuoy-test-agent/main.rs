@@ -127,7 +127,6 @@ impl test_agent::Runner for SonobuoyTestRunner {
         rerun_failed_sonobuoy(
             TEST_CLUSTER_KUBECONFIG_PATH,
             e2e_repo_config,
-            &self.config,
             &self.results_dir,
         )
         .await
