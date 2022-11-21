@@ -1,4 +1,4 @@
-use agent_utils::aws::aws_resource_config;
+use agent_utils::aws::aws_config;
 use aws_sdk_ec2::model::Filter;
 use aws_sdk_ec2::types::SdkError;
 use aws_sdk_iam::error::{GetInstanceProfileError, GetInstanceProfileErrorKind};
@@ -91,14 +91,15 @@ impl Create for EcsCreator {
         memo.aws_secret_name = spec.secrets.get(AWS_CREDENTIALS_SECRET_NAME).cloned();
         memo.assume_role = spec.configuration.assume_role.clone();
 
-        let config = aws_resource_config(
-            client,
+        let config = aws_config(
             &spec.secrets.get(AWS_CREDENTIALS_SECRET_NAME),
             &spec.configuration.assume_role,
+            &None,
             &spec.configuration.region,
-            Resources::Clear,
+            false,
         )
-        .await?;
+        .await
+        .context(Resources::Clear, "Error creating config")?;
         let ecs_client = aws_sdk_ecs::Client::new(&config);
         let iam_client = aws_sdk_iam::Client::new(&config);
 
@@ -323,14 +324,15 @@ impl Destroy for EcsDestroyer {
             .await
             .context(Resources::Remaining, "Unable to get info from client")?;
 
-        let config = aws_resource_config(
-            client,
+        let config = aws_config(
             &memo.aws_secret_name.as_ref(),
             &memo.assume_role,
+            &None,
             &memo.region,
-            Resources::Clear,
+            false,
         )
-        .await?;
+        .await
+        .context(Resources::Clear, "Error creating config")?;
         let ecs_client = aws_sdk_ecs::Client::new(&config);
 
         info!(

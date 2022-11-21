@@ -4,7 +4,7 @@ Tests whether an ECS task runs successfully.
 
 !*/
 
-use agent_utils::aws::aws_test_config;
+use agent_utils::aws::aws_config;
 use agent_utils::init_agent_logger;
 use async_trait::async_trait;
 use aws_sdk_ec2::types::SdkError;
@@ -39,12 +39,12 @@ impl Runner for EcsTestRunner {
     }
 
     async fn run(&mut self) -> Result<TestResults, Self::E> {
-        let config = aws_test_config(
-            self,
-            &self.aws_secret_name,
+        let config = aws_config(
+            &self.aws_secret_name.as_ref(),
             &self.config.assume_role,
             &None,
             &self.config.region,
+            false,
         )
         .await?;
         let ecs_client = aws_sdk_ecs::Client::new(&config);

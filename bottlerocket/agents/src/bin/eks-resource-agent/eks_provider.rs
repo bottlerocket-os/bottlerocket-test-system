@@ -1,4 +1,4 @@
-use agent_utils::aws::{aws_resource_config, setup_resource_env};
+use agent_utils::aws::aws_config;
 use agent_utils::{impl_display_as_json, json_display, provider_error_for_cmd_output};
 use aws_sdk_ec2::model::{Filter, SecurityGroup, Subnet};
 use aws_sdk_ec2::types::SdkError;
@@ -306,23 +306,18 @@ impl Create for EksCreator {
             memo.creation_policy
         );
 
-        // Write aws credentials if we need them so we can run eksctl
-        if let Some(aws_secret_name) = spec.secrets.get(AWS_CREDENTIALS_SECRET_NAME) {
-            setup_resource_env(client, aws_secret_name, Resources::Clear).await?;
-            memo.aws_secret_name = Some(aws_secret_name.clone());
-        }
-
         memo.aws_secret_name = spec.secrets.get(AWS_CREDENTIALS_SECRET_NAME).cloned();
         memo.assume_role = spec.configuration.assume_role.clone();
 
-        let shared_config = aws_resource_config(
-            client,
+        let shared_config = aws_config(
             &spec.secrets.get(AWS_CREDENTIALS_SECRET_NAME),
             &spec.configuration.assume_role,
+            &None,
             &Some(cluster_config.region()),
-            Resources::Clear,
+            true,
         )
-        .await?;
+        .await
+        .context(Resources::Clear, "Error creating config")?;
         let aws_clients = AwsClients::new(&shared_config).await;
 
         let (do_create, message) = is_eks_cluster_creation_required(
@@ -930,14 +925,15 @@ impl Destroy for EksDestroyer {
             }
         };
 
-        let _ = aws_resource_config(
-            client,
+        let _ = aws_config(
             &memo.aws_secret_name.as_ref(),
             &memo.assume_role,
+            &None,
             &memo.region.clone(),
-            Resources::Clear,
+            true,
         )
-        .await?;
+        .await
+        .context(Resources::Clear, "Error creating config")?;
 
         let region = memo
             .clone()

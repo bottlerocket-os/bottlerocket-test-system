@@ -32,7 +32,7 @@ spec:
 
 !*/
 
-use agent_utils::aws::aws_test_config;
+use agent_utils::aws::aws_config;
 use agent_utils::{base64_decode_write_file, init_agent_logger};
 use async_trait::async_trait;
 use bottlerocket_agents::constants::{E2E_REPO_CONFIG_PATH, TEST_CLUSTER_KUBECONFIG_PATH};
@@ -65,12 +65,12 @@ impl test_agent::Runner for SonobuoyTestRunner {
     }
 
     async fn run(&mut self) -> Result<TestResults, Self::E> {
-        aws_test_config(
-            self,
-            &self.aws_secret_name,
+        aws_config(
+            &self.aws_secret_name.as_ref(),
             &self.config.assume_role,
             &None,
             &None,
+            true,
         )
         .await?;
 
@@ -99,12 +99,12 @@ impl test_agent::Runner for SonobuoyTestRunner {
 
     async fn rerun_failed(&mut self, _prev_results: &TestResults) -> Result<TestResults, Self::E> {
         // Set up the aws credentials if they were provided.
-        aws_test_config(
-            self,
-            &self.aws_secret_name,
+        aws_config(
+            &self.aws_secret_name.as_ref(),
             &self.config.assume_role,
             &None,
             &None,
+            true,
         )
         .await?;
 
