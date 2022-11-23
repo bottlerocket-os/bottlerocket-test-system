@@ -20,13 +20,13 @@ metadata:
 spec:
   agent:
     configuration:
-      kubeconfig_base64: <Base64 encoded kubeconfig for the test cluster sonobuoy runs the tests in>
+      kubeconfigBase64: <Base64 encoded kubeconfig for the test cluster sonobuoy runs the tests in>
       plugin: e2e
       mode: certified-conformance
       kubernetes_version: v1.21.2
     image: <your sonobuoy-test-agent image URI>
     name: sonobuoy-test-agent
-    keep_running: true
+    keepRunning: true
   resources: {}
 ```
 
