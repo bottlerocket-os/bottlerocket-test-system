@@ -44,7 +44,7 @@ RUN mkdir -p /usr/share/licenses/eksctl && \
     mkdir -p /usr/share/licenses/eksctl-anywhere && \
     chown -R builder:builder /usr/share/licenses/eksctl-anywhere
 
-ARG EKSCTL_VERSION=0.112.0
+ARG EKSCTL_VERSION=0.120.0
 ARG EKSCTL_SOURCE_URL="https://github.com/weaveworks/eksctl/archive/refs/tags/v${EKSCTL_VERSION}.tar.gz"
 
 ARG GOARCH
