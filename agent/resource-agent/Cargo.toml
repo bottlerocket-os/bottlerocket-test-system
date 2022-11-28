@@ -16,6 +16,6 @@ snafu = "0.7"
 tokio = { version = "1", default-features = false, features = ["time"] }
 
 [dev-dependencies]
-env_logger = "0.9"
+env_logger = "0.10"
 nonzero_ext = "0.3"
 tokio = { version = "1", default-features = false, features = ["macros", "rt-multi-thread"] }
