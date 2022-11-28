@@ -44,15 +44,15 @@ RUN mkdir -p /usr/share/licenses/eksctl && \
     mkdir -p /usr/share/licenses/eksctl-anywhere && \
     chown -R builder:builder /usr/share/licenses/eksctl-anywhere
 
-ARG EKSCTL_VERSION=0.112.0
+ARG EKSCTL_VERSION=0.120.0
 ARG EKSCTL_SOURCE_URL="https://github.com/weaveworks/eksctl/archive/refs/tags/v${EKSCTL_VERSION}.tar.gz"
 
 ARG GOARCH
 ARG EKSCTL_BINARY_URL="https://github.com/weaveworks/eksctl/releases/download/v${EKSCTL_VERSION}/eksctl_Linux_${GOARCH}.tar.gz"
 
-ARG EKSA_VERSION=0.12.1
+ARG EKSA_VERSION=0.12.2
 ARG EKSA_SOURCE_URL="https://github.com/aws/eks-anywhere/archive/refs/tags/v${EKSA_VERSION}.tar.gz"
-ARG EKSA_RELEASE_NUMBER=23
+ARG EKSA_RELEASE_NUMBER=24
 # TODO EKS-A currently does not provide an ARM64 binary, add the hash for it when they do
 ARG EKSA_BINARY_URL="https://anywhere-assets.eks.amazonaws.com/releases/eks-a/${EKSA_RELEASE_NUMBER}/artifacts/eks-a/v${EKSA_VERSION}/${GOOS}/amd64/eksctl-anywhere-v${EKSA_VERSION}-${GOOS}-amd64.tar.gz"
 
