@@ -250,7 +250,7 @@ pub(crate) fn build_struct(ast: &syn::DeriveInput) -> TokenStream {
                         self
                     }
 
-                    pub fn build<S1>(&self, name: S1) -> Result<model::Test, Box<dyn std::error::Error>>
+                    pub fn build<S1>(&self, name: S1) -> Result<model::Test, Box<dyn std::error::Error + Sync + Send>>
                     where
                     S1: Into<String>,
                     {
@@ -432,7 +432,7 @@ pub(crate) fn build_struct(ast: &syn::DeriveInput) -> TokenStream {
                         self
                     }
 
-                    pub fn build<S1>(&self, name: S1) -> Result<model::Resource, Box<dyn std::error::Error>>
+                    pub fn build<S1>(&self, name: S1) -> Result<model::Resource, Box<dyn std::error::Error + Sync + Send>>
                     where
                     S1: Into<String>,
                     {
