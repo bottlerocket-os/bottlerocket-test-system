@@ -17,7 +17,7 @@ pub(crate) enum Error {
     #[snafu(display("Unable to build '{}': {}", what, source))]
     Build {
         what: String,
-        source: Box<dyn std::error::Error>,
+        source: Box<dyn std::error::Error + Sync + Send>,
     },
 
     #[snafu(display("Unable to create client: {}", source))]
