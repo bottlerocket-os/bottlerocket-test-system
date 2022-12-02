@@ -1,4 +1,4 @@
-# syntax=docker/dockerfile:1.1.3-experimental
+# syntax=docker/dockerfile:1.4.3
 # This Dockfile contains separate targets for each testsys agent
 ARG BUILDER_IMAGE
 FROM "${BUILDER_IMAGE}" as base
