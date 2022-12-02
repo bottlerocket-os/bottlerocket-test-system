@@ -200,12 +200,12 @@ impl From<&StatusSnapshot> for Table {
                             .into_iter()
                             .chain(controller_line.clone())
                             // Add a row for each crd based on the function provided.
-                            .chain(
-                                status
-                                    .crds
-                                    .iter()
-                                    .map(|crd| (additional_column.value)(crd).unwrap_or_default()),
-                            )
+                            .chain(status.crds.iter().flat_map(|crd| {
+                                vec![
+                                    (additional_column.value)(crd).unwrap_or_default();
+                                    crd_rows(crd)
+                                ]
+                            }))
                             // Convert the data for this column into a table.
                             .table()
                             .with(Extract::segment(1.., 0..))
@@ -318,5 +318,20 @@ impl std::fmt::Debug for AdditionalColumn {
         f.debug_struct("AdditionalColumn")
             .field("header", &self.header)
             .finish()
+    }
+}
+
+/// Determine the number of status rows that will be occupied by this CRD
+fn crd_rows(crd: &Crd) -> usize {
+    match crd {
+        Crd::Test(test) => {
+            let retry_count = test.agent_status().results.len();
+            if retry_count != 0 {
+                retry_count
+            } else {
+                1
+            }
+        }
+        Crd::Resource(_) => 1,
     }
 }
