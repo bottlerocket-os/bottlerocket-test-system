@@ -1,10 +1,12 @@
+use super::StatusProgress;
 use crate::{Crd, TaskState};
 use k8s_openapi::api::core::v1::PodStatus;
 use kube::{core::object::HasStatus, ResourceExt};
 use serde::Serialize;
 use tabled::object::Segment;
 use tabled::{
-    Alignment, Concat, Extract, MaxWidth, MinWidth, Modify, Style, Table, TableIteratorExt, Tabled,
+    Alignment, Concat, Extract, Header, MaxWidth, MinWidth, Modify, Style, Table, TableIteratorExt,
+    Tabled,
 };
 
 /// `StatusSnapshot` represents the status of a set of testsys objects (including the controller).
@@ -22,6 +24,8 @@ pub struct StatusSnapshot {
     crds: Vec<Crd>,
     #[serde(skip)]
     additional_columns: Vec<AdditionalColumn>,
+    #[serde(skip)]
+    with_progress: Option<StatusProgress>,
 }
 
 impl StatusSnapshot {
@@ -68,6 +72,7 @@ impl StatusSnapshot {
             controller_status,
             crds,
             additional_columns: Default::default(),
+            with_progress: None,
         }
     }
 
@@ -79,6 +84,11 @@ impl StatusSnapshot {
             header: header.into(),
             value: f,
         });
+        self
+    }
+
+    pub fn with_progress(&mut self, status_progress: StatusProgress) -> &mut Self {
+        self.with_progress = Some(status_progress);
         self
     }
 }
@@ -124,6 +134,52 @@ impl From<&StatusSnapshot> for Table {
             results.extend::<Vec<ResultRow>>(crd.into());
         }
 
+        let progress_column = status.with_progress.as_ref().map(|with_progress| {
+            // Convert the CRDs to an iterator
+            crds.iter()
+                // For each CRD create a `Vec` containing the status for that CRD
+                // It needs to be a `Vec` because each `TestResults` is displayed in it's own
+                // row. `flat_map` will automatically flatten the `Iterator<Vec>` to
+                // `Iterator<Option<String>>`
+                .flat_map(|crd| match crd {
+                    Crd::Test(test) => {
+                        if !test.agent_status().results.is_empty() {
+                            test.agent_status()
+                                .results
+                                .iter()
+                                // For each `TestResults`, if the test progress should be included, add
+                                // it to the `Vec`, if not just add `None`
+                                .map(|result| {
+                                    if matches!(with_progress, StatusProgress::WithTests) {
+                                        result.other_info.to_owned()
+                                    } else {
+                                        None
+                                    }
+                                })
+                                .collect()
+                        } else {
+                            // If there are no test results, a line will still be there
+                            vec![Some("No test results".to_string())]
+                        }
+                    }
+                    // Get the status of each resource and wrap it in a `Vec` to match types
+                    // with the `Test` branch.
+                    Crd::Resource(resource) => vec![resource.status().and_then(|status| {
+                        status.agent_info.as_ref().and_then(|agent_info| {
+                            agent_info
+                                .get("currentStatus")
+                                .and_then(|info| info.as_str().map(|info| info.to_string()))
+                        })
+                    })],
+                })
+                // Convert the `Option<String>` to `String`
+                .map(Option::unwrap_or_default)
+                .table()
+                .with(MaxWidth::wrapping(50))
+                .with(Extract::segment(1.., 0..))
+                .with(Header("STATUS"))
+        });
+
         // An extra line for the controller if it's status is being reported.
         let controller_line = if status.controller_status.is_some() {
             Some("".to_string())
@@ -131,26 +187,30 @@ impl From<&StatusSnapshot> for Table {
             None
         };
 
-        status
-            .additional_columns
-            .iter()
-            // Create a table for each additional column so they can all be merged into a single table.
-            .map(|additional_column| {
-                // Add the requested header and a blank string for the controller line in the status table.
-                vec![additional_column.header.clone()]
-                    .into_iter()
-                    .chain(controller_line.clone())
-                    // Add a row for each crd based on the function provided.
-                    .chain(
-                        status
-                            .crds
-                            .iter()
-                            .map(|crd| (additional_column.value)(crd).unwrap_or_default()),
-                    )
-                    // Convert the data for this column into a table.
-                    .table()
-                    .with(Extract::segment(1.., 0..))
-            })
+        progress_column
+            .into_iter()
+            .chain(
+                status
+                    .additional_columns
+                    .iter()
+                    // Create a table for each additional column so they can all be merged into a single table.
+                    .map(|additional_column| {
+                        // Add the requested header and a blank string for the controller line in the status table.
+                        vec![additional_column.header.clone()]
+                            .into_iter()
+                            .chain(controller_line.clone())
+                            // Add a row for each crd based on the function provided.
+                            .chain(
+                                status
+                                    .crds
+                                    .iter()
+                                    .map(|crd| (additional_column.value)(crd).unwrap_or_default()),
+                            )
+                            // Convert the data for this column into a table.
+                            .table()
+                            .with(Extract::segment(1.., 0..))
+                    }),
+            )
             // Add each additional column to the standard results table (`Table::new(results)`).
             .fold(Table::new(results), |table1, table2| {
                 table1.with(Concat::horizontal(table2))
