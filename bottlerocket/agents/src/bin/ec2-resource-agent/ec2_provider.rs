@@ -8,7 +8,10 @@ use aws_sdk_ec2::model::{
 };
 use aws_sdk_ec2::output::RunInstancesOutput;
 use aws_sdk_ec2::types::SdkError;
-use bottlerocket_types::agent_config::{ClusterType, Ec2Config, AWS_CREDENTIALS_SECRET_NAME};
+use bottlerocket_agents::userdata::{decode_to_string, merge_values};
+use bottlerocket_types::agent_config::{
+    ClusterType, CustomUserData, Ec2Config, AWS_CREDENTIALS_SECRET_NAME,
+};
 use log::{debug, info, trace, warn};
 use model::{Configuration, SecretName};
 use resource_agent::clients::InfoClient;
@@ -20,6 +23,7 @@ use std::collections::HashSet;
 use std::fmt::Debug;
 use std::iter::FromIterator;
 use std::time::Duration;
+use toml::Value;
 use uuid::Uuid;
 
 /// The default number of instances to spin up.
@@ -205,6 +209,7 @@ async fn run_instances(
                     &spec.configuration.endpoint,
                     &spec.configuration.certificate,
                     &spec.configuration.cluster_dns_ip,
+                    &spec.configuration.custom_user_data,
                     memo,
                 )?)
                 .iam_instance_profile(
@@ -335,35 +340,76 @@ fn userdata(
     endpoint: &Option<String>,
     certificate: &Option<String>,
     cluster_dns_ip: &Option<String>,
+    custom_user_data: &Option<CustomUserData>,
     memo: &ProductionMemo,
 ) -> ProviderResult<String> {
-    Ok(match cluster_type {
-        ClusterType::Eks => base64::encode(format!(
-            r#"[settings.updates]
+    let default_userdata = match cluster_type {
+        ClusterType::Eks => {
+            default_eks_userdata(cluster_name, endpoint, certificate, cluster_dns_ip, memo)?
+        }
+        ClusterType::Ecs => default_ecs_userdata(cluster_name),
+    };
+
+    let custom_userdata = if let Some(value) = custom_user_data {
+        value
+    } else {
+        return Ok(default_userdata);
+    };
+
+    match custom_userdata {
+        CustomUserData::Replace { encoded_userdata } => Ok(encoded_userdata.to_string()),
+        CustomUserData::Merge { encoded_userdata } => {
+            let merge_into = &mut decode_to_string(&default_userdata)?
+                .parse::<Value>()
+                .context(Resources::Clear, "Failed to parse TOML")?;
+            let merge_from = decode_to_string(encoded_userdata)?
+                .parse::<Value>()
+                .context(Resources::Clear, "Failed to parse TOML")?;
+            merge_values(&merge_from, merge_into)
+                .context(Resources::Clear, "Failed to merge TOML")?;
+            Ok(base64::encode(toml::to_string(merge_into).context(
+                Resources::Clear,
+                "Failed to serialize merged TOML",
+            )?))
+        }
+    }
+}
+
+fn default_eks_userdata(
+    cluster_name: &str,
+    endpoint: &Option<String>,
+    certificate: &Option<String>,
+    cluster_dns_ip: &Option<String>,
+    memo: &ProductionMemo,
+) -> Result<String, ProviderError> {
+    Ok(base64::encode(format!(
+        r#"[settings.updates]
 ignore-waves = true
-    
+
 [settings.kubernetes]
 api-server = "{}"
 cluster-name = "{}"
 cluster-certificate = "{}"
 cluster-dns-ip = "{}""#,
-            endpoint
-                .as_ref()
-                .context(memo, "Server endpoint is required for eks clusters.")?,
-            cluster_name,
-            certificate
-                .as_ref()
-                .context(memo, "Cluster certificate is required for eks clusters.")?,
-            cluster_dns_ip
-                .as_ref()
-                .context(memo, "Cluster DNS IP is required for eks clusters.")?,
-        )),
-        ClusterType::Ecs => base64::encode(format!(
-            r#"[settings.ecs]
+        endpoint
+            .as_ref()
+            .context(memo, "Server endpoint is required for eks clusters.")?,
+        cluster_name,
+        certificate
+            .as_ref()
+            .context(memo, "Cluster certificate is required for eks clusters.")?,
+        cluster_dns_ip
+            .as_ref()
+            .context(memo, "Cluster DNS IP is required for eks clusters.")?,
+    )))
+}
+
+fn default_ecs_userdata(cluster_name: &str) -> String {
+    base64::encode(format!(
+        r#"[settings.ecs]
 cluster = "{}""#,
-            cluster_name,
-        )),
-    })
+        cluster_name,
+    ))
 }
 
 #[derive(Debug)]

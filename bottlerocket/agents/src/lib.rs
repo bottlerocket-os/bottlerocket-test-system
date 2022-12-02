@@ -13,6 +13,7 @@ pub mod constants;
 pub mod error;
 pub mod sonobuoy;
 pub mod tuf;
+pub mod userdata;
 pub mod vsphere;
 
 /// Determines whether a cluster resource needs to be created given its creation policy

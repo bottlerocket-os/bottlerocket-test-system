@@ -21,6 +21,13 @@ pub struct VSphereK8sClusterInfo {
     pub kubeconfig_base64: String,
 }
 
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum CustomUserData {
+    Replace { encoded_userdata: String },
+    Merge { encoded_userdata: String },
+}
+
 /// What mode to run the e2e plugin in. Valid modes are `non-disruptive-conformance`,
 /// `certified-conformance` and `quick`.
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
@@ -238,6 +245,9 @@ pub struct Ec2Config {
 
     /// The role that should be assumed when launching instances.
     pub assume_role: Option<String>,
+
+    /// Custom TOML data that should be inserted into user-data settings.
+    pub custom_user_data: Option<CustomUserData>,
 
     // Eks specific instance information.
     /// The security groups that should be attached to the instances.
@@ -459,6 +469,9 @@ pub struct VSphereVmConfig {
 
     /// The role that should be assumed when creating the vms.
     pub assume_role: Option<String>,
+
+    /// Custom TOML data that should be inserted into user-data settings.
+    pub custom_user_data: Option<CustomUserData>,
 }
 
 #[test]
