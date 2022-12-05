@@ -202,6 +202,9 @@ pub struct ResourceStatus {
     /// A description of the resource that has been created by the resource agent.
     #[schemars(schema_with = "config_schema")]
     pub created_resource: Option<Map<String, Value>>,
+
+    /// The time of the last change to this CRD.
+    pub last_update: Option<String>,
 }
 
 impl CrdExt for Resource {

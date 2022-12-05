@@ -47,6 +47,8 @@ pub struct TestStatus {
     pub controller: ControllerStatus,
     /// Information written by the test agent.
     pub agent: AgentStatus,
+    /// The time of the last change to this CRD.
+    pub last_update: Option<String>,
 }
 
 /// The `Outcome` of a test run, reported by the test agent.

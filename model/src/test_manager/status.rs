@@ -26,6 +26,8 @@ pub struct StatusSnapshot {
     additional_columns: Vec<AdditionalColumn>,
     #[serde(skip)]
     with_progress: Option<StatusProgress>,
+    #[serde(skip)]
+    with_time: bool,
 }
 
 impl StatusSnapshot {
@@ -73,6 +75,7 @@ impl StatusSnapshot {
             crds,
             additional_columns: Default::default(),
             with_progress: None,
+            with_time: false,
         }
     }
 
@@ -90,6 +93,79 @@ impl StatusSnapshot {
     pub fn with_progress(&mut self, status_progress: StatusProgress) -> &mut Self {
         self.with_progress = Some(status_progress);
         self
+    }
+
+    pub fn with_time(&mut self) -> &mut Self {
+        self.with_time = true;
+        self
+    }
+
+    fn progress_column(&self) -> Option<Table> {
+        self.with_progress.as_ref().map(|with_progress| {
+            // Convert the CRDs to an iterator
+            self.crds
+                .iter()
+                // For each CRD create a `Vec` containing the status for that CRD
+                // It needs to be a `Vec` because each `TestResults` is displayed in it's own
+                // row. `flat_map` will automatically flatten the `Iterator<Vec>` to
+                // `Iterator<Option<String>>`
+                .flat_map(|crd| match crd {
+                    Crd::Test(test) => {
+                        if !test.agent_status().results.is_empty() {
+                            test.agent_status()
+                                .results
+                                .iter()
+                                // For each `TestResults`, if the test progress should be included, add
+                                // it to the `Vec`, if not just add `None`
+                                .map(|result| {
+                                    if matches!(with_progress, StatusProgress::WithTests) {
+                                        result.other_info.to_owned()
+                                    } else {
+                                        None
+                                    }
+                                })
+                                .collect()
+                        } else {
+                            // If there are no test results, a line will still be there
+                            vec![Some("No test results".to_string())]
+                        }
+                    }
+                    // Get the status of each resource and wrap it in a `Vec` to match types
+                    // with the `Test` branch.
+                    Crd::Resource(resource) => vec![resource.status().and_then(|status| {
+                        status.agent_info.as_ref().and_then(|agent_info| {
+                            agent_info
+                                .get("currentStatus")
+                                .and_then(|info| info.as_str().map(|info| info.to_string()))
+                        })
+                    })],
+                })
+                // Convert the `Option<String>` to `String`
+                .map(Option::unwrap_or_default)
+                .table()
+                .with(MaxWidth::wrapping(50))
+                .with(Extract::segment(1.., 0..))
+                .with(Header("STATUS"))
+        })
+    }
+
+    fn time_column(&self) -> Option<Table> {
+        self.with_time.then(|| {
+            // Convert the CRDs to an iterator
+            self.crds
+                .iter()
+                // For each CRD create a `Vec` containing the status for that CRD
+                // It needs to be a `Vec` because each `TestResults` is displayed in it's own
+                // row. `flat_map` will automatically flatten the `Iterator<Vec>` to
+                // `Iterator<Option<String>>`
+                .flat_map(|crd| vec![crd_time(crd); crd_rows(crd)])
+                // Convert the `Option<String>` to `String`
+                .map(Option::unwrap_or_default)
+                .table()
+                .with(MaxWidth::wrapping(50))
+                .with(Extract::segment(1.., 0..))
+                .with(Header("LAST UPDATE"))
+        })
     }
 }
 
@@ -134,51 +210,9 @@ impl From<&StatusSnapshot> for Table {
             results.extend::<Vec<ResultRow>>(crd.into());
         }
 
-        let progress_column = status.with_progress.as_ref().map(|with_progress| {
-            // Convert the CRDs to an iterator
-            crds.iter()
-                // For each CRD create a `Vec` containing the status for that CRD
-                // It needs to be a `Vec` because each `TestResults` is displayed in it's own
-                // row. `flat_map` will automatically flatten the `Iterator<Vec>` to
-                // `Iterator<Option<String>>`
-                .flat_map(|crd| match crd {
-                    Crd::Test(test) => {
-                        if !test.agent_status().results.is_empty() {
-                            test.agent_status()
-                                .results
-                                .iter()
-                                // For each `TestResults`, if the test progress should be included, add
-                                // it to the `Vec`, if not just add `None`
-                                .map(|result| {
-                                    if matches!(with_progress, StatusProgress::WithTests) {
-                                        result.other_info.to_owned()
-                                    } else {
-                                        None
-                                    }
-                                })
-                                .collect()
-                        } else {
-                            // If there are no test results, a line will still be there
-                            vec![Some("No test results".to_string())]
-                        }
-                    }
-                    // Get the status of each resource and wrap it in a `Vec` to match types
-                    // with the `Test` branch.
-                    Crd::Resource(resource) => vec![resource.status().and_then(|status| {
-                        status.agent_info.as_ref().and_then(|agent_info| {
-                            agent_info
-                                .get("currentStatus")
-                                .and_then(|info| info.as_str().map(|info| info.to_string()))
-                        })
-                    })],
-                })
-                // Convert the `Option<String>` to `String`
-                .map(Option::unwrap_or_default)
-                .table()
-                .with(MaxWidth::wrapping(50))
-                .with(Extract::segment(1.., 0..))
-                .with(Header("STATUS"))
-        });
+        let progress_column = status.progress_column();
+
+        let time_column = status.time_column();
 
         // An extra line for the controller if it's status is being reported.
         let controller_line = if status.controller_status.is_some() {
@@ -189,6 +223,7 @@ impl From<&StatusSnapshot> for Table {
 
         progress_column
             .into_iter()
+            .chain(time_column.into_iter())
             .chain(
                 status
                     .additional_columns
@@ -333,5 +368,18 @@ fn crd_rows(crd: &Crd) -> usize {
             }
         }
         Crd::Resource(_) => 1,
+    }
+}
+
+/// Determine the time of the last update to the CRD
+fn crd_time(crd: &Crd) -> Option<String> {
+    match crd {
+        Crd::Test(test) => test
+            .status
+            .as_ref()
+            .and_then(|status| status.last_update.to_owned()),
+        Crd::Resource(resource) => resource
+            .status()
+            .and_then(|status| status.last_update.to_owned()),
     }
 }

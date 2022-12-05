@@ -52,10 +52,10 @@ impl TestClient {
     pub async fn send_resource_error(&self, test_name: &str, error: &str) -> Result<Test> {
         self.patch_status(
             test_name,
-            vec![JsonPatch::new_add_operation(
-                "/status/controller/resourceError",
-                error,
-            )],
+            vec![
+                JsonPatch::new_timestamp(),
+                JsonPatch::new_add_operation("/status/controller/resourceError", error),
+            ],
             "send resource error",
         )
         .await
@@ -64,10 +64,10 @@ impl TestClient {
     pub async fn send_agent_task_state(&self, name: &str, task_state: TaskState) -> Result<Test> {
         self.patch_status(
             name,
-            vec![JsonPatch::new_add_operation(
-                "/status/agent/taskState",
-                task_state,
-            )],
+            vec![
+                JsonPatch::new_timestamp(),
+                JsonPatch::new_add_operation("/status/agent/taskState", task_state),
+            ],
             "send agent task state",
         )
         .await
@@ -76,10 +76,10 @@ impl TestClient {
     pub async fn send_test_results(&self, name: &str, results: TestResults) -> Result<Test> {
         self.patch_status(
             name,
-            vec![JsonPatch::new_add_operation(
-                "/status/agent/results/-",
-                results,
-            )],
+            vec![
+                JsonPatch::new_timestamp(),
+                JsonPatch::new_add_operation("/status/agent/results/-", results),
+            ],
             "send test results",
         )
         .await
@@ -89,6 +89,7 @@ impl TestClient {
         self.patch_status(
             name,
             vec![
+                JsonPatch::new_timestamp(),
                 JsonPatch::new_add_operation("/status/agent/taskState", TaskState::Completed),
                 JsonPatch::new_add_operation("/status/agent/results/-", results),
             ],
@@ -101,6 +102,7 @@ impl TestClient {
         self.patch_status(
             name,
             vec![
+                JsonPatch::new_timestamp(),
                 JsonPatch::new_add_operation("/status/agent/taskState", TaskState::Error),
                 JsonPatch::new_add_operation("/status/agent/error", error),
             ],

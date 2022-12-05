@@ -21,6 +21,10 @@ pub(crate) struct Status {
     /// Include the `Test` status, too. Requires `--progress`
     #[clap(long, short = 't', requires("progress"))]
     with_test: bool,
+
+    /// Include the time the CRD was last updated
+    #[clap(long, short = 'u')]
+    with_time: bool,
 }
 
 impl Status {
@@ -34,6 +38,10 @@ impl Status {
             status.with_progress(StatusProgress::WithTests);
         } else if self.progress {
             status.with_progress(StatusProgress::Resources);
+        }
+
+        if self.with_time {
+            status.with_time();
         }
 
         if self.json {
