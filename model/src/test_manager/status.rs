@@ -164,7 +164,7 @@ impl StatusSnapshot {
                 // Convert the `Option<String>` to `String`
                 .map(Option::unwrap_or_default)
                 .table()
-                .with(MaxWidth::wrapping(50))
+                .with(MinWidth::new(20))
                 .with(Extract::segment(1.., 0..))
                 .with(Header("LAST UPDATE"))
         })
