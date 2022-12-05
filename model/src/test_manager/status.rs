@@ -101,10 +101,11 @@ impl StatusSnapshot {
     }
 
     fn progress_column(&self) -> Option<Table> {
+        let mut crds = self.crds.clone();
+        crds.sort_by_key(|crd| crd.name());
         self.with_progress.as_ref().map(|with_progress| {
             // Convert the CRDs to an iterator
-            self.crds
-                .iter()
+            crds.iter()
                 // For each CRD create a `Vec` containing the status for that CRD
                 // It needs to be a `Vec` because each `TestResults` is displayed in it's own
                 // row. `flat_map` will automatically flatten the `Iterator<Vec>` to
@@ -150,10 +151,11 @@ impl StatusSnapshot {
     }
 
     fn time_column(&self) -> Option<Table> {
+        let mut crds = self.crds.clone();
+        crds.sort_by_key(|crd| crd.name());
         self.with_time.then(|| {
             // Convert the CRDs to an iterator
-            self.crds
-                .iter()
+            crds.iter()
                 // For each CRD create a `Vec` containing the status for that CRD
                 // It needs to be a `Vec` because each `TestResults` is displayed in it's own
                 // row. `flat_map` will automatically flatten the `Iterator<Vec>` to
