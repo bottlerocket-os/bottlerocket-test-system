@@ -60,6 +60,9 @@ pub(crate) enum InnerError {
 
     #[snafu(display("An error occured while creating archive: {}", source))]
     Archive { source: std::io::Error },
+
+    #[snafu(display("Info Client: {}", source))]
+    InfoClient { source: InfoClientError },
 }
 
 impl<C, R> From<InnerError> for Error<C, R>
@@ -71,3 +74,25 @@ where
         Error::Agent(e.into())
     }
 }
+
+pub type InfoClientResult<T> = std::result::Result<T, InfoClientError>;
+
+#[derive(Debug)]
+pub enum InfoClientError {
+    /// The client could not be created.
+    InitializationFailed(Option<Box<dyn std::error::Error + Send + Sync + 'static>>),
+
+    /// A communication with Kubernetes failed.
+    RequestFailed(Option<Box<dyn std::error::Error + Send + Sync + 'static>>),
+}
+
+impl Display for InfoClientError {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::InitializationFailed(e) => write!(f, "initialization failed: {:?}", e),
+            Self::RequestFailed(e) => write!(f, "request failed: {:?}", e),
+        }
+    }
+}
+
+impl std::error::Error for InfoClientError {}

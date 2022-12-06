@@ -11,7 +11,8 @@ use serde::{Deserialize, Serialize};
 use std::fmt::{Debug, Display};
 use std::path::PathBuf;
 use tempfile::{tempdir, TempDir};
-use test_agent::{BootstrapData, Client, Runner};
+use test_agent::error::InfoClientResult;
+use test_agent::{BootstrapData, Client, InfoClient, Runner};
 use test_agent::{Spec, TestResults};
 use tokio::time::{sleep, Duration};
 
@@ -31,18 +32,21 @@ struct MyConfig {}
 impl Configuration for MyConfig {}
 
 #[async_trait]
-impl Runner for MyRunner {
+impl<I> Runner<I> for MyRunner
+where
+    I: InfoClient,
+{
     /// The configuration type we defined above.
     type C = MyConfig;
 
     /// The error type. In this case we use a `String`, but you can use a real error type.
     type E = String;
 
-    async fn new(spec: Spec<Self::C>) -> Result<Self, Self::E> {
+    async fn new(spec: Spec<Self::C>, _: &I) -> Result<Self, Self::E> {
         Ok(Self { _spec: spec })
     }
 
-    async fn run(&mut self) -> Result<TestResults, Self::E> {
+    async fn run(&mut self, _: &I) -> Result<TestResults, Self::E> {
         println!("MyRunner::run");
         for i in 1..=5 {
             println!("Hello {}", i);
@@ -98,6 +102,11 @@ impl Client for MockClient {
         Ok(())
     }
 
+    async fn send_test_update(&self, results: TestResults) -> Result<(), Self::E> {
+        println!("MockClient::update_test_results: {:?}", results);
+        Ok(())
+    }
+
     async fn send_test_results(&self, results: TestResults) -> Result<(), Self::E> {
         println!("MockClient::send_test_results: {:?}", results);
         Ok(())
@@ -133,15 +142,31 @@ impl Client for MockClient {
     }
 }
 
+struct MyInfoClient {}
+
+#[async_trait::async_trait]
+impl InfoClient for MyInfoClient {
+    async fn new(_data: BootstrapData) -> InfoClientResult<Self> {
+        println!("MyInfoClient::new");
+        Ok(Self {})
+    }
+
+    async fn send_test_update(&self, _results: TestResults) -> InfoClientResult<()> {
+        println!("MyInfoClient::send_test_update");
+        Ok(())
+    }
+}
+
 /// This test runs [`MyRunner`] inside a [`TestAgent`] with k8s and the container environment mocked
 /// by `MockClient` and `MockBootstrap`.
 #[tokio::test]
 async fn mock_test() -> std::io::Result<()> {
-    let mut agent_main = test_agent::TestAgent::<MockClient, MyRunner>::new(BootstrapData {
-        test_name: String::from("hello-test"),
-    })
-    .await
-    .unwrap();
+    let mut agent_main =
+        test_agent::TestAgent::<MockClient, MyRunner, MyInfoClient>::new(BootstrapData {
+            test_name: String::from("hello-test"),
+        })
+        .await
+        .unwrap();
     agent_main.run().await.unwrap();
     assert!(std::path::Path::new(&agent_main.results_file().await.unwrap()).is_file());
     Ok(())

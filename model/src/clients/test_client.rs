@@ -78,9 +78,22 @@ impl TestClient {
             name,
             vec![
                 JsonPatch::new_timestamp(),
+                JsonPatch::new_remove_operation("/status/agent/currentTest"),
                 JsonPatch::new_add_operation("/status/agent/results/-", results),
             ],
             "send test results",
+        )
+        .await
+    }
+
+    pub async fn send_test_update(&self, name: &str, results: TestResults) -> Result<Test> {
+        self.patch_status(
+            name,
+            vec![
+                JsonPatch::new_timestamp(),
+                JsonPatch::new_add_operation("/status/agent/currentTest".to_string(), results),
+            ],
+            "update test results",
         )
         .await
     }
