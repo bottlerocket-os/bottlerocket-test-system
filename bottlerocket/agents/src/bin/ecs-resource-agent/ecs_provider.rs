@@ -81,6 +81,12 @@ impl Create for EcsCreator {
             .await
             .context(Resources::Clear, "Unable to get info from client")?;
 
+        memo.current_status = "Initializing Agent".to_string();
+        client
+            .send_info(memo.clone())
+            .await
+            .context(Resources::Clear, "Error sending cluster creation message")?;
+
         let region = spec
             .configuration
             .region
@@ -88,8 +94,22 @@ impl Create for EcsCreator {
             .unwrap_or(&DEFAULT_REGION.to_string())
             .to_string();
 
+        info!("Getting AWS secret");
+        memo.current_status = "Getting AWS secret".to_string();
+        client
+            .send_info(memo.clone())
+            .await
+            .context(Resources::Clear, "Error sending cluster creation message")?;
+
         memo.aws_secret_name = spec.secrets.get(AWS_CREDENTIALS_SECRET_NAME).cloned();
         memo.assume_role = spec.configuration.assume_role.clone();
+
+        info!("Creating AWS config");
+        memo.current_status = "Creating AWS config".to_string();
+        client
+            .send_info(memo.clone())
+            .await
+            .context(Resources::Clear, "Error sending cluster creation message")?;
 
         let config = aws_config(
             &spec.secrets.get(AWS_CREDENTIALS_SECRET_NAME),
@@ -104,12 +124,26 @@ impl Create for EcsCreator {
         let iam_client = aws_sdk_iam::Client::new(&config);
 
         info!("Creating cluster '{}'", spec.configuration.cluster_name);
+
+        memo.current_status = "Creating cluster".to_string();
+        client
+            .send_info(memo.clone())
+            .await
+            .context(Resources::Clear, "Error sending cluster creation message")?;
+
         ecs_client
             .create_cluster()
             .cluster_name(&spec.configuration.cluster_name)
             .send()
             .await
             .context(Resources::Clear, "The cluster could not be created.")?;
+
+        info!("Cluster created");
+        memo.current_status = "Cluster created".to_string();
+        client.send_info(memo.clone()).await.context(
+            Resources::Remaining,
+            "Error sending cluster creation message",
+        )?;
 
         let iam_arn = match spec.configuration.iam_instance_profile_name {
             Some(iam_instance_profile_name) => {
@@ -122,11 +156,22 @@ impl Create for EcsCreator {
             }
             None => {
                 info!("Creating instance profile");
+                memo.current_status = "Creating instance profile".to_string();
+                client.send_info(memo.clone()).await.context(
+                    Resources::Remaining,
+                    "Error sending cluster creation message",
+                )?;
                 create_iam_instance_profile(&iam_client).await?
             }
         };
 
         info!("Getting cluster information");
+        memo.current_status = "Getting cluster info".to_string();
+        client.send_info(memo.clone()).await.context(
+            Resources::Remaining,
+            "Error sending cluster creation message",
+        )?;
+
         let created_cluster = created_cluster(
             &config,
             &spec.configuration.cluster_name,
@@ -136,7 +181,8 @@ impl Create for EcsCreator {
         )
         .await?;
 
-        memo.current_status = "Cluster Created".into();
+        info!("Cluster created");
+        memo.current_status = "Cluster created".into();
         memo.cluster_name = Some(spec.configuration.cluster_name);
         memo.region = Some(region);
         client.send_info(memo.clone()).await.context(
@@ -347,6 +393,7 @@ impl Destroy for EcsDestroyer {
                 .await
                 .context(Resources::Unknown, "The cluster could not be deleted.")?;
 
+            info!("Cluster deleted");
             memo.current_status = "Cluster deleted".into();
             if let Err(e) = client.send_info(memo.clone()).await {
                 error!(
