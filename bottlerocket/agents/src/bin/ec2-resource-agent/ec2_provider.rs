@@ -99,8 +99,22 @@ impl Create for Ec2Creator {
             .await
             .context(&memo, "Error storing uuid in info client")?;
 
+        info!("Getting AWS secret");
+        memo.current_status = "Getting AWS secret".to_string();
+        client
+            .send_info(memo.clone())
+            .await
+            .context(Resources::Clear, "Error sending cluster creation message")?;
+
         memo.aws_secret_name = spec.secrets.get(AWS_CREDENTIALS_SECRET_NAME).cloned();
         memo.assume_role = spec.configuration.assume_role.clone();
+
+        info!("Creating AWS config");
+        memo.current_status = "Creating AWS config".to_string();
+        client
+            .send_info(memo.clone())
+            .await
+            .context(Resources::Clear, "Error sending cluster creation message")?;
 
         let shared_config = aws_config(
             &spec.secrets.get(AWS_CREDENTIALS_SECRET_NAME),
@@ -113,7 +127,15 @@ impl Create for Ec2Creator {
         .context(Resources::Clear, "Error creating config")?;
         let ec2_client = aws_sdk_ec2::Client::new(&shared_config);
 
-        let run_instance_result = run_instances(&spec, &ec2_client, instance_uuid, &memo).await?;
+        info!("Launching instance(s)");
+        memo.current_status = "Launching instance(s)".to_string();
+        client
+            .send_info(memo.clone())
+            .await
+            .context(Resources::Clear, "Error sending cluster creation message")?;
+
+        let run_instance_result =
+            run_instances(&spec, &ec2_client, instance_uuid, &mut memo, client).await?;
 
         let instances = run_instance_result
             .instances
@@ -121,6 +143,7 @@ impl Create for Ec2Creator {
         let mut instance_ids = HashSet::default();
 
         info!("Checking instance IDs");
+
         for instance in instances {
             instance_ids.insert(instance.instance_id.clone().ok_or_else(|| {
                 ProviderError::new_with_context(
@@ -129,6 +152,13 @@ impl Create for Ec2Creator {
                 )
             })?);
         }
+
+        info!("Waiting for instance(s)");
+        memo.current_status = "Waiting for instance(s)".to_string();
+        client.send_info(memo.clone()).await.context(
+            Resources::Remaining,
+            "Error sending cluster creation message",
+        )?;
 
         // Ensure the instances reach a running state.
         info!("Waiting for instances to reach the running state");
@@ -147,8 +177,9 @@ impl Create for Ec2Creator {
             "Timed-out waiting for instances to reach the `running` state.",
         )??;
 
+        info!("Instance(s) created");
         // We are done, set our custom status to say so.
-        memo.current_status = "Instance(s) Created".into();
+        memo.current_status = "Instance(s) created".into();
         memo.region = spec.configuration.region.clone();
         memo.instance_ids = instance_ids.clone();
         client
@@ -162,12 +193,16 @@ impl Create for Ec2Creator {
     }
 }
 
-async fn run_instances(
+async fn run_instances<I>(
     spec: &Spec<Ec2Config>,
     ec2_client: &aws_sdk_ec2::Client,
     instance_uuid: String,
-    memo: &ProductionMemo,
-) -> Result<RunInstancesOutput, ProviderError> {
+    memo: &mut ProductionMemo,
+    client: &I,
+) -> Result<RunInstancesOutput, ProviderError>
+where
+    I: InfoClient,
+{
     // Determine the instance type to use. If provided use that one. Otherwise, for `x86_64` use `m5.large`
     // and for `aarch64` use `m6g.large`
     let instance_types = if !spec.configuration.instance_types.is_empty() {
@@ -186,6 +221,12 @@ async fn run_instances(
 
         // Run the ec2 instances
         for subnet_id in &spec.configuration.subnet_ids {
+            info!("Launching '{}' in '{}'", instance_type, subnet_id);
+            memo.current_status = format!("Launching '{}' in '{}'", instance_type, subnet_id);
+            client
+                .send_info(memo.clone())
+                .await
+                .context(Resources::Clear, "Error sending cluster creation message")?;
             let run_instances = ec2_client
                 .run_instances()
                 .min_count(instance_count)
@@ -226,6 +267,12 @@ async fn run_instances(
             match run_instance_output {
                 Ok(result) => {
                     info!("Created instances using subnet {}", subnet_id);
+                    memo.current_status =
+                        format!("Launched '{}' in '{}'", instance_type, subnet_id);
+                    client.send_info(memo.clone()).await.context(
+                        Resources::Remaining,
+                        "Error sending cluster creation message",
+                    )?;
                     return Ok(result);
                 }
                 Err(err) => {
@@ -554,6 +601,7 @@ impl Destroy for Ec2Destroyer {
             memo.instance_ids.remove(id);
         }
 
+        info!("Instances deleted");
         memo.current_status = "Instances deleted".into();
         client.send_info(memo.clone()).await.map_err(|e| {
             ProviderError::new_with_source_and_context(
