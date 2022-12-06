@@ -2,7 +2,9 @@ use crate::error;
 use bottlerocket_types::agent_config::{SonobuoyConfig, SONOBUOY_RESULTS_FILENAME};
 use log::{error, info, trace};
 use model::{Outcome, TestResults};
+use serde_json::json;
 use snafu::{ensure, OptionExt, ResultExt};
+use std::collections::HashMap;
 use std::path::Path;
 use std::process::Command;
 
@@ -56,14 +58,13 @@ pub async fn run_sonobuoy(
     // TODO - log something or check what happened?
     ensure!(status.success(), error::SonobuoyRunSnafu);
 
-    results_sonobuoy(kubeconfig_path, sonobuoy_config, results_dir)
+    results_sonobuoy(kubeconfig_path, results_dir)
 }
 
 /// Reruns the the failed tests from sonobuoy conformance that has already run in this agent.
 pub async fn rerun_failed_sonobuoy(
     kubeconfig_path: &str,
     e2e_repo_config_path: Option<&str>,
-    sonobuoy_config: &SonobuoyConfig,
     results_dir: &Path,
 ) -> Result<TestResults, error::Error> {
     let kubeconfig_arg = vec!["--kubeconfig", kubeconfig_path];
@@ -91,13 +92,12 @@ pub async fn rerun_failed_sonobuoy(
     // TODO - log something or check what happened?
     ensure!(status.success(), error::SonobuoyRunSnafu);
 
-    results_sonobuoy(kubeconfig_path, sonobuoy_config, results_dir)
+    results_sonobuoy(kubeconfig_path, results_dir)
 }
 
 /// Retrieve the results from a sonobuoy test and convert them into `TestResults`.
 pub fn results_sonobuoy(
     kubeconfig_path: &str,
-    sonobuoy_config: &SonobuoyConfig,
     results_dir: &Path,
 ) -> Result<TestResults, error::Error> {
     let kubeconfig_arg = vec!["--kubeconfig", kubeconfig_path];
@@ -143,72 +143,110 @@ pub fn results_sonobuoy(
         serde_json::from_str(&stdout).context(error::DeserializeJsonSnafu)?;
     trace!("The sonobuoy results are valid json");
 
-    let e2e_status = run_status
+    process_sonobuoy_test_results(&run_status)
+}
+
+/// process_sonobuoy_test_results parses the output from `sonobuoy status --json` output and gets
+/// the overall status of the plugin results.
+pub(crate) fn process_sonobuoy_test_results(
+    run_status: &serde_json::Value,
+) -> Result<TestResults, error::Error> {
+    let mut num_passed: u64 = 0;
+    let mut num_failed: u64 = 0;
+    let mut num_skipped: u64 = 0;
+    let mut progress = Vec::new();
+    let mut outcome_summary = HashMap::from([
+        ("pass", 0),
+        ("passed", 0),
+        ("fail", 0),
+        ("failed", 0),
+        ("timeout", 0),
+        ("timed-out", 0),
+    ]);
+
+    let default_progress = json!("");
+    let plugin_results = run_status
         .get("plugins")
         .context(error::MissingSonobuoyStatusFieldSnafu { field: "plugins" })?
         .as_array()
-        .context(error::MissingSonobuoyStatusFieldSnafu { field: "plugins" })?
-        .first()
-        .context(error::MissingSonobuoyStatusFieldSnafu {
-            field: format!("plugins.{}", sonobuoy_config.plugin),
-        })?;
+        .context(error::MissingSonobuoyStatusFieldSnafu { field: "plugins" })?;
 
-    // Sometimes a helpful log is available in the progress field, but not always.
-    let progress_status = e2e_status
-        .get("progress")
-        .map(|value| value.to_string())
-        .unwrap_or_else(|| "".to_string());
+    for result in plugin_results {
+        let plugin = result
+            .get("plugin")
+            .context(error::MissingSonobuoyStatusFieldSnafu {
+                field: "plugins.[].plugin",
+            })?
+            .as_str()
+            .context(error::MissingSonobuoyStatusFieldSnafu {
+                field: "plugins.[].plugin",
+            })?;
 
-    let result_status = e2e_status
-        .get("result-status")
-        .context(error::MissingSonobuoyStatusFieldSnafu {
-            field: format!("plugins.{}.result-status", sonobuoy_config.plugin),
-        })?
-        .as_str()
-        .context(error::MissingSonobuoyStatusFieldSnafu {
-            field: format!("plugins.{}.result-status", sonobuoy_config.plugin),
-        })?;
+        // Sometimes a helpful log is available in the progress field, but not always.
+        let progress_status = result
+            .get("progress")
+            .unwrap_or(&default_progress)
+            .as_str()
+            // Unwrap is safe here because we know from above it will at least have an empty string
+            .unwrap();
+        if !progress_status.is_empty() {
+            progress.push(format!("{}: {}", plugin, progress_status));
+        }
 
-    let result_counts = run_status
-        .get("plugins")
-        .context(error::MissingSonobuoyStatusFieldSnafu { field: "plugins" })?
-        .as_array()
-        .context(error::MissingSonobuoyStatusFieldSnafu { field: "plugins" })?
-        .first()
-        .context(error::MissingSonobuoyStatusFieldSnafu {
-            field: format!("plugins.{}", sonobuoy_config.plugin),
-        })?
-        .get("result-counts")
-        .context(error::MissingSonobuoyStatusFieldSnafu {
-            field: format!("plugins.{}.result-counts", sonobuoy_config.plugin),
-        })?;
+        let result_status = result
+            .get("result-status")
+            .context(error::MissingSonobuoyStatusFieldSnafu {
+                field: format!("plugins.{}.result-status", plugin),
+            })?
+            .as_str()
+            .context(error::MissingSonobuoyStatusFieldSnafu {
+                field: format!("plugins.{}.result-status", plugin),
+            })?;
+        *outcome_summary.entry(result_status).or_default() += 1;
 
-    let num_passed = result_counts
-        .get("passed")
-        .map(|v| v.as_u64().unwrap_or(0))
-        .unwrap_or(0);
+        let result_counts =
+            result
+                .get("result-counts")
+                .context(error::MissingSonobuoyStatusFieldSnafu {
+                    field: format!("plugins.{}.result-counts", plugin),
+                })?;
 
-    let num_failed = result_counts
-        .get("failed")
-        .map(|v| v.as_u64().unwrap_or(0))
-        .unwrap_or(0);
+        let passed = result_counts
+            .get("passed")
+            .map(|v| v.as_u64().unwrap_or(0))
+            .unwrap_or(0);
+        let failed = result_counts
+            .get("failed")
+            .map(|v| v.as_u64().unwrap_or(0))
+            .unwrap_or(0);
+        let skipped = result_counts
+            .get("skipped")
+            .map(|v| v.as_u64().unwrap_or(0))
+            .unwrap_or(0);
 
-    let num_skipped = result_counts
-        .get("skipped")
-        .map(|v| v.as_u64().unwrap_or(0))
-        .unwrap_or(0);
+        num_passed += passed;
+        num_failed += failed;
+        num_skipped += skipped;
+    }
+
+    // Figure out what outcome to report based on what each plugin reported
+    let mut outcome = Outcome::Unknown;
+    if outcome_summary["pass"] > 0 || outcome_summary["passed"] > 0 {
+        outcome = Outcome::Pass;
+    }
+    if outcome_summary["timeout"] > 0 || outcome_summary["timed-out"] > 0 {
+        outcome = Outcome::Timeout;
+    }
+    if outcome_summary["fail"] > 0 || outcome_summary["failed"] > 0 {
+        outcome = Outcome::Fail;
+    }
 
     Ok(TestResults {
-        outcome: match result_status {
-            "pass" | "passed" => Outcome::Pass,
-            "fail" | "failed" => Outcome::Fail,
-            "timeout" | "timed-out" => Outcome::Timeout,
-            _ => Outcome::Unknown,
-        },
+        outcome,
         num_passed,
         num_failed,
         num_skipped,
-        other_info: Some(progress_status),
+        other_info: Some(progress.join(", ")),
     })
 }
 
@@ -226,4 +264,138 @@ pub async fn delete_sonobuoy(kubeconfig_path: &str) -> Result<(), error::Error> 
     ensure!(status.success(), error::SonobuoyDeleteSnafu);
 
     Ok(())
+}
+
+// =^..^=   =^..^=   =^..^=   =^..^=   =^..^=   =^..^=   =^..^=   =^..^=   =^..^=   =^..^=   =^..^=
+
+#[cfg(test)]
+mod test_sonobuoy {
+    use super::*;
+    use serde_json::json;
+
+    #[test]
+    fn test_process_results_pass() {
+        let result =
+            process_sonobuoy_test_results(
+                &json!({"plugins":[{"plugin":"e2e","node":"global","status":"complete","result-status":"passed","result-counts":{"passed":6}}]})).unwrap();
+        assert_eq!(result.num_passed, 6);
+        assert_eq!(result.num_failed, 0);
+        assert_eq!(result.num_skipped, 0);
+        assert_eq!(result.outcome, Outcome::Pass);
+        assert_eq!(result.other_info.unwrap(), "");
+    }
+
+    #[test]
+    fn test_process_results_failed() {
+        let result =
+            process_sonobuoy_test_results(
+                &json!({"plugins":[{"plugin":"e2e","node":"global","status":"complete","result-status":"failed","result-counts":{"failed":1}}]})).unwrap();
+        assert_eq!(result.num_passed, 0);
+        assert_eq!(result.num_failed, 1);
+        assert_eq!(result.num_skipped, 0);
+        assert_eq!(result.outcome, Outcome::Fail);
+        assert_eq!(result.other_info.unwrap(), "");
+    }
+
+    #[test]
+    fn test_process_results_timeout() {
+        let result =
+            process_sonobuoy_test_results(
+                &json!({"plugins":[{"plugin":"e2e","node":"global","status":"complete","result-status":"timed-out","result-counts":{"failed":1}}]})).unwrap();
+        assert_eq!(result.num_passed, 0);
+        assert_eq!(result.num_failed, 1);
+        assert_eq!(result.num_skipped, 0);
+        assert_eq!(result.outcome, Outcome::Timeout);
+        assert_eq!(result.other_info.unwrap(), "");
+    }
+
+    #[test]
+    fn test_process_results_multiple_pass() {
+        // All must pass to report passing status.
+        let result =
+            process_sonobuoy_test_results(
+                &json!({
+                    "plugins":[
+                        {"plugin":"smoketest","node":"global","status":"complete","result-status":"pass","result-counts":{"passed":1}},
+                        {"plugin":"workload","node":"global","status":"complete","result-status":"pass","result-counts":{"passed":1,"skipped":1}},
+                    ]})
+                ).unwrap();
+        assert_eq!(result.num_passed, 2);
+        assert_eq!(result.num_failed, 0);
+        assert_eq!(result.num_skipped, 1);
+        assert_eq!(result.outcome, Outcome::Pass);
+        assert_eq!(result.other_info.unwrap(), "");
+    }
+
+    #[test]
+    fn test_process_results_multiple_pass_and_fail() {
+        // Verify that is one fails, overall status is reported as failure.
+        let result =
+            process_sonobuoy_test_results(
+                &json!({
+                    "plugins":[
+                        {"plugin":"smoketest","node":"global","status":"complete","result-status":"pass","result-counts":{"passed":1}},
+                        {"plugin":"workload","node":"global","status":"complete","result-status":"fail","result-counts":{"failed":1,"skipped":1}},
+                    ]})
+                ).unwrap();
+        assert_eq!(result.num_passed, 1);
+        assert_eq!(result.num_failed, 1);
+        assert_eq!(result.num_skipped, 1);
+        assert_eq!(result.outcome, Outcome::Fail);
+        assert_eq!(result.other_info.unwrap(), "");
+    }
+
+    #[test]
+    fn test_process_results_multiple_pass_and_timeout() {
+        // Timeout takes precedence over passing.
+        let result =
+            process_sonobuoy_test_results(
+                &json!({
+                    "plugins":[
+                        {"plugin":"smoketest","node":"global","status":"complete","result-status":"pass","result-counts":{"passed":1}},
+                        {"plugin":"workload","node":"global","status":"complete","result-status":"timeout","result-counts":{"failed":1,"skipped":1}},
+                    ]})
+                ).unwrap();
+        assert_eq!(result.num_passed, 1);
+        assert_eq!(result.num_failed, 1);
+        assert_eq!(result.num_skipped, 1);
+        assert_eq!(result.outcome, Outcome::Timeout);
+        assert_eq!(result.other_info.unwrap(), "");
+    }
+
+    #[test]
+    fn test_process_results_multiple_timeout_and_failure() {
+        // Failure takes precendence over timeout.
+        let result =
+            process_sonobuoy_test_results(
+                &json!({
+                    "plugins":[
+                        {"plugin":"smoketest","node":"global","status":"complete","result-status":"failed","result-counts":{"failed":1}},
+                        {"plugin":"workload","node":"global","status":"complete","result-status":"timeout","result-counts":{"skipped":1}},
+                    ]})
+                ).unwrap();
+        assert_eq!(result.num_passed, 0);
+        assert_eq!(result.num_failed, 1);
+        assert_eq!(result.num_skipped, 1);
+        assert_eq!(result.outcome, Outcome::Fail);
+        assert_eq!(result.other_info.unwrap(), "");
+    }
+
+    #[test]
+    fn test_process_results_other_info() {
+        // All must pass to report passing status.
+        let result =
+            process_sonobuoy_test_results(
+                &json!({
+                    "plugins":[
+                        {"plugin":"smoketest","progress":"one","status":"complete","result-status":"pass","result-counts":{"passed":1}},
+                        {"plugin":"workload","progress":"two","status":"complete","result-status":"pass","result-counts":{"passed":1,"skipped":1}},
+                    ]})
+                ).unwrap();
+        assert_eq!(result.num_passed, 2);
+        assert_eq!(result.num_failed, 0);
+        assert_eq!(result.num_skipped, 1);
+        assert_eq!(result.outcome, Outcome::Pass);
+        assert_eq!(result.other_info.unwrap(), "smoketest: one, workload: two");
+    }
 }

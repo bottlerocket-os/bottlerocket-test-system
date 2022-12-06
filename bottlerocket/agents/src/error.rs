@@ -98,6 +98,18 @@ pub enum Error {
     #[snafu(display("Failed to read file: {}", source))]
     FileRead { source: std::io::Error },
 
+    #[snafu(display("Failed to write file: {path}"))]
+    FileWrite {
+        source: std::io::Error,
+        path: String,
+    },
+
+    #[snafu(display("Invalid path: {path}"))]
+    BadPath {
+        source: std::io::Error,
+        path: String,
+    },
+
     #[snafu(display("Results location is invalid"))]
     ResultsLocation,
 
@@ -157,4 +169,31 @@ pub enum Error {
     #[snafu(context(false))]
     #[snafu(display("{}", source))]
     Utils { source: agent_utils::Error },
+
+    #[snafu(display("Failed to create workload process: {}", source))]
+    WorkloadProcess { source: std::io::Error },
+
+    #[snafu(display(
+        "Failed to run workload test\nCode: {exit_code}\nStdout:\n{stdout}\nStderr:\n{stderr}"
+    ))]
+    WorkloadRun {
+        exit_code: i32,
+        stdout: String,
+        stderr: String,
+    },
+
+    #[snafu(display("Failed to initialize workload test plugin: {}", plugin))]
+    WorkloadPlugin { plugin: String },
+
+    #[snafu(display(
+        "Failed to write workload test plugin configuration yaml for: {}",
+        plugin
+    ))]
+    WorkloadWritePlugin { plugin: String },
+
+    #[snafu(display("Failed to clean-up workload resources"))]
+    WorkloadDelete,
+
+    #[snafu(display("Missing '{}' field from workload status", field))]
+    MissingWorkloadStatusField { field: String },
 }

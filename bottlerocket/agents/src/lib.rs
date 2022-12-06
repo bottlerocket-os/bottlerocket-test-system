@@ -14,6 +14,7 @@ pub mod error;
 pub mod sonobuoy;
 pub mod tuf;
 pub mod vsphere;
+pub mod workload;
 
 /// Determines whether a cluster resource needs to be created given its creation policy
 pub async fn is_cluster_creation_required(

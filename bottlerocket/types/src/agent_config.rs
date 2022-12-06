@@ -477,3 +477,17 @@ fn k8s_version_valid() {
     assert_eq!("v1.21.3", k8s_version.full_version_with_v());
     assert_eq!("1.21.3", k8s_version.full_version_without_v());
 }
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct WorkloadTest {
+    pub name: String,
+    pub image: String,
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize, Configuration, Builder)]
+#[serde(rename_all = "camelCase")]
+#[crd("Test")]
+pub struct WorkloadConfig {
+    pub kubeconfig_base64: String,
+    pub plugins: Vec<WorkloadTest>,
+}

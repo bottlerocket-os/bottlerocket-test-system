@@ -198,3 +198,34 @@ COPY --from=build-src /src/bottlerocket/agents/src/bin/migration-test-agent/ssm-
 COPY --from=build-src /usr/share/licenses/testsys /licenses/testsys
 
 ENTRYPOINT ["./migration-test-agent"]
+
+# =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^=
+# Builds the Kubernetes Workload test agent image
+FROM public.ecr.aws/amazonlinux/amazonlinux:2 AS k8s-workload-agent
+ARG ARCH
+
+# TODO remove unzip once aws-cli moves out
+RUN yum install -y unzip iproute && yum clean all
+ARG AWS_CLI_URL=https://awscli.amazonaws.com/awscli-exe-linux-${ARCH}.zip
+
+# Copy aws-iam-authenticator
+COPY --from=tools /aws-iam-authenticator /usr/bin/aws-iam-authenticator
+COPY --from=tools /licenses/aws-iam-authenticator /licenses/aws-iam-authenticator
+
+# TODO move this out, get hashes, and attribute licenses
+# Download aws-cli
+RUN temp_dir="$(mktemp -d --suffix aws-cli)" && \
+    curl -fsSL "${AWS_CLI_URL}" -o "${temp_dir}/awscliv2.zip" && \
+    unzip "${temp_dir}/awscliv2.zip" -d "${temp_dir}" && \
+    ${temp_dir}/aws/install && \
+    rm -rf ${temp_dir}
+
+# Copy sonobuoy
+COPY --from=tools /sonobuoy /usr/bin/sonobuoy
+COPY --from=tools /licenses/sonobuoy /licenses/sonobuoy
+
+# Copy k8s-workload-agent
+COPY --from=build-src /src/bottlerocket/agents/bin/k8s-workload-agent ./
+COPY --from=build-src /usr/share/licenses/testsys /licenses/testsys
+
+ENTRYPOINT ["./k8s-workload-agent"]
