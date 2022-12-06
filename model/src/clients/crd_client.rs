@@ -2,6 +2,7 @@ use super::HttpStatusCode;
 use crate::clients::error::{self, Result};
 use crate::constants::NAMESPACE;
 use crate::CrdExt;
+use chrono::{DateTime, SecondsFormat, Utc};
 use core::fmt::Debug;
 use http::StatusCode;
 use json_patch::{AddOperation, PatchOperation, RemoveOperation, ReplaceOperation, TestOperation};
@@ -13,7 +14,7 @@ use serde::de::DeserializeOwned;
 use serde::Serialize;
 use serde_json::Value;
 use snafu::{ensure, OptionExt, ResultExt};
-use std::time::Duration;
+use std::time::{Duration, SystemTime};
 
 /// A trait with implementations of code that is shared between more than one CRD object.
 #[async_trait::async_trait]
@@ -147,6 +148,7 @@ pub trait CrdClient: Sized {
             vec![
                 JsonPatch::new_test_operation("/status", Option::<Self::CrdStatus>::None),
                 JsonPatch::new_add_operation("/status", Self::CrdStatus::default()),
+                JsonPatch::new_timestamp(),
             ],
             "initialize status",
         )
@@ -163,6 +165,7 @@ pub trait CrdClient: Sized {
             self.patch(
                 crd.object_name(),
                 vec![
+                    JsonPatch::new_timestamp(),
                     JsonPatch::new_test_operation("/metadata/finalizers", Value::Null),
                     JsonPatch::new_add_operation("/metadata/finalizers", vec![finalizer]),
                 ],
@@ -177,6 +180,7 @@ pub trait CrdClient: Sized {
             self.patch(
                 crd.object_name(),
                 vec![
+                    JsonPatch::new_timestamp(),
                     JsonPatch::new_test_operation(
                         "/metadata/finalizers",
                         crd.meta().finalizers.clone(),
@@ -201,6 +205,7 @@ pub trait CrdClient: Sized {
         self.patch(
             crd.object_name(),
             vec![
+                JsonPatch::new_timestamp(),
                 JsonPatch::new_test_operation(
                     format!("/metadata/finalizers/{}", finalizer_idx),
                     finalizer,
@@ -353,6 +358,17 @@ impl JsonPatch {
                 path: self.path,
                 value: self.value,
             }),
+        }
+    }
+
+    pub fn new_timestamp() -> Self {
+        Self {
+            op: PatchOp::Replace,
+            path: "/status/lastUpdate".to_string(),
+            value: serde_json::Value::String(
+                Into::<DateTime<Utc>>::into(SystemTime::now())
+                    .to_rfc3339_opts(SecondsFormat::Secs, true),
+            ),
         }
     }
 }

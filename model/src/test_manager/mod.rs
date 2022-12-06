@@ -61,3 +61,10 @@ pub enum ResourceState {
 }
 
 derive_fromstr_from_deserialize!(ResourceState);
+
+/// `StatusProgress` represents whether a `Test`'s `other_info` should be included or not.
+#[derive(Debug)]
+pub enum StatusProgress {
+    WithTests,
+    Resources,
+}

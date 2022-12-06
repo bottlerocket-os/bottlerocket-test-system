@@ -64,7 +64,10 @@ impl ResourceClient {
         trace!("patching agent info for resource '{}'", name);
         self.patch_status(
             name,
-            vec![JsonPatch::new_add_operation("/status/agentInfo", info)],
+            vec![
+                JsonPatch::new_timestamp(),
+                JsonPatch::new_add_operation("/status/agentInfo", info),
+            ],
             "send agent info",
         )
         .await
@@ -113,6 +116,7 @@ impl ResourceClient {
         self.patch_status(
             name,
             vec![
+                JsonPatch::new_timestamp(),
                 JsonPatch::new_add_operation("/status/creation/taskState", TaskState::Completed),
                 JsonPatch::new_add_operation("/status/createdResource", created_resource),
             ],
@@ -153,6 +157,7 @@ impl ResourceClient {
         self.patch_status(
             name,
             vec![
+                JsonPatch::new_timestamp(),
                 JsonPatch::new_add_operation(error_path, error),
                 JsonPatch::new_add_operation(task_state_path, TaskState::Error),
             ],
@@ -181,7 +186,10 @@ impl ResourceClient {
 
         self.patch_status(
             name,
-            vec![JsonPatch::new_add_operation(path, state)],
+            vec![
+                JsonPatch::new_timestamp(),
+                JsonPatch::new_add_operation(path, state),
+            ],
             "send task state",
         )
         .await
