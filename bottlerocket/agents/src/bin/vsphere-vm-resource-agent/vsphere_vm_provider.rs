@@ -103,6 +103,14 @@ impl Create for VMCreator {
             .context(Resources::Unknown, "Unable to get info from info client")?;
         // Keep track of the state of resources
         let mut resources = Resources::Clear;
+
+        info!("Initializing agent");
+        memo.current_status = "Initializing agent".to_string();
+        client
+            .send_info(memo.clone())
+            .await
+            .context(resources, "Error sending cluster creation message")?;
+
         let (metadata_url, targets_url) = tuf_repo_urls(&spec.configuration.tuf_repo, &resources)?;
 
         memo.aws_secret_name = spec.secrets.get(AWS_CREDENTIALS_SECRET_NAME).cloned();
@@ -121,8 +129,22 @@ impl Create for VMCreator {
         let ssm_client = aws_sdk_ssm::Client::new(&shared_config);
         let iam_client = aws_sdk_iam::Client::new(&shared_config);
 
+        info!("Checking SSM service role");
+        memo.current_status = "Checking SSM service role".to_string();
+        client
+            .send_info(memo.clone())
+            .await
+            .context(resources, "Error sending cluster creation message")?;
+
         // Ensure we have a SSM service role we can attach to the VMs
         ensure_ssm_service_role(&iam_client).await?;
+
+        info!("Getting vSphere secret");
+        memo.current_status = "Getting vSphere secret".to_string();
+        client
+            .send_info(memo.clone())
+            .await
+            .context(resources, "Error sending cluster creation message")?;
 
         // Get vSphere credentials to authenticate to vCenter via govmomi
         let secret_name = spec
@@ -132,8 +154,22 @@ impl Create for VMCreator {
         vsphere_credentials(client, secret_name, &resources).await?;
         memo.vcenter_secret_name = Some(secret_name.clone());
 
+        info!("Setting GOVC env");
+        memo.current_status = "Setting GOVC env".to_string();
+        client
+            .send_info(memo.clone())
+            .await
+            .context(resources, "Error sending cluster creation message")?;
+
         // Set up environment variables for govc cli
         set_govc_env_vars(&spec.configuration);
+
+        info!("Writing kubeconfig");
+        memo.current_status = "Writing kubeconfig".to_string();
+        client
+            .send_info(memo.clone())
+            .await
+            .context(resources, "Error sending cluster creation message")?;
 
         let vsphere_cluster = spec.configuration.cluster.clone();
         debug!("Decoding and writing out kubeconfig for vSphere cluster");
@@ -153,10 +189,24 @@ impl Create for VMCreator {
             Config::from_custom_kubeconfig(kubeconfig.to_owned(), &KubeConfigOptions::default())
                 .await
                 .context(resources, "Unable load kubeconfig")?;
+
+        info!("Creating K8s client");
+        memo.current_status = "Creating K8s client".to_string();
+        client
+            .send_info(memo.clone())
+            .await
+            .context(resources, "Error sending cluster creation message")?;
+
         let k8s_client = kube::client::Client::try_from(config)
             .context(resources, "Unable create K8s client from kubeconfig")?;
 
+        info!("Downloading OVA");
         // Retrieve the OVA file
+        memo.current_status = "Downloading OVA".to_string();
+        client
+            .send_info(memo.clone())
+            .await
+            .context(resources, "Error sending cluster creation message")?;
         let ova_name = spec.configuration.ova_name.to_owned();
         info!("Downloading OVA '{}'", &spec.configuration.ova_name);
         let outdir = Path::new("/local/");
@@ -165,6 +215,13 @@ impl Create for VMCreator {
         })
         .await
         .context(resources, "Failed to join threads")??;
+
+        info!("Retrieving K8s cluster info");
+        memo.current_status = "Retrieving K8s cluster info".to_string();
+        client
+            .send_info(memo.clone())
+            .await
+            .context(resources, "Error sending cluster creation message")?;
 
         // Get necessary information for Bottlerocket nodes to join the test cluster
         let k8s_services: Api<Service> = Api::namespaced(k8s_client, "kube-system");
@@ -187,6 +244,13 @@ impl Create for VMCreator {
             .context(resources, "Missing Cluster certificate authority data")?;
         debug!("Got certificate-authority-data '{}'", &cluster_certificate);
 
+        info!("Creating bootstrap token");
+        memo.current_status = "Creating bootstrap token".to_string();
+        client
+            .send_info(memo.clone())
+            .await
+            .context(resources, "Error sending cluster creation message")?;
+
         info!("Create a bootstrap token for node registrations");
         let token_create_output = Command::new("kubeadm")
             .args(&kubeconfig_arg)
@@ -197,6 +261,12 @@ impl Create for VMCreator {
         let bootstrap_token = String::from_utf8_lossy(&token_create_output.stdout);
         let bootstrap_token = bootstrap_token.trim_end();
 
+        info!("Updating import spec");
+        memo.current_status = "Updating import spec".to_string();
+        client
+            .send_info(memo.clone())
+            .await
+            .context(resources, "Error sending cluster creation message")?;
         // Update the import spec for the OVA
         let import_spec_output = Command::new("govc")
             .arg("import.spec")
@@ -218,6 +288,12 @@ impl Create for VMCreator {
         serde_json::to_writer_pretty(&import_spec_file, &import_spec)
             .context(resources, "Failed to write out OVA import spec file")?;
 
+        info!("Importing OVA");
+        memo.current_status = "Importing OVA".to_string();
+        client
+            .send_info(memo.clone())
+            .await
+            .context(resources, "Error sending cluster creation message")?;
         // Import OVA and create a template out of it
         info!("Importing OVA and creating a VM template out of it");
         let vm_template_name = format!("{}-node-vmtemplate", vsphere_cluster.name);
@@ -238,6 +314,13 @@ impl Create for VMCreator {
                 ),
             ));
         }
+
+        info!("Creating template from OVA");
+        memo.current_status = "Creating template from OVA".to_string();
+        client
+            .send_info(memo.clone())
+            .await
+            .context(resources, "Error sending cluster creation message")?;
         resources = Resources::Remaining;
         let markastemplate_output = Command::new("govc")
             .arg("vm.markastemplate")
@@ -277,6 +360,12 @@ impl Create for VMCreator {
             &encoded_control_host_ctr_userdata,
         );
 
+        info!("Launching worker nodes");
+        memo.current_status = "Launching worker nodes".to_string();
+        client
+            .send_info(memo.clone())
+            .await
+            .context(resources, "Error sending cluster creation message")?;
         info!("Launching {} Bottlerocket worker nodes", vm_count);
         for i in 0..vm_count {
             let node_name = format!("{}-node-{}", vsphere_cluster.name, i + 1);
@@ -384,8 +473,9 @@ impl Create for VMCreator {
             });
         }
 
+        info!("VM(s) created");
         // We are done, set our custom status to say so.
-        memo.current_status = "VM(s) Created".into();
+        memo.current_status = "VM(s) created".into();
 
         client
             .send_info(memo.clone())
@@ -543,6 +633,7 @@ impl Destroy for VMDestroyer {
             )?;
 
         memo.vms.clear();
+        info!("VM(s) deleted");
         memo.current_status = "VM(s) deleted".into();
         client.send_info(memo.clone()).await.map_err(|e| {
             ProviderError::new_with_source_and_context(
