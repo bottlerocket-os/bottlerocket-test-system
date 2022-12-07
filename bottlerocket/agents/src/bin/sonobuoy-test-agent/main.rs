@@ -42,7 +42,9 @@ use bottlerocket_types::agent_config::{SonobuoyConfig, AWS_CREDENTIALS_SECRET_NA
 use log::{debug, info};
 use model::{SecretName, TestResults};
 use std::path::PathBuf;
-use test_agent::{BootstrapData, ClientError, DefaultClient, Spec, TestAgent};
+use test_agent::{
+    BootstrapData, ClientError, DefaultClient, DefaultInfoClient, InfoClient, Spec, TestAgent,
+};
 
 struct SonobuoyTestRunner {
     config: SonobuoyConfig,
@@ -51,11 +53,14 @@ struct SonobuoyTestRunner {
 }
 
 #[async_trait]
-impl test_agent::Runner for SonobuoyTestRunner {
+impl<I> test_agent::Runner<I> for SonobuoyTestRunner
+where
+    I: InfoClient,
+{
     type C = SonobuoyConfig;
     type E = Error;
 
-    async fn new(spec: Spec<Self::C>) -> Result<Self, Self::E> {
+    async fn new(spec: Spec<Self::C>, _info_client: &I) -> Result<Self, Self::E> {
         info!("Initializing Sonobuoy test agent...");
         Ok(Self {
             config: spec.configuration,
@@ -64,7 +69,7 @@ impl test_agent::Runner for SonobuoyTestRunner {
         })
     }
 
-    async fn run(&mut self) -> Result<TestResults, Self::E> {
+    async fn run(&mut self, _info_client: &I) -> Result<TestResults, Self::E> {
         aws_config(
             &self.aws_secret_name.as_ref(),
             &self.config.assume_role,
@@ -97,7 +102,11 @@ impl test_agent::Runner for SonobuoyTestRunner {
         .await
     }
 
-    async fn rerun_failed(&mut self, _prev_results: &TestResults) -> Result<TestResults, Self::E> {
+    async fn rerun_failed(
+        &mut self,
+        _prev_results: &TestResults,
+        _info_client: &I,
+    ) -> Result<TestResults, Self::E> {
         // Set up the aws credentials if they were provided.
         aws_config(
             &self.aws_secret_name.as_ref(),
@@ -147,7 +156,7 @@ async fn main() {
 }
 
 async fn run() -> Result<(), test_agent::error::Error<ClientError, Error>> {
-    let mut agent = TestAgent::<DefaultClient, SonobuoyTestRunner>::new(
+    let mut agent = TestAgent::<DefaultClient, SonobuoyTestRunner, DefaultInfoClient>::new(
         BootstrapData::from_env().unwrap_or_else(|_| BootstrapData {
             test_name: "sonobuoy_test".to_string(),
         }),

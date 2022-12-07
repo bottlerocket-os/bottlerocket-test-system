@@ -52,7 +52,9 @@ use model::{Outcome, SecretName, TestResults};
 use snafu::ResultExt;
 use std::path::Path;
 use std::time::Duration;
-use test_agent::{BootstrapData, ClientError, DefaultClient, Spec, TestAgent};
+use test_agent::{
+    BootstrapData, ClientError, DefaultClient, DefaultInfoClient, InfoClient, Spec, TestAgent,
+};
 
 const BR_CHANGE_UPDATE_REPO_DOCUMENT_NAME: &str = "BR-ChangeUpdateRepo";
 const BR_CHANGE_UPDATE_REPO_DOCUMENT_PATH: &str = "/local/ssm-documents/ssm-change-update-repo.yml";
@@ -65,11 +67,14 @@ struct MigrationTestRunner {
 }
 
 #[async_trait]
-impl test_agent::Runner for MigrationTestRunner {
+impl<I> test_agent::Runner<I> for MigrationTestRunner
+where
+    I: InfoClient,
+{
     type C = MigrationConfig;
     type E = Error;
 
-    async fn new(spec: Spec<Self::C>) -> Result<Self, Self::E> {
+    async fn new(spec: Spec<Self::C>, _info_client: &I) -> Result<Self, Self::E> {
         info!("Initializing migration test agent...");
         Ok(Self {
             config: spec.configuration,
@@ -77,7 +82,7 @@ impl test_agent::Runner for MigrationTestRunner {
         })
     }
 
-    async fn run(&mut self) -> Result<TestResults, Self::E> {
+    async fn run(&mut self, _info_client: &I) -> Result<TestResults, Self::E> {
         let shared_config = aws_config(
             &self.aws_secret_name.as_ref(),
             &self.config.assume_role,
@@ -225,7 +230,7 @@ async fn main() {
 }
 
 async fn run() -> Result<(), test_agent::error::Error<ClientError, Error>> {
-    let mut agent = TestAgent::<DefaultClient, MigrationTestRunner>::new(
+    let mut agent = TestAgent::<DefaultClient, MigrationTestRunner, DefaultInfoClient>::new(
         BootstrapData::from_env().unwrap_or_else(|_| BootstrapData {
             test_name: "migration_test".to_string(),
         }),
