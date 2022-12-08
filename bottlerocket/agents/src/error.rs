@@ -154,6 +154,15 @@ pub enum Error {
     #[snafu(display("No task running tasks in cluster"))]
     NoTask,
 
+    #[snafu(display(
+        "Sonobuoy status could not be retrieved within the given time: {}",
+        source
+    ))]
+    SonobuoyTimeout { source: tokio::time::error::Elapsed },
+
+    #[snafu(display("Failed to retrieve sonobuoy status after '{}' retries", retries))]
+    SonobuoyStatus { retries: i32 },
+
     #[snafu(display("The task did not complete in time"))]
     TaskTimeout,
 

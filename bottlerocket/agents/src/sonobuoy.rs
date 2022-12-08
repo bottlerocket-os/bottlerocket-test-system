@@ -2,10 +2,12 @@ use crate::error;
 use bottlerocket_types::agent_config::{SonobuoyConfig, SONOBUOY_RESULTS_FILENAME};
 use log::{error, info, trace};
 use model::{Outcome, TestResults};
+use serde_json::Value;
 use snafu::{ensure, OptionExt, ResultExt};
 use std::collections::HashMap;
 use std::path::Path;
 use std::process::Command;
+use std::time::Duration;
 
 /// Runs the sonobuoy conformance tests according to the provided configuration and returns a test
 /// result at the end.
@@ -43,7 +45,6 @@ pub async fn run_sonobuoy(
     let status = Command::new("/usr/bin/sonobuoy")
         .args(kubeconfig_arg.to_owned())
         .arg("run")
-        .arg("--wait")
         .arg("--plugin")
         .arg(&sonobuoy_config.plugin)
         .arg("--mode")
@@ -52,10 +53,20 @@ pub async fn run_sonobuoy(
         .args(e2e_repo_arg)
         .status()
         .context(error::SonobuoyProcessSnafu)?;
-    info!("Sonobuoy testing has completed, checking results");
 
     // TODO - log something or check what happened?
     ensure!(status.success(), error::SonobuoyRunSnafu);
+
+    info!("Sonobuoy testing has started, waiting for status to be available");
+    tokio::time::timeout(
+        Duration::from_secs(300),
+        wait_for_sonobuoy_status(kubeconfig_path, None),
+    )
+    .await
+    .context(error::SonobuoyTimeoutSnafu)??;
+    info!("Sonobuoy status is available, waiting for test to complete");
+    wait_for_sonobuoy_results(kubeconfig_path, None).await?;
+    info!("Sonobuoy testing has completed, checking results");
 
     results_sonobuoy(kubeconfig_path, results_dir)
 }
@@ -81,17 +92,118 @@ pub async fn rerun_failed_sonobuoy(
         .args(kubeconfig_arg.to_owned())
         .arg("run")
         .args(e2e_repo_arg)
-        .arg("--wait")
         .arg("--rerun-failed")
         .arg(results_filepath.as_os_str())
         .status()
         .context(error::SonobuoyProcessSnafu)?;
-    info!("Sonobuoy testing has completed, checking results");
 
     // TODO - log something or check what happened?
     ensure!(status.success(), error::SonobuoyRunSnafu);
 
+    info!("Sonobuoy testing has started, waiting for status to be available");
+    tokio::time::timeout(
+        Duration::from_secs(300),
+        wait_for_sonobuoy_status(kubeconfig_path, None),
+    )
+    .await
+    .context(error::SonobuoyTimeoutSnafu)??;
+    info!("Sonobuoy status is available, waiting for test to complete");
+    wait_for_sonobuoy_results(kubeconfig_path, None).await?;
+    info!("Sonobuoy testing has completed, checking results");
+
     results_sonobuoy(kubeconfig_path, results_dir)
+}
+
+pub async fn wait_for_sonobuoy_status(
+    kubeconfig_path: &str,
+    namespace: Option<&str>,
+) -> Result<(), error::Error> {
+    loop {
+        let kubeconfig_arg = vec!["--kubeconfig", kubeconfig_path];
+        let namespace_arg = namespace
+            .map(|namespace| vec!["--namespace", namespace])
+            .unwrap_or_default();
+
+        trace!("Checking test status");
+        let run_result = Command::new("/usr/bin/sonobuoy")
+            .args(kubeconfig_arg)
+            .args(namespace_arg)
+            .arg("status")
+            .arg("--json")
+            .output()
+            .context(error::SonobuoyProcessSnafu)?;
+
+        ensure!(run_result.status.success(), error::SonobuoyRunSnafu);
+
+        let stdout = String::from_utf8_lossy(&run_result.stdout);
+        info!("Parsing the following sonobuoy results output:\n{}", stdout);
+
+        trace!("Parsing sonobuoy results as json");
+        match serde_json::from_str::<serde_json::Value>(&stdout) {
+            Ok(_) => return Ok(()),
+            Err(_) => {
+                info!("Sonobuoy status is not ready, retrying in 30s");
+                tokio::time::sleep(Duration::from_secs(30)).await
+            }
+        };
+    }
+}
+
+pub async fn wait_for_sonobuoy_results(
+    kubeconfig_path: &str,
+    namespace: Option<&str>,
+) -> Result<(), error::Error> {
+    let mut retries = 0;
+    loop {
+        if retries > 5 {
+            return Err(error::Error::SonobuoyStatus { retries });
+        }
+        let kubeconfig_arg = vec!["--kubeconfig", kubeconfig_path];
+        let namespace_arg = namespace
+            .map(|namespace| vec!["--namespace", namespace])
+            .unwrap_or_default();
+
+        trace!("Checking test status");
+        let run_result = Command::new("/usr/bin/sonobuoy")
+            .args(kubeconfig_arg)
+            .args(namespace_arg)
+            .arg("status")
+            .arg("--json")
+            .output()
+            .context(error::SonobuoyProcessSnafu)?;
+
+        ensure!(run_result.status.success(), error::SonobuoyRunSnafu);
+
+        let stdout = String::from_utf8_lossy(&run_result.stdout);
+        info!("Parsing the following sonobuoy results output:\n{}", stdout);
+
+        trace!("Parsing sonobuoy results as json");
+        let run_status: serde_json::Value = match serde_json::from_str(&stdout) {
+            Ok(run_status) => run_status,
+            Err(err) => {
+                error!(
+                    "An error occured while serializing sonobuoy status: \n'{:?}'\n(This can happen if sonobuoy is not ready)\nWill try again in 30s",
+                    err
+                );
+                retries += 1;
+                tokio::time::sleep(Duration::from_secs(30)).await;
+                continue;
+            }
+        };
+        retries = 0;
+        trace!("The sonobuoy results are valid json");
+        let status = run_status.get("status");
+        if status.is_some() && status != Some(&Value::String("running".to_string())) {
+            return Ok(());
+        }
+        info!("Some tests are still running");
+        info!(
+            "Current status: {:?}",
+            process_sonobuoy_test_results(&run_status)?
+        );
+
+        tokio::time::sleep(Duration::from_secs(30)).await;
+    }
 }
 
 /// Retrieve the results from a sonobuoy test and convert them into `TestResults`.
