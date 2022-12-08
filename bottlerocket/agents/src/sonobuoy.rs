@@ -186,9 +186,8 @@ pub(crate) fn process_sonobuoy_test_results(
         let progress_status = result
             .get("progress")
             .unwrap_or(&default_progress)
-            .as_str()
-            // Unwrap is safe here because we know from above it will at least have an empty string
-            .unwrap();
+            .to_string();
+
         if !progress_status.is_empty() {
             progress.push(format!("{}: {}", plugin, progress_status));
         }
