@@ -296,7 +296,13 @@ impl Create for EksCreator {
             .get_info()
             .await
             .context(Resources::Clear, "Unable to get info from client")?;
+        info!("Initializing agent");
+        memo.current_status = "Initializing agent".to_string();
         memo.creation_policy = Some(spec.configuration.creation_policy.unwrap_or_default());
+        client
+            .send_info(memo.clone())
+            .await
+            .context(Resources::Clear, "Error sending cluster creation message")?;
 
         let cluster_config = ClusterConfig::new(spec.configuration.config)?;
 
@@ -306,8 +312,22 @@ impl Create for EksCreator {
             memo.creation_policy
         );
 
+        info!("Getting AWS secret");
+        memo.current_status = "Getting AWS secret".to_string();
+        client
+            .send_info(memo.clone())
+            .await
+            .context(Resources::Clear, "Error sending cluster creation message")?;
+
         memo.aws_secret_name = spec.secrets.get(AWS_CREDENTIALS_SECRET_NAME).cloned();
         memo.assume_role = spec.configuration.assume_role.clone();
+
+        info!("Creating AWS config");
+        memo.current_status = "Creating AWS config".to_string();
+        client
+            .send_info(memo.clone())
+            .await
+            .context(Resources::Clear, "Error sending cluster creation message")?;
 
         let shared_config = aws_config(
             &spec.secrets.get(AWS_CREDENTIALS_SECRET_NAME),
@@ -319,6 +339,13 @@ impl Create for EksCreator {
         .await
         .context(Resources::Clear, "Error creating config")?;
         let aws_clients = AwsClients::new(&shared_config).await;
+
+        info!("Determining cluster state");
+        memo.current_status = "Determining cluster state".to_string();
+        client
+            .send_info(memo.clone())
+            .await
+            .context(Resources::Clear, "Error sending cluster creation message")?;
 
         let (do_create, message) = is_eks_cluster_creation_required(
             &cluster_config.cluster_name(),
@@ -337,9 +364,26 @@ impl Create for EksCreator {
 
         if do_create {
             info!("Creating cluster with eksctl");
+            memo.current_status = "Creating cluster".to_string();
+            client
+                .send_info(memo.clone())
+                .await
+                .context(Resources::Clear, "Error sending cluster creation message")?;
             cluster_config.create_cluster()?;
             info!("Done creating cluster with eksctl");
+            memo.current_status = "Cluster creation complete".to_string();
+            client.send_info(memo.clone()).await.context(
+                Resources::Remaining,
+                "Error sending cluster creation message",
+            )?;
         }
+
+        info!("Writing cluster kubeconfig");
+        memo.current_status = "Writing cluster kubeconfig".to_string();
+        client.send_info(memo.clone()).await.context(
+            Resources::Remaining,
+            "Error sending cluster creation message",
+        )?;
 
         write_kubeconfig(
             &cluster_config.cluster_name(),
@@ -351,6 +395,13 @@ impl Create for EksCreator {
         let encoded_kubeconfig = base64::encode(kubeconfig);
 
         info!("Gathering information about the cluster");
+
+        memo.current_status = "Collecting cluster info".to_string();
+        client.send_info(memo.clone()).await.context(
+            Resources::Remaining,
+            "Error sending cluster creation message",
+        )?;
+
         let created_cluster = created_cluster(
             encoded_kubeconfig,
             &cluster_config.cluster_name(),
@@ -951,6 +1002,7 @@ impl Destroy for EksDestroyer {
             ));
         }
 
+        info!("Cluster deleted");
         memo.current_status = "Cluster deleted".into();
         if let Err(e) = client.send_info(memo.clone()).await {
             eprintln!(

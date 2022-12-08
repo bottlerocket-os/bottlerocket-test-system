@@ -90,6 +90,13 @@ impl Create for VSphereK8sClusterCreator {
         // Keep track of the state of resources
         let mut resources = Resources::Clear;
 
+        info!("Getting vSphere secret");
+        memo.current_status = "Getting vSphere secret".to_string();
+        client
+            .send_info(memo.clone())
+            .await
+            .context(resources, "Error sending cluster creation message")?;
+
         // Get vSphere credentials to authenticate to vCenter via govmomi
         let secret_name = spec
             .secrets
@@ -97,6 +104,13 @@ impl Create for VSphereK8sClusterCreator {
             .context(resources, "Unable to fetch vSphere credentials")?;
         vsphere_credentials(client, secret_name, &resources).await?;
         memo.vcenter_secret_name = Some(secret_name.clone());
+
+        info!("Creating working directory");
+        memo.current_status = "Creating working directory".to_string();
+        client
+            .send_info(memo.clone())
+            .await
+            .context(resources, "Error sending cluster creation message")?;
 
         // Set current directory to somewhere other than '/' so eksctl-anywhere won't try to mount
         // it in a container.
@@ -108,6 +122,13 @@ impl Create for VSphereK8sClusterCreator {
             resources,
             format!("Failed to change current directory to {}", WORKING_DIR),
         )?;
+
+        info!("Checking existing cluster");
+        memo.current_status = "Checking existing cluster".to_string();
+        client
+            .send_info(memo.clone())
+            .await
+            .context(resources, "Error sending cluster creation message")?;
 
         // Check whether cluster creation is necessary
         let (do_create, message) = is_vsphere_k8s_cluster_creation_required(
@@ -124,6 +145,12 @@ impl Create for VSphereK8sClusterCreator {
 
         let mgmt_kubeconfig_path = format!("{}/mgmt.kubeconfig", WORKING_DIR);
         let encoded_kubeconfig = if do_create {
+            info!("Creating cluster");
+            memo.current_status = "Creating cluster".to_string();
+            client
+                .send_info(memo.clone())
+                .await
+                .context(resources, "Error sending cluster creation message")?;
             let mgmt_k8s_client = write_validate_mgmt_kubeconfig(
                 &spec.configuration,
                 &mgmt_kubeconfig_path,
@@ -150,8 +177,9 @@ impl Create for VSphereK8sClusterCreator {
             )?
         };
 
+        info!("Cluster created");
         // We are done, set our custom status to say so.
-        memo.current_status = "vSphere K8s cluster created".into();
+        memo.current_status = "Cluster created".into();
 
         client
             .send_info(memo.clone())
@@ -723,7 +751,8 @@ impl Destroy for VSphereK8sClusterDestroyer {
         }
         memo.cluster_name = None;
 
-        memo.current_status = "vSphere K8s cluster deleted".into();
+        info!("vSphere K8s cluster deleted");
+        memo.current_status = "Cluster deleted".into();
         client.send_info(memo.clone()).await.map_err(|e| {
             ProviderError::new_with_source_and_context(
                 Resources::Clear,
