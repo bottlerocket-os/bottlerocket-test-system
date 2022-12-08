@@ -2,7 +2,6 @@ use crate::error;
 use bottlerocket_types::agent_config::{SonobuoyConfig, SONOBUOY_RESULTS_FILENAME};
 use log::{error, info, trace};
 use model::{Outcome, TestResults};
-use serde_json::json;
 use snafu::{ensure, OptionExt, ResultExt};
 use std::collections::HashMap;
 use std::path::Path;
@@ -164,7 +163,6 @@ pub(crate) fn process_sonobuoy_test_results(
         ("timed-out", 0),
     ]);
 
-    let default_progress = json!("");
     let plugin_results = run_status
         .get("plugins")
         .context(error::MissingSonobuoyStatusFieldSnafu { field: "plugins" })?
@@ -183,13 +181,8 @@ pub(crate) fn process_sonobuoy_test_results(
             })?;
 
         // Sometimes a helpful log is available in the progress field, but not always.
-        let progress_status = result
-            .get("progress")
-            .unwrap_or(&default_progress)
-            .as_str()
-            // Unwrap is safe here because we know from above it will at least have an empty string
-            .unwrap();
-        if !progress_status.is_empty() {
+        let progress_status = result.get("progress").map(|value| value.to_string());
+        if let Some(progress_status) = progress_status {
             progress.push(format!("{}: {}", plugin, progress_status));
         }
 
@@ -310,6 +303,18 @@ mod test_sonobuoy {
     }
 
     #[test]
+    fn test_process_results_progress_object() {
+        let result =
+            process_sonobuoy_test_results(
+                &json!({"plugins":[{"plugin":"e2e","progress":{"name":"e2e","node":"global","timestamp":"2022-12-08T15:37:23.007805243Z","msg":"Test Suite completed","total":1,"completed":1},"status":"complete","result-status":"timed-out","result-counts":{"failed":1}}]})).unwrap();
+        assert_eq!(result.num_passed, 0);
+        assert_eq!(result.num_failed, 1);
+        assert_eq!(result.num_skipped, 0);
+        assert_eq!(result.outcome, Outcome::Timeout);
+        assert_eq!(result.other_info.unwrap(), "e2e: {\"name\":\"e2e\",\"node\":\"global\",\"timestamp\":\"2022-12-08T15:37:23.007805243Z\",\"msg\":\"Test Suite completed\",\"total\":1,\"completed\":1}");
+    }
+
+    #[test]
     fn test_process_results_multiple_pass() {
         // All must pass to report passing status.
         let result =
@@ -396,6 +401,9 @@ mod test_sonobuoy {
         assert_eq!(result.num_failed, 0);
         assert_eq!(result.num_skipped, 1);
         assert_eq!(result.outcome, Outcome::Pass);
-        assert_eq!(result.other_info.unwrap(), "smoketest: one, workload: two");
+        assert_eq!(
+            result.other_info.unwrap(),
+            "smoketest: \"one\", workload: \"two\""
+        );
     }
 }
