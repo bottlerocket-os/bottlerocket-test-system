@@ -1,6 +1,6 @@
 use anyhow::{Context, Result};
 use clap::Parser;
-use model::test_manager::{StatusProgress, TestManager};
+use model::test_manager::{CrdState, CrdType, SelectionParams, StatusProgress, TestManager};
 use terminal_size::{Height, Width};
 
 /// Check the status of a TestSys object.
@@ -19,18 +19,50 @@ pub(crate) struct Status {
     progress: bool,
 
     /// Include the `Test` status, too. Requires `--progress`
-    #[clap(long, short = 't', requires("progress"))]
+    #[clap(long, requires("progress"))]
     with_test: bool,
 
     /// Include the time the CRD was last updated
     #[clap(long, short = 'u')]
     with_time: bool,
+
+    /// Include `Test`s (if passed with `--resources`, `Test`s and `Resource`s will be shown)
+    #[clap(long, short = 't')]
+    tests: bool,
+
+    /// Include `Resource`s (if passed with `--tests`, `Test`s and `Resource`s will be shown)
+    #[clap(long, short = 'r')]
+    resources: bool,
+
+    /// Only include objects with the specified labels ("foo=bar,biz=baz")
+    #[clap(long)]
+    labels: Option<String>,
+
+    /// Only include objects with the specified state ("completed", "running", "not-finished",
+    /// "passed", "failed")
+    #[clap(long)]
+    state: Option<CrdState>,
+
+    /// Only include objects with the specified name
+    #[clap(long)]
+    name: Option<String>,
 }
 
 impl Status {
     pub(crate) async fn run(self, client: TestManager) -> Result<()> {
+        let crd_type = match (self.tests, self.resources) {
+            (true, false) => Some(CrdType::Test),
+            (false, true) => Some(CrdType::Resource),
+            _ => None,
+        };
+        let selection_params = SelectionParams {
+            crd_type,
+            labels: self.labels,
+            name: self.name,
+            state: self.state,
+        };
         let mut status = client
-            .status(&Default::default(), self.controller)
+            .status(&selection_params, self.controller)
             .await
             .context("Unable to get status")?;
 
