@@ -1,0 +1,16 @@
+kind: Test
+metadata:
+  name: workload-agent
+  namespace: testsys
+spec:
+  agent:
+    name: workload-agent
+    image: <WORKLOAD-AGENT-IMAGE>
+    keepRunning: false
+    configuration:
+      kubeconfigBase64: <BASE64-KUBECONFIG>
+      plugins:
+        - name: nvidia-workload
+          image: <NVIDIA-WORKLOAD-IMAGE>
+  resources: []
+  dependsOn: []
