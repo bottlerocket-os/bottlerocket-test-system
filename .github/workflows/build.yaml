@@ -15,10 +15,12 @@ on:
     branches: [develop]
 jobs:
   build:
-    runs-on: [self-hosted, linux, x64]
+    runs-on:
+      group: bottlerocket
+      labels: bottlerocket_ubuntu-latest_16-core
     steps:
       - uses: actions/checkout@v3
-      - run: rustup default 1.61.0
+      - run: rustup default 1.61.0 && rustup component add rustfmt && rustup component add clippy
       - run: make build
         # If we forget to add yamlgen changes to our commits, this will fail.
       - name: ensure that git is clean
@@ -33,7 +35,9 @@ jobs:
           TESTSYS_SELFTEST_SKIP_IMAGE_BUILDS: true
           TESTSYS_SELFTEST_THREADS: 1
   images:
-    runs-on: [ self-hosted, linux, x64 ]
+    runs-on:
+      group: bottlerocket
+      labels: bottlerocket_ubuntu-latest_16-core
     steps:
       - uses: actions/checkout@v3
       - run: make images
