@@ -19,7 +19,7 @@ aws-sdk-iam = "0.19"
 aws-sdk-ssm = "0.19"
 aws-sdk-sts = "0.19"
 aws-smithy-types = "0.49"
-base64 = "0.13"
+base64 = "0.20"
 env_logger = "0.10"
 hex ="0.4"
 k8s-openapi = { version = "0.16", default-features = false, features = ["v1_20"] }
