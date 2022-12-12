@@ -102,7 +102,7 @@ pub struct EksClusterConfig {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
-#[serde(untagged)]
+#[serde(untagged, rename_all = "camelCase")]
 pub enum EksctlConfig {
     File {
         encoded_config: String,
