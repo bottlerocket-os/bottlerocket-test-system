@@ -9,7 +9,9 @@ on:
     branches: [develop]
 jobs:
   build:
-    runs-on: [self-hosted, linux, x64]
+    runs-on:
+      group: bottlerocket
+      labels: bottlerocket_ubuntu-latest_16-core
     steps:
       - uses: actions/checkout@v3
       - run: make tools
