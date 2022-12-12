@@ -495,6 +495,8 @@ fn k8s_version_valid() {
 pub struct WorkloadTest {
     pub name: String,
     pub image: String,
+    #[serde(default)]
+    pub gpu: bool,
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize, Configuration, Builder)]
@@ -502,5 +504,16 @@ pub struct WorkloadTest {
 #[crd("Test")]
 pub struct WorkloadConfig {
     pub kubeconfig_base64: String,
-    pub plugins: Vec<WorkloadTest>,
+    pub tests: Vec<WorkloadTest>,
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize, Configuration, Builder)]
+#[serde(rename_all = "camelCase")]
+#[crd("Test")]
+pub struct EcsWorkloadTestConfig {
+    pub region: Option<String>,
+    pub cluster_name: String,
+    /// The role that should be assumed for this test agent.
+    pub assume_role: Option<String>,
+    pub tests: Vec<WorkloadTest>,
 }

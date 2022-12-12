@@ -28,7 +28,7 @@ pub async fn is_cluster_creation_required(
             Err(
                 ProviderError::new_with_context(
                     Resources::Clear, format!(
-                        "The cluster '{}' already existed and creation policy '{:?}' requires that it not exist",
+                        "The cluster '{}' already exists and creation policy '{:?}' requires that it does not exist",
                         cluster_name,
                         creation_policy
                     )
@@ -38,7 +38,7 @@ pub async fn is_cluster_creation_required(
             Err(
                 ProviderError::new_with_context(
                     Resources::Clear, format!(
-                        "The cluster '{}' does not exist and creation policy '{:?}' requires that it exist",
+                        "The cluster '{}' does not exist and creation policy '{:?}' requires that it exists",
                         cluster_name,
                         creation_policy
                     )
