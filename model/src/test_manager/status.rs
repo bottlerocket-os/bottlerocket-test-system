@@ -112,7 +112,12 @@ impl StatusSnapshot {
                 // `Iterator<Option<String>>`
                 .flat_map(|crd| match crd {
                     Crd::Test(test) => {
-                        if !test.agent_status().results.is_empty() {
+                        if test.agent_status().results.is_empty()
+                            && test.agent_status().current_test.is_none()
+                        {
+                            // If there are no test results, a line will still be there
+                            vec![Some("No Test Results".to_string())]
+                        } else {
                             test.agent_status()
                                 .results
                                 .iter()
@@ -125,10 +130,16 @@ impl StatusSnapshot {
                                         None
                                     }
                                 })
+                                .chain(
+                                    // Show the current test's status because it should be well
+                                    // formatted
+                                    test.agent_status()
+                                        .current_test
+                                        .as_ref()
+                                        .map(|result| result.other_info.to_owned())
+                                        .into_iter(),
+                                )
                                 .collect()
-                        } else {
-                            // If there are no test results, a line will still be there
-                            vec![Some("No test results".to_string())]
                         }
                     }
                     // Get the status of each resource and wrap it in a `Vec` to match types
@@ -291,7 +302,9 @@ impl From<&Crd> for Vec<ResultRow> {
                 let name = test.metadata.name.clone().unwrap_or_else(|| "".to_string());
                 let state = test.test_user_state().to_string();
                 let test_results = &test.agent_status().results;
-                if test_results.is_empty() {
+                let current_test = &test.agent_status().current_test;
+                let mut test_iter = test_results.iter().chain(current_test.iter()).peekable();
+                if test_iter.peek().is_none() {
                     results.push(ResultRow {
                         name,
                         object_type: "Test".to_string(),
@@ -301,7 +314,7 @@ impl From<&Crd> for Vec<ResultRow> {
                         failed: None,
                     })
                 } else {
-                    for (test_count, result) in test_results.iter().enumerate() {
+                    for (test_count, result) in test_iter.enumerate() {
                         let retry_name = if test_count == 0 {
                             name.clone()
                         } else {
@@ -310,7 +323,7 @@ impl From<&Crd> for Vec<ResultRow> {
                         results.push(ResultRow {
                             name: retry_name,
                             object_type: "Test".to_string(),
-                            state: state.clone(),
+                            state: result.outcome.to_string(),
                             passed: Some(result.num_passed),
                             skipped: Some(result.num_skipped),
                             failed: Some(result.num_failed),
@@ -362,7 +375,8 @@ impl std::fmt::Debug for AdditionalColumn {
 fn crd_rows(crd: &Crd) -> usize {
     match crd {
         Crd::Test(test) => {
-            let retry_count = test.agent_status().results.len();
+            let retry_count = test.agent_status().results.len()
+                + test.agent_status().current_test.as_ref().map_or(0, |_| 1);
             if retry_count != 0 {
                 retry_count
             } else {

@@ -8,6 +8,7 @@ container environment to construct the [`Agent`] and all of its parts.
 use model::constants::ENV_TEST_NAME;
 use snafu::{ResultExt, Snafu};
 
+#[derive(Clone)]
 /// Data that is read from the TestPod's container environment and filesystem.
 pub struct BootstrapData {
     /// The name of the TestSys Test.

@@ -41,7 +41,9 @@ use bottlerocket_types::agent_config::WorkloadConfig;
 use log::info;
 use model::TestResults;
 use std::path::PathBuf;
-use test_agent::{BootstrapData, ClientError, DefaultClient, Spec, TestAgent};
+use test_agent::{
+    BootstrapData, ClientError, DefaultClient, DefaultInfoClient, InfoClient, Spec, TestAgent,
+};
 
 struct WorkloadTestRunner {
     config: WorkloadConfig,
@@ -49,11 +51,14 @@ struct WorkloadTestRunner {
 }
 
 #[async_trait]
-impl test_agent::Runner for WorkloadTestRunner {
+impl<I> test_agent::Runner<I> for WorkloadTestRunner
+where
+    I: InfoClient,
+{
     type C = WorkloadConfig;
     type E = Error;
 
-    async fn new(spec: Spec<Self::C>) -> Result<Self, Self::E> {
+    async fn new(spec: Spec<Self::C>, _info_client: &I) -> Result<Self, Self::E> {
         info!("Initializing Workload test agent...");
         Ok(Self {
             config: spec.configuration,
@@ -61,7 +66,7 @@ impl test_agent::Runner for WorkloadTestRunner {
         })
     }
 
-    async fn run(&mut self) -> Result<TestResults, Self::E> {
+    async fn run(&mut self, _info_client: &I) -> Result<TestResults, Self::E> {
         info!("Decoding kubeconfig for test cluster");
         base64_decode_write_file(&self.config.kubeconfig_base64, TEST_CLUSTER_KUBECONFIG_PATH)
             .await?;
@@ -75,7 +80,11 @@ impl test_agent::Runner for WorkloadTestRunner {
         .await
     }
 
-    async fn rerun_failed(&mut self, _prev_results: &TestResults) -> Result<TestResults, Self::E> {
+    async fn rerun_failed(
+        &mut self,
+        _prev_results: &TestResults,
+        _info_client: &I,
+    ) -> Result<TestResults, Self::E> {
         delete_workload(TEST_CLUSTER_KUBECONFIG_PATH).await?;
 
         info!("Decoding kubeconfig for test cluster");
@@ -101,7 +110,7 @@ async fn main() {
 }
 
 async fn run() -> Result<(), test_agent::error::Error<ClientError, Error>> {
-    let mut agent = TestAgent::<DefaultClient, WorkloadTestRunner>::new(
+    let mut agent = TestAgent::<DefaultClient, WorkloadTestRunner, DefaultInfoClient>::new(
         BootstrapData::from_env().unwrap_or_else(|_| BootstrapData {
             test_name: "workload_test".to_string(),
         }),

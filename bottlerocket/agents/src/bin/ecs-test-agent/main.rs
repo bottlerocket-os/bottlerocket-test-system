@@ -18,7 +18,10 @@ use log::info;
 use model::{Outcome, SecretName, TestResults};
 use snafu::{OptionExt, ResultExt};
 use std::time::Duration;
-use test_agent::{BootstrapData, ClientError, DefaultClient, Runner, Spec, TestAgent};
+use test_agent::{
+    BootstrapData, ClientError, DefaultClient, DefaultInfoClient, InfoClient, Runner, Spec,
+    TestAgent,
+};
 
 struct EcsTestRunner {
     config: EcsTestConfig,
@@ -26,11 +29,14 @@ struct EcsTestRunner {
 }
 
 #[async_trait]
-impl Runner for EcsTestRunner {
+impl<I> Runner<I> for EcsTestRunner
+where
+    I: InfoClient,
+{
     type C = EcsTestConfig;
     type E = Error;
 
-    async fn new(spec: Spec<Self::C>) -> Result<Self, Self::E> {
+    async fn new(spec: Spec<Self::C>, _info_client: &I) -> Result<Self, Self::E> {
         info!("Initializing Ecs test agent...");
         Ok(Self {
             config: spec.configuration,
@@ -38,7 +44,7 @@ impl Runner for EcsTestRunner {
         })
     }
 
-    async fn run(&mut self) -> Result<TestResults, Self::E> {
+    async fn run(&mut self, _info_client: &I) -> Result<TestResults, Self::E> {
         let config = aws_config(
             &self.aws_secret_name.as_ref(),
             &self.config.assume_role,
@@ -280,7 +286,7 @@ async fn main() {
 }
 
 async fn run() -> Result<(), test_agent::error::Error<ClientError, Error>> {
-    let mut agent = TestAgent::<DefaultClient, EcsTestRunner>::new(
+    let mut agent = TestAgent::<DefaultClient, EcsTestRunner, DefaultInfoClient>::new(
         BootstrapData::from_env().unwrap_or_else(|_| BootstrapData {
             test_name: "ecs_test".to_string(),
         }),

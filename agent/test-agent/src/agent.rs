@@ -1,7 +1,7 @@
 use crate::error::{self, AgentError, Error, Result};
-use crate::{BootstrapData, Client, Runner};
+use crate::{BootstrapData, Client, InfoClient, Runner};
 use log::{debug, error, info, trace};
-use model::Outcome;
+use model::{Outcome, TestResults};
 use snafu::ResultExt;
 use std::fs::File;
 use std::path::PathBuf;
@@ -24,19 +24,22 @@ use tokio::time::sleep;
 /// See the `../examples/example_test_agent/main.rs` for an example of how to create a [`Runner`].
 /// Also see `../tests/mock.rs` for an example of how you can mock the Kubernetes clients.
 ///
-pub struct TestAgent<C, R>
+pub struct TestAgent<C, R, I>
 where
     C: Client + 'static,
-    R: Runner + 'static,
+    R: Runner<I> + 'static,
+    I: InfoClient + 'static,
 {
     client: C,
     runner: R,
+    info_client: I,
 }
 
-impl<C, R> TestAgent<C, R>
+impl<C, R, I> TestAgent<C, R, I>
 where
     C: Client + 'static,
-    R: Runner + 'static,
+    R: Runner<I> + 'static,
+    I: InfoClient + 'static,
 {
     /// Create a new `TestAgent`. Since the [`Client`] and [`Runner`] are constructed internally
     /// based on information from the [`BootstrapData`], you will need to specify the types using
@@ -44,10 +47,15 @@ where
     /// Any errors that occur during this function are fatal since we are not able to fully
     /// construct the `Runner`.
     pub async fn new(b: BootstrapData) -> Result<Self, C::E, R::E> {
-        let client = C::new(b).await.map_err(Error::Client)?;
+        let client = C::new(b.clone()).await.map_err(Error::Client)?;
         let spec = client.spec().await.map_err(Error::Client)?;
-        let runner = R::new(spec).await.map_err(Error::Runner)?;
-        Ok(Self { runner, client })
+        let info_client = I::new(b).await.context(error::InfoClientSnafu)?;
+        let runner = R::new(spec, &info_client).await.map_err(Error::Runner)?;
+        Ok(Self {
+            runner,
+            client,
+            info_client,
+        })
     }
 
     /// Run the `TestAgent`. This function returns once the test has completed and `keep_running`
@@ -85,7 +93,21 @@ where
             .await
             .map_err(error::Error::Client)?;
 
-        let mut test_results = match self.runner.run().await.map_err(error::Error::Runner) {
+        self.client
+            .send_test_update(TestResults {
+                outcome: Outcome::InProgress,
+                other_info: Some("Starting Test".to_string()),
+                ..Default::default()
+            })
+            .await
+            .map_err(error::Error::Client)?;
+
+        let mut test_results = match self
+            .runner
+            .run(&self.info_client)
+            .await
+            .map_err(error::Error::Runner)
+        {
             Ok(ok) => ok,
             Err(e) => {
                 self.send_error_best_effort(&e).await;
@@ -113,9 +135,19 @@ where
                 error!("Failed to send test results");
                 self.send_error_best_effort(&e).await;
             }
+
+            self.client
+                .send_test_update(TestResults {
+                    outcome: Outcome::InProgress,
+                    other_info: Some("Rerunning Test".to_string()),
+                    ..Default::default()
+                })
+                .await
+                .map_err(error::Error::Client)?;
+
             test_results = match self
                 .runner
-                .rerun_failed(&test_results)
+                .rerun_failed(&test_results, &self.info_client)
                 .await
                 .map_err(error::Error::Runner)
             {

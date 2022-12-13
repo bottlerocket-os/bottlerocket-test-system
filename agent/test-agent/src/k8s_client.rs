@@ -1,4 +1,7 @@
-use crate::{BootstrapData, Client, DefaultClient, Spec, TestResults};
+use crate::error::{InfoClientError, InfoClientResult};
+use crate::{
+    BootstrapData, Client, DefaultClient, DefaultInfoClient, InfoClient, Spec, TestResults,
+};
 use async_trait::async_trait;
 use model::clients::{CrdClient, ResourceClient, TestClient};
 use model::constants::TESTSYS_RESULTS_FILE;
@@ -103,6 +106,14 @@ impl Client for DefaultClient {
         Ok(())
     }
 
+    async fn send_test_update(&self, results: TestResults) -> Result<(), Self::E> {
+        self.client
+            .send_test_update(&self.name, results)
+            .await
+            .context(K8sSnafu)?;
+        Ok(())
+    }
+
     async fn send_test_results(&self, results: TestResults) -> Result<(), Self::E> {
         self.client
             .send_test_results(&self.name, results)
@@ -128,5 +139,25 @@ impl Client for DefaultClient {
 
     async fn results_file(&self) -> Result<PathBuf, Self::E> {
         return Ok(PathBuf::from(TESTSYS_RESULTS_FILE));
+    }
+}
+
+#[async_trait::async_trait]
+impl InfoClient for DefaultInfoClient {
+    async fn new(d: BootstrapData) -> InfoClientResult<Self> {
+        Ok(Self {
+            client: TestClient::new()
+                .await
+                .map_err(|e| InfoClientError::InitializationFailed(Some(e.into())))?,
+            data: d,
+        })
+    }
+
+    async fn send_test_update(&self, results: TestResults) -> InfoClientResult<()> {
+        self.client
+            .send_test_update(&self.data.test_name, results)
+            .await
+            .map_err(|e| InfoClientError::RequestFailed(Some(e.into())))?;
+        Ok(())
     }
 }

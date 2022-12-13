@@ -5,6 +5,7 @@ use k8s_openapi::apimachinery::pkg::apis::meta::v1::ObjectMeta;
 use kube::CustomResource;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
+use serde_plain::derive_display_from_serialize;
 use std::borrow::Cow;
 
 /// A TestSys Test. The `CustomResource` derive also produces a struct named `Test` which represents
@@ -59,7 +60,10 @@ pub enum Outcome {
     Fail,
     Timeout,
     Unknown,
+    InProgress,
 }
+
+derive_display_from_serialize!(Outcome);
 
 impl Default for Outcome {
     fn default() -> Self {
@@ -94,6 +98,7 @@ pub struct AgentStatus {
     /// *not* `Error`, the this is a bad state and the `error_message` should be ignored.
     pub error: Option<String>,
     pub results: Vec<TestResults>,
+    pub current_test: Option<TestResults>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Default, Eq, PartialEq, Clone, JsonSchema)]
@@ -182,7 +187,7 @@ impl Test {
                         Outcome::Pass => TestUserState::Passed,
                         Outcome::Fail => TestUserState::Failed,
                         Outcome::Timeout => TestUserState::Failed,
-                        Outcome::Unknown => {
+                        Outcome::Unknown | Outcome::InProgress => {
                             if results.total() == 0 {
                                 TestUserState::NoTests
                             } else if results.num_failed == 0 {

@@ -15,6 +15,7 @@ pub use crate::agent::TestAgent;
 use agent_common::secrets::{Result as SecretsResult, SecretData, SecretsReader};
 use async_trait::async_trait;
 pub use bootstrap::{BootstrapData, BootstrapError};
+use error::InfoClientResult;
 pub use k8s_client::ClientError;
 use log::info;
 use model::clients::TestClient;
@@ -48,7 +49,7 @@ pub struct Spec<C: Configuration> {
 /// TestSys Test CRD is created.
 ///
 #[async_trait]
-pub trait Runner: Sized + Send {
+pub trait Runner<I: InfoClient>: Sized + Send {
     /// Input that you need to initialize your test run.
     type C: Configuration;
 
@@ -56,16 +57,17 @@ pub trait Runner: Sized + Send {
     type E: Debug + Display + Send + Sync + 'static;
 
     /// Creates a new instance of the `Runner`.
-    async fn new(spec: Spec<Self::C>) -> Result<Self, Self::E>;
+    async fn new(spec: Spec<Self::C>, info_client: &I) -> Result<Self, Self::E>;
 
     /// Runs the test(s) and returns when they are done. If the tests cannot be completed, returns
     /// an error.
-    async fn run(&mut self) -> Result<TestResults, Self::E>;
+    async fn run(&mut self, info_client: &I) -> Result<TestResults, Self::E>;
 
     /// Rerun a failed test.
     async fn rerun_failed(
         &mut self,
         _prev_test_result: &TestResults,
+        _info_client: &I,
     ) -> Result<TestResults, Self::E> {
         info!("Tried to rerun test, but no retry method was defined.");
         Ok(TestResults {
@@ -73,7 +75,7 @@ pub trait Runner: Sized + Send {
             num_failed: 1,
             num_passed: 0,
             num_skipped: 0,
-            other_info: Some("No retry_failed method defined".to_string()),
+            other_info: Some("rerun_failed not defined".to_string()),
         })
     }
 
@@ -122,6 +124,9 @@ pub trait Client: Sized {
     /// Set the appropriate status field to represent that the test has started.
     async fn send_test_starting(&self) -> Result<(), Self::E>;
 
+    /// Update the TestResults in the tests status.
+    async fn send_test_update(&self, results: TestResults) -> Result<(), Self::E>;
+
     /// Add a TestResults object to the CRDs array of TestResults without signaling that the test
     /// is complete. This is used to send TestResults when some failures have occured and we are
     /// going to re-run the failed test cases.
@@ -141,4 +146,15 @@ pub struct DefaultClient {
     client: TestClient,
     name: String,
     results_dir: TempDir,
+}
+
+#[async_trait::async_trait]
+pub trait InfoClient: Sized + Send + Sync {
+    async fn new(d: BootstrapData) -> InfoClientResult<Self>;
+    async fn send_test_update(&self, results: TestResults) -> InfoClientResult<()>;
+}
+
+pub struct DefaultInfoClient {
+    client: TestClient,
+    data: BootstrapData,
 }
