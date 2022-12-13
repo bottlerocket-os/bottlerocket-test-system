@@ -1,11 +1,11 @@
 use super::{
-    error, DeleteEvent, DockerConfigJson, ImageConfig, ResourceState, Result, SelectionParams,
-    StatusSnapshot,
+    error, CrdState, CrdType, DeleteEvent, DockerConfigJson, ImageConfig, ResourceState, Result,
+    SelectionParams, StatusSnapshot,
 };
 use crate::clients::{CrdClient, ResourceClient, TestClient};
 use crate::constants::{LABEL_COMPONENT, TESTSYS_RESULTS_FILE};
 use crate::system::AgentType;
-use crate::{Crd, CrdName, SecretName};
+use crate::{Crd, CrdName, Resource, SecretName, TaskState, Test, TestUserState};
 use bytes::Bytes;
 use futures::{Stream, StreamExt};
 use k8s_openapi::api::core::v1::{Pod, Secret};
@@ -187,68 +187,44 @@ impl TestManager {
 
     /// List all testsys objects following `SelectionParams`
     pub async fn list(&self, selection_params: &SelectionParams) -> Result<Vec<Crd>> {
-        Ok(match selection_params {
-            SelectionParams::All => {
-                let mut objects = Vec::new();
-                let list_params = Default::default();
-                let tests = self.test_client().api().list(&list_params).await.context(
-                    error::KubeSnafu {
-                        action: "list tests from label params",
-                    },
-                )?;
-                objects.extend(tests.into_iter().map(Crd::Test));
-                let resources = self
-                    .resource_client()
+        let mut list_params = ListParams::default();
+        if let Some(labels) = &selection_params.labels {
+            list_params = list_params.labels(labels)
+        }
+        if let Some(name) = &selection_params.name {
+            list_params = list_params.fields(&format!("metadata.name=={}", name));
+        }
+        let mut objects = Vec::new();
+        if matches!(selection_params.crd_type, Some(CrdType::Test) | None) {
+            objects.extend(
+                self.test_client()
                     .api()
                     .list(&list_params)
                     .await
                     .context(error::KubeSnafu {
-                        action: "list resources from label params",
-                    })?;
-                objects.extend(resources.into_iter().map(Crd::Resource));
-                objects
-            }
-            SelectionParams::Label(label) => {
-                let mut objects = Vec::new();
-                let list_params = ListParams {
-                    label_selector: Some(label.to_string()),
-                    ..Default::default()
-                };
-                let tests = self.test_client().api().list(&list_params).await.context(
-                    error::KubeSnafu {
                         action: "list tests from label params",
-                    },
-                )?;
-                objects.extend(tests.into_iter().map(Crd::Test));
-                let resources = self
-                    .resource_client()
+                    })?
+                    .into_iter()
+                    .filter(|test| filter_test_by_state(test, &selection_params.state))
+                    .map(Crd::Test),
+            );
+        }
+        if matches!(selection_params.crd_type, Some(CrdType::Resource) | None) {
+            objects.extend(
+                self.resource_client()
                     .api()
                     .list(&list_params)
                     .await
                     .context(error::KubeSnafu {
-                        action: "list resources from label params",
-                    })?;
-                objects.extend(resources.into_iter().map(Crd::Resource));
-                objects
-            }
-            SelectionParams::Name(CrdName::Test(test_name)) => {
-                vec![Crd::Test(
-                    self.test_client()
-                        .get(test_name)
-                        .await
-                        .context(error::ClientSnafu { action: "get test" })?,
-                )]
-            }
-            SelectionParams::Name(CrdName::Resource(resource_name)) => {
-                vec![Crd::Resource(
-                    self.resource_client().get(resource_name).await.context(
-                        error::ClientSnafu {
-                            action: "get resource",
-                        },
-                    )?,
-                )]
-            }
-        })
+                        action: "list tests from label params",
+                    })?
+                    .into_iter()
+                    .filter(|resource| filter_resource_by_state(resource, &selection_params.state))
+                    .map(Crd::Resource),
+            );
+        }
+
+        Ok(objects)
     }
 
     /// Delete all testsys `Test`s and `Resource`s from a cluster.
@@ -467,4 +443,66 @@ pub fn read_manifest(path: &Path) -> Result<Vec<Crd>> {
         crds.push(crd);
     }
     Ok(crds)
+}
+
+fn filter_test_by_state(test: &Test, state: &Option<CrdState>) -> bool {
+    if let Some(state) = state {
+        match state {
+            CrdState::Running => {
+                matches!(test.test_user_state(), TestUserState::Running)
+            }
+            CrdState::Completed => matches!(
+                test.test_user_state(),
+                TestUserState::NoTests
+                    | TestUserState::Passed
+                    | TestUserState::Failed
+                    | TestUserState::Error
+                    | TestUserState::ResourceError
+            ),
+            CrdState::Passed => {
+                matches!(test.test_user_state(), TestUserState::Passed)
+            }
+            CrdState::Failed => {
+                matches!(
+                    test.test_user_state(),
+                    TestUserState::Failed | TestUserState::Error | TestUserState::ResourceError
+                )
+            }
+            CrdState::NotFinished => matches!(
+                test.test_user_state(),
+                TestUserState::Running | TestUserState::Waiting | TestUserState::Unknown
+            ),
+        }
+    } else {
+        true
+    }
+}
+
+fn filter_resource_by_state(resource: &Resource, state: &Option<CrdState>) -> bool {
+    if let Some(state) = state {
+        match state {
+            CrdState::Running => {
+                matches!(resource.creation_task_state(), TaskState::Running)
+                    || matches!(resource.destruction_task_state(), TaskState::Running)
+            }
+            CrdState::Completed => {
+                matches!(
+                    resource.creation_task_state(),
+                    TaskState::Completed | TaskState::Error
+                ) && !matches!(resource.destruction_task_state(), TaskState::Running)
+            }
+            CrdState::NotFinished => {
+                matches!(
+                    resource.creation_task_state(),
+                    TaskState::Running | TaskState::Unknown
+                ) || matches!(
+                    resource.creation_task_state(),
+                    TaskState::Running | TaskState::Unknown
+                )
+            }
+            _ => false,
+        }
+    } else {
+        true
+    }
 }
