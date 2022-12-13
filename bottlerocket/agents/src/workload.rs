@@ -1,5 +1,7 @@
 use crate::error;
-use crate::sonobuoy::process_sonobuoy_test_results;
+use crate::sonobuoy::{
+    process_sonobuoy_test_results, wait_for_sonobuoy_results, wait_for_sonobuoy_status,
+};
 use bottlerocket_types::agent_config::{WorkloadConfig, SONOBUOY_RESULTS_FILENAME};
 use log::{info, trace};
 use model::TestResults;
@@ -8,6 +10,7 @@ use std::fs::File;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::process::Command;
+use std::time::Duration;
 
 const SONOBUOY_BIN_PATH: &str = "/usr/bin/sonobuoy";
 
@@ -62,13 +65,11 @@ pub async fn run_workload(
     let output = Command::new(SONOBUOY_BIN_PATH)
         .args(kubeconfig_arg.to_owned())
         .arg("run")
-        .arg("--wait")
         .arg("--namespace")
         .arg("testsys-workload")
         .args(plugin_test_args)
         .output()
         .context(error::WorkloadProcessSnafu)?;
-    info!("Workload testing has completed, checking results");
 
     ensure!(
         output.status.success(),
@@ -78,6 +79,17 @@ pub async fn run_workload(
             stderr: &String::from_utf8(output.stderr).unwrap_or_else(|_| "".to_string()),
         }
     );
+
+    info!("Workload testing has started, waiting for status to be available");
+    tokio::time::timeout(
+        Duration::from_secs(300),
+        wait_for_sonobuoy_status(kubeconfig_path, Some("testsys-workload")),
+    )
+    .await
+    .context(error::SonobuoyTimeoutSnafu)??;
+    info!("Workload status is available, waiting for test to complete");
+    wait_for_sonobuoy_results(kubeconfig_path, Some("testsys-workload")).await?;
+    info!("Workload testing has completed, checking results");
 
     results_workload(kubeconfig_path, results_dir)
 }
@@ -94,14 +106,12 @@ pub async fn rerun_failed_workload(
     let output = Command::new(SONOBUOY_BIN_PATH)
         .args(kubeconfig_arg.to_owned())
         .arg("run")
-        .arg("--wait")
         .arg("--namespace")
         .arg("testsys-workload")
         .arg("--rerun-failed")
         .arg(results_filepath.as_os_str())
         .output()
         .context(error::WorkloadProcessSnafu)?;
-    info!("Workload testing has completed, checking results");
 
     ensure!(
         output.status.success(),
@@ -111,6 +121,17 @@ pub async fn rerun_failed_workload(
             stderr: &String::from_utf8(output.stderr).unwrap_or_else(|_| "".to_string()),
         }
     );
+
+    info!("Workload testing has started, waiting for status to be available");
+    tokio::time::timeout(
+        Duration::from_secs(300),
+        wait_for_sonobuoy_status(kubeconfig_path, Some("testsys-workload")),
+    )
+    .await
+    .context(error::SonobuoyTimeoutSnafu)??;
+    info!("Workload status is available, waiting for test to complete");
+    wait_for_sonobuoy_results(kubeconfig_path, Some("testsys-workload")).await?;
+    info!("Workload testing has completed, checking results");
 
     results_workload(kubeconfig_path, results_dir)
 }
