@@ -103,6 +103,9 @@ async fn do_creation_action(r: ResourceInterface, action: CreationAction) -> Res
                 conflict
             );
         }
+        CreationAction::WaitForDependent => {
+            debug!("'{}' is waiting for test that requires it", r.name());
+        }
         CreationAction::AddResourceFinalizer => {
             let _ = r
                 .resource_client()

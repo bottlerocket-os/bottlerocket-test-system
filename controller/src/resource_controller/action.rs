@@ -24,6 +24,7 @@ pub(super) enum CreationAction {
     StartJob,
     WaitForDependency(String),
     WaitForConflict(String),
+    WaitForDependent,
     WaitForCreation,
     AddResourceFinalizer,
     Done,
@@ -76,6 +77,10 @@ async fn creation_action(r: &ResourceInterface) -> Result<CreationAction> {
     }
 
     if let Some(wait_action) = conflicting_wait_action(r).await? {
+        return Ok(wait_action);
+    }
+
+    if let Some(wait_action) = dependent_wait_action(r).await? {
         return Ok(wait_action);
     }
 
@@ -135,6 +140,26 @@ async fn conflicting_wait_action(r: &ResourceInterface) -> Result<Option<Creatio
     Ok(None)
 }
 
+async fn dependent_wait_action(r: &ResourceInterface) -> Result<Option<CreationAction>> {
+    // If any resources still depend on this resource it should not be deleted.
+    let resources = r.resource_client().get_all().await?;
+    for resource in resources {
+        if let Some(depends_on) = resource.spec().depends_on.as_ref() {
+            if depends_on.contains(&r.name().to_string()) {
+                return Ok(None);
+            }
+        }
+    }
+    let test_client = TestClient::new_from_k8s_client(r.k8s_client());
+    let tests = test_client.get_all().await?;
+    for test in tests {
+        if test.spec().resources.contains(&r.name().to_string()) {
+            return Ok(None);
+        }
+    }
+    Ok(Some(CreationAction::WaitForDependent))
+}
+
 async fn creation_not_done_action(
     r: &ResourceInterface,
     is_task_state_running: bool,
@@ -189,7 +214,8 @@ async fn is_deletion_required(r: &ResourceInterface) -> Result<bool> {
     if !matches!(
         destruction_policy,
         DestructionPolicy::OnTestCompletion | DestructionPolicy::OnTestSuccess
-    ) {
+    ) || r.resource().created_resource().is_none()
+    {
         return Ok(false);
     }
     // If any resources still depend on this resource it should not be deleted.
