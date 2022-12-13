@@ -9,6 +9,8 @@ use aws_sdk_ssm::error::{
     SendCommandError, UpdateDocumentError,
 };
 use snafu::Snafu;
+use std::num::TryFromIntError;
+use test_agent::error::InfoClientError;
 use tokio::time::error::Elapsed;
 
 #[derive(Debug, Snafu)]
@@ -205,4 +207,10 @@ pub enum Error {
 
     #[snafu(display("Missing '{}' field from workload status", field))]
     MissingWorkloadStatusField { field: String },
+
+    #[snafu(display("Unable to send test update: {}", source), context(false))]
+    InfoClient { source: InfoClientError },
+
+    #[snafu(display("Unable convert usize to u64: {}", source), context(false))]
+    Conversion { source: TryFromIntError },
 }

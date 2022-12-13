@@ -66,7 +66,7 @@ where
         })
     }
 
-    async fn run(&mut self, _info_client: &I) -> Result<TestResults, Self::E> {
+    async fn run(&mut self, info_client: &I) -> Result<TestResults, Self::E> {
         info!("Decoding kubeconfig for test cluster");
         base64_decode_write_file(&self.config.kubeconfig_base64, TEST_CLUSTER_KUBECONFIG_PATH)
             .await?;
@@ -76,6 +76,7 @@ where
             TEST_CLUSTER_KUBECONFIG_PATH,
             &self.config,
             &self.results_dir,
+            info_client,
         )
         .await
     }
@@ -83,7 +84,7 @@ where
     async fn rerun_failed(
         &mut self,
         _prev_results: &TestResults,
-        _info_client: &I,
+        info_client: &I,
     ) -> Result<TestResults, Self::E> {
         delete_workload(TEST_CLUSTER_KUBECONFIG_PATH).await?;
 
@@ -92,7 +93,7 @@ where
             .await?;
         info!("Stored kubeconfig in {}", TEST_CLUSTER_KUBECONFIG_PATH);
 
-        rerun_failed_workload(TEST_CLUSTER_KUBECONFIG_PATH, &self.results_dir).await
+        rerun_failed_workload(TEST_CLUSTER_KUBECONFIG_PATH, &self.results_dir, info_client).await
     }
 
     async fn terminate(&mut self) -> Result<(), Self::E> {

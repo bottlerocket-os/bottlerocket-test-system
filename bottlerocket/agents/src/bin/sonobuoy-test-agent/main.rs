@@ -69,7 +69,7 @@ where
         })
     }
 
-    async fn run(&mut self, _info_client: &I) -> Result<TestResults, Self::E> {
+    async fn run(&mut self, info_client: &I) -> Result<TestResults, Self::E> {
         aws_config(
             &self.aws_secret_name.as_ref(),
             &self.config.assume_role,
@@ -98,6 +98,7 @@ where
             e2e_repo_config,
             &self.config,
             &self.results_dir,
+            info_client,
         )
         .await
     }
@@ -105,7 +106,7 @@ where
     async fn rerun_failed(
         &mut self,
         _prev_results: &TestResults,
-        _info_client: &I,
+        info_client: &I,
     ) -> Result<TestResults, Self::E> {
         // Set up the aws credentials if they were provided.
         aws_config(
@@ -137,6 +138,7 @@ where
             TEST_CLUSTER_KUBECONFIG_PATH,
             e2e_repo_config,
             &self.results_dir,
+            info_client,
         )
         .await
     }

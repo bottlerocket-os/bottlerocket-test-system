@@ -11,16 +11,21 @@ use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::time::Duration;
+use test_agent::InfoClient;
 
 const SONOBUOY_BIN_PATH: &str = "/usr/bin/sonobuoy";
 
 /// Runs the workload conformance tests according to the provided configuration and returns a test
 /// result at the end.
-pub async fn run_workload(
+pub async fn run_workload<I>(
     kubeconfig_path: &str,
     workload_config: &WorkloadConfig,
     results_dir: &Path,
-) -> Result<TestResults, error::Error> {
+    info_client: &I,
+) -> Result<TestResults, error::Error>
+where
+    I: InfoClient,
+{
     info!("Processing workload test plugins");
     let mut plugin_test_args: Vec<String> = Vec::new();
     for (id, plugin) in workload_config.plugins.iter().enumerate() {
@@ -88,17 +93,21 @@ pub async fn run_workload(
     .await
     .context(error::SonobuoyTimeoutSnafu)??;
     info!("Workload status is available, waiting for test to complete");
-    wait_for_sonobuoy_results(kubeconfig_path, Some("testsys-workload")).await?;
+    wait_for_sonobuoy_results(kubeconfig_path, Some("testsys-workload"), info_client).await?;
     info!("Workload testing has completed, checking results");
 
     results_workload(kubeconfig_path, results_dir)
 }
 
 /// Reruns the the failed tests from workload conformance that has already run in this agent.
-pub async fn rerun_failed_workload(
+pub async fn rerun_failed_workload<I>(
     kubeconfig_path: &str,
     results_dir: &Path,
-) -> Result<TestResults, error::Error> {
+    info_client: &I,
+) -> Result<TestResults, error::Error>
+where
+    I: InfoClient,
+{
     let kubeconfig_arg = vec!["--kubeconfig", kubeconfig_path];
     let results_filepath = results_dir.join(SONOBUOY_RESULTS_FILENAME);
 
@@ -130,7 +139,7 @@ pub async fn rerun_failed_workload(
     .await
     .context(error::SonobuoyTimeoutSnafu)??;
     info!("Workload status is available, waiting for test to complete");
-    wait_for_sonobuoy_results(kubeconfig_path, Some("testsys-workload")).await?;
+    wait_for_sonobuoy_results(kubeconfig_path, Some("testsys-workload"), info_client).await?;
     info!("Workload testing has completed, checking results");
 
     results_workload(kubeconfig_path, results_dir)
