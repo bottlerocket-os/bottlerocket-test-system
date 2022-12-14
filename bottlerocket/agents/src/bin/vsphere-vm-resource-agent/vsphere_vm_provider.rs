@@ -3,9 +3,10 @@ use agent_utils::aws::aws_config;
 use agent_utils::base64_decode_write_file;
 use bottlerocket_agents::constants::TEST_CLUSTER_KUBECONFIG_PATH;
 use bottlerocket_agents::tuf::{download_target, tuf_repo_urls};
+use bottlerocket_agents::userdata::{decode_to_string, merge_values};
 use bottlerocket_agents::vsphere::vsphere_credentials;
 use bottlerocket_types::agent_config::{
-    VSphereVmConfig, AWS_CREDENTIALS_SECRET_NAME, VSPHERE_CREDENTIALS_SECRET_NAME,
+    CustomUserData, VSphereVmConfig, AWS_CREDENTIALS_SECRET_NAME, VSPHERE_CREDENTIALS_SECRET_NAME,
 };
 use k8s_openapi::api::core::v1::Service;
 use kube::api::ListParams;
@@ -27,6 +28,7 @@ use std::fs::File;
 use std::path::Path;
 use std::process::Command;
 use std::time::Duration;
+use toml::Value;
 
 /// The default number of VMs to spin up.
 const DEFAULT_VM_COUNT: i32 = 2;
@@ -351,6 +353,8 @@ impl Create for VMCreator {
         let encoded_control_host_ctr_userdata =
             base64::encode(control_host_ctr_userdata.to_string());
 
+        let custom_user_data = spec.configuration.custom_user_data;
+
         // Base64 encode userdata
         let userdata = userdata(
             &vsphere_cluster.control_plane_endpoint_ip,
@@ -358,7 +362,8 @@ impl Create for VMCreator {
             bootstrap_token,
             cluster_certificate,
             &encoded_control_host_ctr_userdata,
-        );
+            &custom_user_data,
+        )?;
 
         info!("Launching worker nodes");
         memo.current_status = "Launching worker nodes".to_string();
@@ -493,6 +498,47 @@ impl Create for VMCreator {
 }
 
 fn userdata(
+    endpoint: &str,
+    cluster_dns_ip: &str,
+    bootstrap_token: &str,
+    certificate: &str,
+    control_container_userdata: &str,
+    custom_user_data: &Option<CustomUserData>,
+) -> ProviderResult<String> {
+    let default_userdata = default_userdata(
+        endpoint,
+        cluster_dns_ip,
+        bootstrap_token,
+        certificate,
+        control_container_userdata,
+    );
+
+    let custom_userdata = if let Some(value) = custom_user_data {
+        value
+    } else {
+        return Ok(default_userdata);
+    };
+
+    match custom_userdata {
+        CustomUserData::Replace { encoded_userdata } => Ok(encoded_userdata.to_string()),
+        CustomUserData::Merge { encoded_userdata } => {
+            let merge_into = &mut decode_to_string(&default_userdata)?
+                .parse::<Value>()
+                .context(Resources::Clear, "Failed to parse TOML")?;
+            let merge_from = decode_to_string(encoded_userdata)?
+                .parse::<Value>()
+                .context(Resources::Clear, "Failed to parse TOML")?;
+            merge_values(&merge_from, merge_into)
+                .context(Resources::Clear, "Failed to merge TOML")?;
+            Ok(base64::encode(toml::to_string(merge_into).context(
+                Resources::Clear,
+                "Failed to serialize merged TOML",
+            )?))
+        }
+    }
+}
+
+fn default_userdata(
     endpoint: &str,
     cluster_dns_ip: &str,
     bootstrap_token: &str,

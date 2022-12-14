@@ -109,6 +109,12 @@ pub(crate) enum Error {
     #[snafu(display("Error patching {}: {}", what, source))]
     Patch { what: String, source: kube::Error },
 
+    #[snafu(display("Error parsing TOML file '{}': {}", path, source))]
+    ParseToml {
+        path: String,
+        source: std::io::Error,
+    },
+
     #[snafu(display("Error getting data from reader: {}", source))]
     Read { source: std::io::Error },
 

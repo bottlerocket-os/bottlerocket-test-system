@@ -1,7 +1,7 @@
 use crate::error::{self, Result};
 use bottlerocket_types::agent_config::{
-    ClusterType, Ec2Config, EcsClusterConfig, EcsTestConfig, MigrationConfig, TufRepoConfig,
-    AWS_CREDENTIALS_SECRET_NAME,
+    ClusterType, CustomUserData, Ec2Config, EcsClusterConfig, EcsTestConfig, MigrationConfig,
+    TufRepoConfig, AWS_CREDENTIALS_SECRET_NAME,
 };
 use kube::ResourceExt;
 use kube::{api::ObjectMeta, Client};
@@ -14,7 +14,28 @@ use model::{
 use serde_json::Value;
 use snafu::ResultExt;
 use std::collections::BTreeMap;
+use std::fs::read_to_string;
+use std::str::FromStr;
 use structopt::StructOpt;
+
+#[derive(Clone, Debug)]
+enum CustomUserDataMode {
+    Merge,
+    Replace,
+}
+
+impl FromStr for CustomUserDataMode {
+    type Err = error::Error;
+    fn from_str(custom_user_data_mode: &str) -> Result<Self> {
+        match custom_user_data_mode {
+            "merge" => Ok(CustomUserDataMode::Merge),
+            "replace" => Ok(CustomUserDataMode::Replace),
+            _ => Err(error::Error::InvalidArguments {
+                why: "Invalid user data mode".to_string(),
+            }),
+        }
+    }
+}
 
 /// Create an EKS resource, EC2 resource and run Sonobuoy.
 #[derive(Debug, StructOpt)]
@@ -151,6 +172,15 @@ pub(crate) struct RunAwsEcs {
     /// provided, then the ECS test agent will attempt to create an IAM instance profile.
     #[structopt(long)]
     iam_instance_profile_name: Option<String>,
+
+    /// The path to a TOML file containing custom userdata.
+    #[structopt(long, requires("custom-user-data-mode"))]
+    custom_user_data: Option<String>,
+
+    /// The way custom userdata should interact with the default userdata.
+    /// The possible values are `merge` and `replace`.
+    #[structopt(long, requires("custom-user-data"))]
+    custom_user_data_mode: Option<CustomUserDataMode>,
 }
 
 impl RunAwsEcs {
@@ -350,6 +380,21 @@ impl RunAwsEcs {
         secrets: Option<BTreeMap<String, SecretName>>,
         cluster_resource_name: &str,
     ) -> Result<Resource> {
+        let user_data = &self
+            .custom_user_data
+            .clone()
+            .map(read_to_string)
+            .transpose()
+            .context(error::ReadSnafu {})?
+            .map(base64::encode);
+
+        let user_data = match (self.custom_user_data_mode.clone(), user_data) {
+            (Some(_), None) | (None, Some(_)) => return Err(error::Error::InvalidArguments { why: "Either both or neither of custom-user-data-mode and custom-user-data must be provided.".to_string() }),
+            (Some(CustomUserDataMode::Merge), Some(userdata)) => Some(CustomUserData::Merge { encoded_userdata: userdata.to_owned() }),
+            (Some(CustomUserDataMode::Replace), Some(userdata)) => Some(CustomUserData::Replace { encoded_userdata: userdata.to_owned() }),
+            (None, None) => None
+        };
+
         let mut ec2_config = Ec2Config {
             node_ami: self.ami.clone(),
             // TODO - configurable
@@ -368,6 +413,7 @@ impl RunAwsEcs {
             subnet_ids: vec![],
             cluster_type: ClusterType::Ecs,
             assume_role: self.assume_role.clone(),
+            custom_user_data: user_data,
             ..Default::default()
         }
         .into_map()

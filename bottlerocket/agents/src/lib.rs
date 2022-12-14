@@ -13,6 +13,7 @@ pub mod constants;
 pub mod error;
 pub mod sonobuoy;
 pub mod tuf;
+pub mod userdata;
 pub mod vsphere;
 pub mod workload;
 

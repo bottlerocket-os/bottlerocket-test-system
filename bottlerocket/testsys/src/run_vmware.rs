@@ -1,7 +1,8 @@
 use crate::error::{self, Result};
 use bottlerocket_types::agent_config::{
-    MigrationConfig, SonobuoyConfig, SonobuoyMode, TufRepoConfig, VSphereK8sClusterInfo,
-    VSphereVmConfig, AWS_CREDENTIALS_SECRET_NAME, VSPHERE_CREDENTIALS_SECRET_NAME,
+    CustomUserData, MigrationConfig, SonobuoyConfig, SonobuoyMode, TufRepoConfig,
+    VSphereK8sClusterInfo, VSphereVmConfig, AWS_CREDENTIALS_SECRET_NAME,
+    VSPHERE_CREDENTIALS_SECRET_NAME,
 };
 use kube::ResourceExt;
 use kube::{api::ObjectMeta, Client};
@@ -15,7 +16,27 @@ use snafu::ResultExt;
 use std::collections::BTreeMap;
 use std::fs::read_to_string;
 use std::path::PathBuf;
+use std::str::FromStr;
 use structopt::StructOpt;
+
+#[derive(Clone, Debug)]
+enum CustomUserDataMode {
+    Merge,
+    Replace,
+}
+
+impl FromStr for CustomUserDataMode {
+    type Err = error::Error;
+    fn from_str(custom_user_data_mode: &str) -> Result<Self> {
+        match custom_user_data_mode {
+            "merge" => Ok(CustomUserDataMode::Merge),
+            "replace" => Ok(CustomUserDataMode::Replace),
+            _ => Err(error::Error::InvalidArguments {
+                why: "Invalid user data mode".to_string(),
+            }),
+        }
+    }
+}
 
 /// Create vmware nodes and run Sonobuoy.
 #[derive(Debug, StructOpt)]
@@ -168,6 +189,15 @@ pub(crate) struct RunVmware {
     /// The arn for the role that should be assumed by the agents.
     #[structopt(long)]
     assume_role: Option<String>,
+
+    /// The path to a TOML file containing custom userdata.
+    #[structopt(long, requires("custom-user-data-mode"))]
+    custom_user_data: Option<String>,
+
+    /// The way custom userdata should interact with the default userdata.
+    /// The possible values are `merge` and `replace`.
+    #[structopt(long, requires("custom-user-data"))]
+    custom_user_data_mode: Option<CustomUserDataMode>,
 }
 
 impl RunVmware {
@@ -317,6 +347,21 @@ impl RunVmware {
         secrets: Option<BTreeMap<String, SecretName>>,
         encoded_kubeconfig: &str,
     ) -> Result<Resource> {
+        let user_data = &self
+            .custom_user_data
+            .clone()
+            .map(read_to_string)
+            .transpose()
+            .context(error::ReadSnafu {})?
+            .map(base64::encode);
+
+        let user_data = match (self.custom_user_data_mode.clone(), user_data) {
+            (Some(_), None) | (None, Some(_)) => return Err(error::Error::InvalidArguments { why: "Either both or neither of custom-user-data-mode and custom-user-data must be provided.".to_string() }),
+            (Some(CustomUserDataMode::Merge), Some(userdata)) => Some(CustomUserData::Merge { encoded_userdata: userdata.to_owned() }),
+            (Some(CustomUserDataMode::Replace), Some(userdata)) => Some(CustomUserData::Replace { encoded_userdata: userdata.to_owned() }),
+            (None, None) => None
+        };
+
         let vm_config = VSphereVmConfig {
             ova_name: self.ova_name.clone(),
             vm_count: self.vm_count,
@@ -336,6 +381,7 @@ impl RunVmware {
                 kubeconfig_base64: encoded_kubeconfig.to_string(),
             },
             assume_role: self.assume_role.clone(),
+            custom_user_data: user_data,
         }
         .into_map()
         .context(error::ConfigMapSnafu)?;
