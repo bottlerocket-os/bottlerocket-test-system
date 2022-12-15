@@ -5,18 +5,35 @@ use model::{Outcome, TestResults};
 use serde_json::Value;
 use snafu::{ensure, OptionExt, ResultExt};
 use std::collections::HashMap;
+use std::convert::TryInto;
 use std::path::Path;
 use std::process::Command;
 use std::time::Duration;
+use test_agent::InfoClient;
 
 /// Runs the sonobuoy conformance tests according to the provided configuration and returns a test
 /// result at the end.
-pub async fn run_sonobuoy(
+pub async fn run_sonobuoy<I>(
     kubeconfig_path: &str,
     e2e_repo_config_path: Option<&str>,
     sonobuoy_config: &SonobuoyConfig,
     results_dir: &Path,
-) -> Result<TestResults, error::Error> {
+    info_client: &I,
+) -> Result<TestResults, error::Error>
+where
+    I: InfoClient,
+{
+    let mut results = TestResults {
+        outcome: Outcome::InProgress,
+        other_info: Some("Starting test".to_string()),
+        ..Default::default()
+    };
+    info_client
+        .send_test_update(results.clone())
+        .await
+        .err()
+        .iter()
+        .for_each(|e| error!("Unable to send test update: {}", e));
     let kubeconfig_arg = vec!["--kubeconfig", kubeconfig_path];
     let version = sonobuoy_config
         .kubernetes_version
@@ -57,6 +74,13 @@ pub async fn run_sonobuoy(
     // TODO - log something or check what happened?
     ensure!(status.success(), error::SonobuoyRunSnafu);
 
+    results.other_info = Some("Checking status".to_string());
+    info_client
+        .send_test_update(results)
+        .await
+        .err()
+        .iter()
+        .for_each(|e| error!("Unable to send test update: {}", e));
     info!("Sonobuoy testing has started, waiting for status to be available");
     tokio::time::timeout(
         Duration::from_secs(300),
@@ -65,18 +89,22 @@ pub async fn run_sonobuoy(
     .await
     .context(error::SonobuoyTimeoutSnafu)??;
     info!("Sonobuoy status is available, waiting for test to complete");
-    wait_for_sonobuoy_results(kubeconfig_path, None).await?;
+    wait_for_sonobuoy_results(kubeconfig_path, None, info_client).await?;
     info!("Sonobuoy testing has completed, checking results");
 
     results_sonobuoy(kubeconfig_path, results_dir)
 }
 
 /// Reruns the the failed tests from sonobuoy conformance that has already run in this agent.
-pub async fn rerun_failed_sonobuoy(
+pub async fn rerun_failed_sonobuoy<I>(
     kubeconfig_path: &str,
     e2e_repo_config_path: Option<&str>,
     results_dir: &Path,
-) -> Result<TestResults, error::Error> {
+    info_client: &I,
+) -> Result<TestResults, error::Error>
+where
+    I: InfoClient,
+{
     let kubeconfig_arg = vec!["--kubeconfig", kubeconfig_path];
     let results_filepath = results_dir.join(SONOBUOY_RESULTS_FILENAME);
     let e2e_repo_arg = match e2e_repo_config_path {
@@ -108,7 +136,7 @@ pub async fn rerun_failed_sonobuoy(
     .await
     .context(error::SonobuoyTimeoutSnafu)??;
     info!("Sonobuoy status is available, waiting for test to complete");
-    wait_for_sonobuoy_results(kubeconfig_path, None).await?;
+    wait_for_sonobuoy_results(kubeconfig_path, None, info_client).await?;
     info!("Sonobuoy testing has completed, checking results");
 
     results_sonobuoy(kubeconfig_path, results_dir)
@@ -149,10 +177,19 @@ pub async fn wait_for_sonobuoy_status(
     }
 }
 
-pub async fn wait_for_sonobuoy_results(
+pub async fn wait_for_sonobuoy_results<I>(
     kubeconfig_path: &str,
     namespace: Option<&str>,
-) -> Result<(), error::Error> {
+    info_client: &I,
+) -> Result<(), error::Error>
+where
+    I: InfoClient,
+{
+    let mut results = TestResults {
+        outcome: Outcome::InProgress,
+        other_info: Some("Running".to_string()),
+        ..Default::default()
+    };
     let mut retries = 0;
     loop {
         if retries > 5 {
@@ -181,6 +218,14 @@ pub async fn wait_for_sonobuoy_results(
         let run_status: serde_json::Value = match serde_json::from_str(&stdout) {
             Ok(run_status) => run_status,
             Err(err) => {
+                results.other_info = Some(format!("Status failed '{}'", retries));
+                info_client
+                    .send_test_update(results.clone())
+                    .await
+                    .err()
+                    .iter()
+                    .for_each(|e| error!("Unable to send test update: {}", e));
+
                 error!(
                     "An error occured while serializing sonobuoy status: \n'{:?}'\n(This can happen if sonobuoy is not ready)\nWill try again in 30s",
                     err
@@ -197,10 +242,20 @@ pub async fn wait_for_sonobuoy_results(
             return Ok(());
         }
         info!("Some tests are still running");
-        info!(
-            "Current status: {:?}",
-            process_sonobuoy_test_results(&run_status)?
-        );
+        match process_incomplete_sonobuoy_test_results(&run_status) {
+            Ok(res) => results = res,
+            Err(e) => {
+                error!("Unable to process sonobuoy status, {}", e);
+            }
+        }
+
+        info!("Current status: {:?}", results);
+        info_client
+            .send_test_update(results.clone())
+            .await
+            .err()
+            .iter()
+            .for_each(|e| error!("Unable to send test update: {}", e));
 
         tokio::time::sleep(Duration::from_secs(30)).await;
     }
@@ -255,6 +310,52 @@ pub fn results_sonobuoy(
     trace!("The sonobuoy results are valid json");
 
     process_sonobuoy_test_results(&run_status)
+}
+
+/// process_incomplete_sonobuoy_test_results parses the output from `sonobuoy status --json` output for
+/// a test that has not yet completed.
+pub(crate) fn process_incomplete_sonobuoy_test_results(
+    run_status: &serde_json::Value,
+) -> Result<TestResults, error::Error> {
+    let mut num_passed: u64 = 0;
+    let mut num_failed: u64 = 0;
+
+    let plugin_results = run_status
+        .get("plugins")
+        .context(error::MissingSonobuoyStatusFieldSnafu { field: "plugins" })?
+        .as_array()
+        .context(error::MissingSonobuoyStatusFieldSnafu { field: "plugins" })?;
+
+    for result in plugin_results {
+        if let Some(progress) = result.get("progress") {
+            let completed: u64 = progress
+                .get("completed")
+                .into_iter()
+                .filter_map(Value::as_u64)
+                .next()
+                .unwrap_or(0);
+
+            let failed: u64 = progress
+                .get("failures")
+                .into_iter()
+                .filter_map(Value::as_array)
+                .map(Vec::len)
+                .next()
+                .unwrap_or(0)
+                .try_into()?;
+
+            num_passed += completed - failed;
+            num_failed += failed;
+        }
+    }
+
+    Ok(TestResults {
+        outcome: Outcome::InProgress,
+        num_passed,
+        num_failed,
+        num_skipped: 0,
+        other_info: Some("Running".to_string()),
+    })
 }
 
 /// process_sonobuoy_test_results parses the output from `sonobuoy status --json` output and gets
