@@ -6,6 +6,26 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+## [0.0.4] - 2022-12-15
+
+### Added
+
+- K8s workload testing agent [#669]
+- Custom userdata for Bottlerocket agents [#683]
+- NVIDIA workload test definition [#696]
+
+### Changed
+
+- `test_manager::status` improvements
+- builder: `build()` error type `Send + Sync` [#680]
+- Change `EksctlConfig` to camelCase [#702]
+
+[#669]: https://github.com/bottlerocket-os/bottlerocket-test-system/pull/669
+[#680]: https://github.com/bottlerocket-os/bottlerocket-test-system/pull/680
+[#683]: https://github.com/bottlerocket-os/bottlerocket-test-system/pull/683
+[#696]: https://github.com/bottlerocket-os/bottlerocket-test-system/pull/696
+[#702]: https://github.com/bottlerocket-os/bottlerocket-test-system/pull/702
+
 ## [0.0.3] - 2022-11-02
 
 ### Added
