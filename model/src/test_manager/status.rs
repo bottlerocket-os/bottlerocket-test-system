@@ -303,8 +303,8 @@ impl From<&Crd> for Vec<ResultRow> {
                 let state = test.test_user_state().to_string();
                 let test_results = &test.agent_status().results;
                 let current_test = &test.agent_status().current_test;
-                let mut test_iter = test_results.iter().chain(current_test.iter()).peekable();
-                if test_iter.peek().is_none() {
+                let mut test_iter = test_results.iter().peekable();
+                if test_iter.peek().is_none() && current_test.is_none() {
                     results.push(ResultRow {
                         name,
                         object_type: "Test".to_string(),
@@ -324,6 +324,21 @@ impl From<&Crd> for Vec<ResultRow> {
                             name: retry_name,
                             object_type: "Test".to_string(),
                             state: result.outcome.to_string(),
+                            passed: Some(result.num_passed),
+                            skipped: Some(result.num_skipped),
+                            failed: Some(result.num_failed),
+                        });
+                    }
+                    if let Some(result) = current_test {
+                        let retry_name = if test_results.is_empty() {
+                            name
+                        } else {
+                            format!("{}-retry-{}", name, test_results.len())
+                        };
+                        results.push(ResultRow {
+                            name: retry_name,
+                            object_type: "Test".to_string(),
+                            state,
                             passed: Some(result.num_passed),
                             skipped: Some(result.num_skipped),
                             failed: Some(result.num_failed),
