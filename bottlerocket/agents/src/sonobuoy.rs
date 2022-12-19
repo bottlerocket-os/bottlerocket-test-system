@@ -193,7 +193,10 @@ pub async fn wait_for_sonobuoy_results(
         retries = 0;
         trace!("The sonobuoy results are valid json");
         let status = run_status.get("status");
-        if status.is_some() && status != Some(&Value::String("running".to_string())) {
+        if status.is_some()
+            && status != Some(&Value::String("running".to_string()))
+            && status != Some(&Value::String("post-processing".to_string()))
+        {
             return Ok(());
         }
         info!("Some tests are still running");
