@@ -12,6 +12,7 @@ use resource_agent::provider::{
     Create, Destroy, IntoProviderError, ProviderResult, Resources, Spec,
 };
 use serde::{Deserialize, Serialize};
+use std::time::Duration;
 
 /// The default region for the cluster.
 const DEFAULT_REGION: &str = "us-west-2";
@@ -381,11 +382,22 @@ impl Destroy for EcsDestroyer {
         .context(Resources::Clear, "Error creating config")?;
         let ecs_client = aws_sdk_ecs::Client::new(&config);
 
-        info!(
-            "Deleting cluster '{}'",
-            memo.cluster_name.as_deref().unwrap_or_default()
-        );
         if let Some(cluster_name) = &memo.cluster_name {
+            // Make sure all ECS instances are deregistered before deleting the cluster.
+            tokio::time::timeout(
+                Duration::from_secs(1500),
+                wait_for_ecs_instances_deregister(&ecs_client, cluster_name),
+            )
+            .await
+            .context(
+                Resources::Unknown,
+                "Timed out waiting for ECS instances to deregister.",
+            )??;
+
+            info!(
+                "Deleting cluster '{}'",
+                memo.cluster_name.as_deref().unwrap_or_default()
+            );
             ecs_client
                 .delete_cluster()
                 .cluster(cluster_name)
@@ -405,6 +417,37 @@ impl Destroy for EcsDestroyer {
 
         info!("Done with cluster deletion");
         Ok(())
+    }
+}
+
+async fn wait_for_ecs_instances_deregister(
+    ecs_client: &aws_sdk_ecs::Client,
+    cluster_name: &str,
+) -> ProviderResult<()> {
+    // We don't need to worry about pagination here yet since it's highly unlikely we're gonna
+    // be testing with over 100 ECS instances
+    loop {
+        let container_instances = ecs_client
+            .list_container_instances()
+            .cluster(cluster_name)
+            .send()
+            .await
+            .context(
+                Resources::Unknown,
+                "Unable to list container instances for ECS cluster",
+            )?
+            .container_instance_arns()
+            .map(|l| l.to_vec());
+
+        if let Some(container_instances) = container_instances.filter(|list| !list.is_empty()) {
+            for arn in container_instances {
+                info!("Waiting on ECS instance '{}' to deregister...", arn)
+            }
+        } else {
+            return Ok(());
+        }
+
+        tokio::time::sleep(Duration::from_secs(10)).await;
     }
 }
 
