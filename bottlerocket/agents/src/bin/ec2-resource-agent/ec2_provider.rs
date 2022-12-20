@@ -51,6 +51,12 @@ pub struct ProductionMemo {
 
     /// The role that is assumed.
     pub assume_role: Option<String>,
+
+    /// The type of orchestrator the EC2 instances are connected to as workers
+    pub cluster_type: ClusterType,
+
+    /// Name of the cluster the EC2 instances are for
+    pub cluster_name: String,
 }
 
 impl Configuration for ProductionMemo {}
@@ -112,6 +118,8 @@ impl Create for Ec2Creator {
 
         memo.aws_secret_name = spec.secrets.get(AWS_CREDENTIALS_SECRET_NAME).cloned();
         memo.assume_role = spec.configuration.assume_role.clone();
+        memo.cluster_type = spec.configuration.cluster_type.clone();
+        memo.cluster_name = spec.configuration.cluster_name.clone();
 
         info!("Creating AWS config");
         memo.current_status = "Creating AWS config".to_string();
@@ -574,6 +582,100 @@ async fn get_instances_by_uuid(
         .collect())
 }
 
+/// Given a list of EC2 Instance ID, deregister their corresponding ECS container instances
+/// Note that we don't want to error if anything goes wrong here, we proceed with EC2 instance termination
+/// regardless of whether these calls succeed or not.
+async fn deregister_ecs_container_instances(
+    ecs_client: &aws_sdk_ecs::Client,
+    memo: &ProductionMemo,
+) {
+    let mut container_instances = Vec::new();
+    // Kick off ECS instance deregistration
+    for instance_id in &memo.instance_ids {
+        // Find the containter instance ID associated with the EC2 instance ID
+        if let Ok(list_output) = ecs_client
+            .list_container_instances()
+            .cluster(&memo.cluster_name)
+            .filter(format!("ec2InstanceId=={}", instance_id))
+            .send()
+            .await
+        {
+            // We expect a 1:1 mapping of EC2 instances to ECS container instances
+            if let Some(container_instance_id) = list_output
+                .container_instance_arns()
+                .and_then(|l| l.first())
+            {
+                // Store this container instance ID so we can check it later in a separate loop
+                container_instances.push(container_instance_id.to_string());
+                if let Err(e) = ecs_client
+                    .deregister_container_instance()
+                    .cluster(&memo.cluster_name)
+                    .container_instance(container_instance_id)
+                    .force(true)
+                    .send()
+                    .await
+                {
+                    warn!(
+                        "Failed to deregister ECS instance '{}' mapped to EC2 instance '{}': {}",
+                        container_instance_id, instance_id, e
+                    );
+                } else {
+                    info!(
+                        "Kicked-off ECS instance deregistration for '{}'",
+                        container_instance_id
+                    );
+                }
+            }
+        }
+    }
+
+    // Wait for the instances to actually deregister
+    if tokio::time::timeout(
+        Duration::from_secs(300),
+        wait_for_ecs_instances_deregister(ecs_client, &memo.cluster_name, &container_instances),
+    )
+    .await
+    .is_err()
+    {
+        warn!("Timed-out waiting for ECS container instances to deregister. Proceeding with EC2 instance termination");
+    }
+}
+
+async fn wait_for_ecs_instances_deregister(
+    ecs_client: &aws_sdk_ecs::Client,
+    cluster_name: &str,
+    container_instances: &[String],
+) {
+    loop {
+        match ecs_client
+            .list_container_instances()
+            .cluster(cluster_name)
+            .send()
+            .await
+        {
+            Ok(list_output) => {
+                let listed_instances = list_output.container_instance_arns().unwrap_or_default();
+                if container_instances
+                    .iter()
+                    .all(|our_instance| !listed_instances.contains(our_instance))
+                {
+                    info!("All instances created by this resource agent have been deregistered. Proceeding with EC2 instance termination...");
+                    break;
+                }
+            }
+            Err(e) => {
+                warn!(
+                    "Failed to describe container instances for ECS cluster '{}', continuing EC2 instance termination: {}",
+                    cluster_name, e
+                );
+                break;
+            }
+        }
+
+        tokio::time::sleep(Duration::from_secs(5)).await;
+    }
+}
+
 /// This is the object that will destroy ec2 instances.
 pub struct Ec2Destroyer {}
 
@@ -628,6 +730,13 @@ impl Destroy for Ec2Destroyer {
 
         if ids.is_empty() {
             return Ok(());
+        }
+
+        // For EC2 instance running as ECS container instances, we need to deregister them from the ECS
+        // cluster before terminating the EC2 instance so the container instances don't linger for too long
+        if memo.cluster_type == ClusterType::Ecs {
+            let ecs_client = aws_sdk_ecs::Client::new(&shared_config);
+            deregister_ecs_container_instances(&ecs_client, &memo).await;
         }
 
         let _terminate_results = ec2_client
