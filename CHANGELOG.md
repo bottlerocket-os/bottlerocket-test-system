@@ -6,6 +6,22 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+## [0.0.5] - 2022-12-20
+
+### Fixed
+
+- TestManager: Show state for the current test ([#714])
+- Fix calling `sonobuoy retrieve` too soon when sonobuoy tests results weren't ready ([#715])
+- Wait for container instances to fully deregister before cleaning-up ([#716], [#720])
+
+[#714]: https://github.com/bottlerocket-os/bottlerocket-test-system/pull/714
+[#715]: https://github.com/bottlerocket-os/bottlerocket-test-system/pull/715
+[#716]: https://github.com/bottlerocket-os/bottlerocket-test-system/pull/716
+[#720]: https://github.com/bottlerocket-os/bottlerocket-test-system/pull/720
+
+[0.0.5]: https://github.com/bottlerocket-os/bottlerocket-test-system/tree/v0.0.5
+[Unreleased]: https://github.com/bottlerocket-os/bottlerocket-test-system/compare/v0.0.5...develop
+
 ## [0.0.4] - 2022-12-15
 
 ### Added
@@ -25,6 +41,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 [#683]: https://github.com/bottlerocket-os/bottlerocket-test-system/pull/683
 [#696]: https://github.com/bottlerocket-os/bottlerocket-test-system/pull/696
 [#702]: https://github.com/bottlerocket-os/bottlerocket-test-system/pull/702
+
+[0.0.4]: https://github.com/bottlerocket-os/bottlerocket-test-system/tree/v0.0.4
 
 ## [0.0.3] - 2022-11-02
 
@@ -65,6 +83,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 [#580]: https://github.com/bottlerocket-os/bottlerocket-test-system/pull/580
 [#607]: https://github.com/bottlerocket-os/bottlerocket-test-system/pull/607
 
+[0.0.3]: https://github.com/bottlerocket-os/bottlerocket-test-system/tree/v0.0.3
+
 ## [0.0.2] - 2022-08-31
 
 ### Added
@@ -75,6 +95,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 [#450]: https://github.com/bottlerocket-os/bottlerocket-test-system/pull/450
 
+[0.0.2]: https://github.com/bottlerocket-os/bottlerocket-test-system/tree/v0.0.2
+
 ## [0.0.1] - 2022-06-17
 
 ### Added
@@ -82,5 +104,4 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - Everything! (Except this changelog)
 - Released the bottlerocket-agent containers at https://gallery.ecr.aws/bottlerocket-test-system
 
-[Unreleased]: https://github.com/bottlerocket-os/bottlerocket-test-system/compare/v0.0.1...develop
 [0.0.1]: https://github.com/bottlerocket-os/bottlerocket-test-system/tree/v0.0.1
