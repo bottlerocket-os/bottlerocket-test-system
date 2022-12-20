@@ -26,6 +26,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 [#696]: https://github.com/bottlerocket-os/bottlerocket-test-system/pull/696
 [#702]: https://github.com/bottlerocket-os/bottlerocket-test-system/pull/702
 
+[0.0.4]: https://github.com/bottlerocket-os/bottlerocket-test-system/tree/v0.0.4
+
 ## [0.0.3] - 2022-11-02
 
 ### Added
@@ -65,6 +67,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 [#580]: https://github.com/bottlerocket-os/bottlerocket-test-system/pull/580
 [#607]: https://github.com/bottlerocket-os/bottlerocket-test-system/pull/607
 
+[0.0.3]: https://github.com/bottlerocket-os/bottlerocket-test-system/tree/v0.0.3
+
 ## [0.0.2] - 2022-08-31
 
 ### Added
@@ -74,6 +78,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - This includes all changes since 0.0.1
 
 [#450]: https://github.com/bottlerocket-os/bottlerocket-test-system/pull/450
+
+[0.0.2]: https://github.com/bottlerocket-os/bottlerocket-test-system/tree/v0.0.2
 
 ## [0.0.1] - 2022-06-17
 
