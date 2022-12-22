@@ -25,6 +25,7 @@ use std::fmt::{Display, Formatter};
     plural = "resources",
     singular = "resource",
     status = "ResourceStatus",
+    category = "testsys",
     version = "v1",
     printcolumn = r#"{"name":"DestructionPolicy", "type":"string", "jsonPath":".spec.destructionPolicy"}"#,
     printcolumn = r#"{"name":"CreationState", "type":"string", "jsonPath":".status.creation.taskState"}"#,
