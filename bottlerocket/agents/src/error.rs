@@ -106,12 +106,6 @@ pub enum Error {
         path: String,
     },
 
-    #[snafu(display("Invalid path: {path}"))]
-    BadPath {
-        source: std::io::Error,
-        path: String,
-    },
-
     #[snafu(display("Results location is invalid"))]
     ResultsLocation,
 
