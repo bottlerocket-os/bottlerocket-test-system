@@ -22,6 +22,7 @@ use std::borrow::Cow;
     plural = "tests",
     singular = "test",
     status = "TestStatus",
+    category = "testsys",
     version = "v1",
     printcolumn = r#"{"name":"State", "type":"string", "jsonPath":".status.agent.taskState"}"#,
     printcolumn = r#"{"name":"Result", "type":"string", "jsonPath":".status.agent.results.outcome"}"#
