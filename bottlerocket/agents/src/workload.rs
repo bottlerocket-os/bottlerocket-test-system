@@ -48,10 +48,7 @@ where
 
         // Write out the output to a file we can reference later
         let file_name = format!("{}-plugin.yaml", plugin.name);
-        let plugin_yaml = PathBuf::from(".")
-            .join(&file_name)
-            .canonicalize()
-            .context(error::BadPathSnafu { path: &file_name })?;
+        let plugin_yaml = PathBuf::from(".").join(&file_name);
         let mut f = File::create(&plugin_yaml).context(error::FileWriteSnafu {
             path: plugin_yaml.display().to_string(),
         })?;
