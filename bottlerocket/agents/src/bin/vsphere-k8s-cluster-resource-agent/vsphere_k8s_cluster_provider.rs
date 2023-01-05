@@ -207,7 +207,7 @@ async fn write_validate_mgmt_kubeconfig(
             resources,
             "Failed to write out kubeconfig for the CAPI management cluster",
         )?;
-    let mgmt_kubeconfig = Kubeconfig::read_from(&mgmt_kubeconfig_path)
+    let mgmt_kubeconfig = Kubeconfig::read_from(mgmt_kubeconfig_path)
         .context(resources, "Unable to read kubeconfig")?;
     let mgmt_config =
         Config::from_custom_kubeconfig(mgmt_kubeconfig.to_owned(), &KubeConfigOptions::default())

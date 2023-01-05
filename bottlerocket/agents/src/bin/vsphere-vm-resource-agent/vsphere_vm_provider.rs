@@ -626,7 +626,7 @@ impl Destroy for VMDestroyer {
                 .arg(format!("-vm.ip={}", vm.ip_address))
                 .arg(&vm.name)
                 .output()
-                .context(&resources, "Failed to start govc")?;
+                .context(resources, "Failed to start govc")?;
             if !vm_destroy_output.status.success() {
                 return Err(ProviderError::new_with_context(
                     resources,

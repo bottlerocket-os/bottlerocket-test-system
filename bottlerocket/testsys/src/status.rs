@@ -81,7 +81,7 @@ impl Status {
             stream::iter(resource_names)
                 .then(|resource_name| async move {
                     resource_client
-                        .get(&resource_name)
+                        .get(resource_name)
                         .await
                         .context(error::GetSnafu {
                             what: resource_name.clone(),
@@ -160,7 +160,7 @@ impl Default for Results {
 impl Results {
     /// Adds a new `ResultRow` for each `TestResults` in test, or a single row if no `TestsResults` are available.
     fn add_test(&mut self, test: &Test) {
-        let name = test.metadata.name.clone().unwrap_or_else(|| "".to_string());
+        let name = test.metadata.name.clone().unwrap_or_default();
         let state = test.test_user_state().to_string();
         let results = &test.agent_status().results;
         if results.is_empty() {
