@@ -210,10 +210,7 @@ impl From<&StatusSnapshot> for Table {
             results.push(ResultRow {
                 name: "controller".to_string(),
                 object_type: "Controller".to_string(),
-                state: controller_status
-                    .phase
-                    .clone()
-                    .unwrap_or_else(|| "".to_string()),
+                state: controller_status.phase.clone().unwrap_or_default(),
                 passed: None,
                 skipped: None,
                 failed: None,
@@ -299,7 +296,7 @@ impl From<&Crd> for Vec<ResultRow> {
         let mut results = Vec::new();
         match crd {
             Crd::Test(test) => {
-                let name = test.metadata.name.clone().unwrap_or_else(|| "".to_string());
+                let name = test.metadata.name.clone().unwrap_or_default();
                 let state = test.test_user_state().to_string();
                 let test_results = &test.agent_status().results;
                 let current_test = &test.agent_status().current_test;

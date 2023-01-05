@@ -39,7 +39,7 @@ pub fn download_target(
     // Need to download root.json. This is an unsafe operation but in the context of testing it's fine.
     let root_path = download_root(resources, metadata_url, outdir)?;
     let repository = RepositoryLoader::new(
-        File::open(&root_path).context(
+        File::open(root_path).context(
             resources,
             "Failed to open root.json file for loading TUF repository",
         )?,
