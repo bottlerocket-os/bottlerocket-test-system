@@ -4,9 +4,9 @@ use k8s_openapi::api::core::v1::PodStatus;
 use kube::{core::object::HasStatus, ResourceExt};
 use serde::Serialize;
 use tabled::object::Segment;
+use tabled::width::MinWidth;
 use tabled::{
-    Alignment, Concat, Extract, Header, MaxWidth, MinWidth, Modify, Style, Table, TableIteratorExt,
-    Tabled,
+    Alignment, Concat, Extract, Modify, Panel, Style, Table, TableIteratorExt, Tabled, Width,
 };
 
 /// `StatusSnapshot` represents the status of a set of testsys objects (including the controller).
@@ -104,60 +104,66 @@ impl StatusSnapshot {
         let mut crds = self.crds.clone();
         crds.sort_by_key(|crd| crd.name());
         self.with_progress.as_ref().map(|with_progress| {
-            // Convert the CRDs to an iterator
-            crds.iter()
-                // For each CRD create a `Vec` containing the status for that CRD
-                // It needs to be a `Vec` because each `TestResults` is displayed in it's own
-                // row. `flat_map` will automatically flatten the `Iterator<Vec>` to
-                // `Iterator<Option<String>>`
-                .flat_map(|crd| match crd {
-                    Crd::Test(test) => {
-                        if test.agent_status().results.is_empty()
-                            && test.agent_status().current_test.is_none()
-                        {
-                            // If there are no test results, a line will still be there
-                            vec![Some("No Test Results".to_string())]
-                        } else {
-                            test.agent_status()
-                                .results
-                                .iter()
-                                // For each `TestResults`, if the test progress should be included, add
-                                // it to the `Vec`, if not just add `None`
-                                .map(|result| {
-                                    if matches!(with_progress, StatusProgress::WithTests) {
-                                        result.other_info.to_owned()
-                                    } else {
-                                        None
-                                    }
-                                })
-                                .chain(
-                                    // Show the current test's status because it should be well
-                                    // formatted
+            let controller_line = self.controller_status.as_ref().map(|_| "".to_string());
+            controller_line
+                .into_iter()
+                .chain(
+                    // Convert the CRDs to an iterator
+                    crds.iter()
+                        // For each CRD create a `Vec` containing the status for that CRD
+                        // It needs to be a `Vec` because each `TestResults` is displayed in it's own
+                        // row. `flat_map` will automatically flatten the `Iterator<Vec>` to
+                        // `Iterator<Option<String>>`
+                        .flat_map(|crd| match crd {
+                            Crd::Test(test) => {
+                                if test.agent_status().results.is_empty()
+                                    && test.agent_status().current_test.is_none()
+                                {
+                                    // If there are no test results, a line will still be there
+                                    vec![Some("No Test Results".to_string())]
+                                } else {
                                     test.agent_status()
-                                        .current_test
-                                        .as_ref()
-                                        .map(|result| result.other_info.to_owned())
-                                        .into_iter(),
-                                )
-                                .collect()
-                        }
-                    }
-                    // Get the status of each resource and wrap it in a `Vec` to match types
-                    // with the `Test` branch.
-                    Crd::Resource(resource) => vec![resource.status().and_then(|status| {
-                        status.agent_info.as_ref().and_then(|agent_info| {
-                            agent_info
-                                .get("currentStatus")
-                                .and_then(|info| info.as_str().map(|info| info.to_string()))
+                                        .results
+                                        .iter()
+                                        // For each `TestResults`, if the test progress should be included, add
+                                        // it to the `Vec`, if not just add `None`
+                                        .map(|result| {
+                                            if matches!(with_progress, StatusProgress::WithTests) {
+                                                result.other_info.to_owned()
+                                            } else {
+                                                None
+                                            }
+                                        })
+                                        .chain(
+                                            // Show the current test's status because it should be well
+                                            // formatted
+                                            test.agent_status()
+                                                .current_test
+                                                .as_ref()
+                                                .map(|result| result.other_info.to_owned())
+                                                .into_iter(),
+                                        )
+                                        .collect()
+                                }
+                            }
+                            // Get the status of each resource and wrap it in a `Vec` to match types
+                            // with the `Test` branch.
+                            Crd::Resource(resource) => vec![resource.status().and_then(|status| {
+                                status.agent_info.as_ref().and_then(|agent_info| {
+                                    agent_info
+                                        .get("currentStatus")
+                                        .and_then(|info| info.as_str().map(|info| info.to_string()))
+                                })
+                            })],
                         })
-                    })],
-                })
-                // Convert the `Option<String>` to `String`
-                .map(Option::unwrap_or_default)
+                        // Convert the `Option<String>` to `String`
+                        .map(Option::unwrap_or_default),
+                )
                 .table()
-                .with(MaxWidth::wrapping(50))
+                .with(Width::wrap(50))
                 .with(Extract::segment(1.., 0..))
-                .with(Header("STATUS"))
+                .with(Panel::header("STATUS"))
+                .to_owned()
         })
     }
 
@@ -165,33 +171,39 @@ impl StatusSnapshot {
         let mut crds = self.crds.clone();
         crds.sort_by_key(|crd| crd.name());
         self.with_time.then(|| {
-            // Convert the CRDs to an iterator
-            crds.iter()
-                // For each CRD create a `Vec` containing the status for that CRD
-                // It needs to be a `Vec` because each `TestResults` is displayed in it's own
-                // row. `flat_map` will automatically flatten the `Iterator<Vec>` to
-                // `Iterator<Option<String>>`
-                .flat_map(|crd| vec![crd_time(crd); crd_rows(crd)])
-                // Convert the `Option<String>` to `String`
-                .map(Option::unwrap_or_default)
+            let controller_line = self.controller_status.as_ref().map(|_| "".to_string());
+            controller_line
+                .into_iter()
+                .chain(
+                    // Convert the CRDs to an iterator
+                    crds.iter()
+                        // For each CRD create a `Vec` containing the status for that CRD
+                        // It needs to be a `Vec` because each `TestResults` is displayed in it's own
+                        // row. `flat_map` will automatically flatten the `Iterator<Vec>` to
+                        // `Iterator<Option<String>>`
+                        .flat_map(|crd| vec![crd_time(crd); crd_rows(crd)])
+                        // Convert the `Option<String>` to `String`
+                        .map(Option::unwrap_or_default),
+                )
                 .table()
                 .with(MinWidth::new(20))
                 .with(Extract::segment(1.., 0..))
-                .with(Header("LAST UPDATE"))
+                .with(Panel::header("LAST UPDATE"))
+                .to_owned()
         })
     }
 }
 
 impl std::fmt::Display for StatusSnapshot {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let table: Table = self.into();
+        let mut table: Table = self.into();
         if let Some(width) = f.width() {
             // If we received a width, we use it
             write!(
                 f,
                 "{}",
                 table
-                    .with(MaxWidth::truncating(width))
+                    .with(Width::truncate(width))
                     .with(MinWidth::new(width))
             )
         } else {
@@ -254,14 +266,16 @@ impl From<&StatusSnapshot> for Table {
                             // Convert the data for this column into a table.
                             .table()
                             .with(Extract::segment(1.., 0..))
+                            .to_owned()
                     }),
             )
             // Add each additional column to the standard results table (`Table::new(results)`).
-            .fold(Table::new(results), |table1, table2| {
-                table1.with(Concat::horizontal(table2))
+            .fold(&mut Table::new(results), |table1, table2| {
+                table1.with(Concat::horizontal(table2.to_owned()))
             })
             .with(Style::blank())
             .with(Modify::new(Segment::all()).with(Alignment::left()))
+            .to_owned()
     }
 }
 
