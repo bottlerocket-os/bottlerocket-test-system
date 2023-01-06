@@ -1,0 +1,63 @@
+apiVersion: testsys.system/v1
+kind: Test
+metadata:
+  name: ${CLUSTER_NAME}-test
+  namespace: testsys
+spec:
+  agent:
+    name: sonobuoy-test-agent
+    image: ${SONOBUOY_TEST_AGENT_IMAGE_URI}
+    keepRunning: true
+    configuration:
+      region: \${${CLUSTER_NAME}.region}
+      assumeRole: ${ASSUME_ROLE}
+      kubeconfigBase64: \${${CLUSTER_NAME}.encodedKubeconfig}
+      plugin: "e2e"
+      mode: ${SONOBUOY_MODE}
+  dependsOn: []
+  resources: [${CLUSTER_NAME}-instances, ${CLUSTER_NAME}]
+---
+apiVersion: testsys.system/v1
+kind: Resource
+metadata:
+  name: ${CLUSTER_NAME}
+  namespace: testsys
+spec:
+  agent:
+    name: eks-provider
+    image: ${EKS_RESOURCE_AGENT_IMAGE_URI}
+    keepRunning: true
+    configuration:
+      creationPolicy: ifNotExists
+      cluster_name: ${CLUSTER_NAME}
+      region: ${AWS_REGION}
+      assumeRole: ${ASSUME_ROLE}
+  dependsOn: []
+  destructionPolicy: onDeletion
+---
+apiVersion: testsys.system/v1
+kind: Resource
+metadata:
+  name: ${CLUSTER_NAME}-instances
+  namespace: testsys
+spec:
+  agent:
+    name: ec2-provider
+    image: ${EC2_RESOURCE_AGENT_IMAGE_URI}
+    keepRunning: true
+    configuration:
+      clusterName: \${${CLUSTER_NAME}.clusterName}
+      clusterType: eks
+      instanceCount: 2
+      instanceProfileArn: \${${CLUSTER_NAME}.iamInstanceProfileArn}
+      nodeAmi: ${BOTTLEROCKET_AMI_ID}
+      region: ${AWS_REGION}
+      subnetIds: \${${CLUSTER_NAME}.publicSubnetIds}
+      instanceTypes: ["m5.large"]
+      assumeRole: ${ASSUME_ROLE}
+      endpoint: \${${CLUSTER_NAME}.endpoint}
+      certificate: \${${CLUSTER_NAME}.certificate}
+      clusterDnsIp: \${${CLUSTER_NAME}.clusterDnsIp}
+      securityGroups: \${${CLUSTER_NAME}.securityGroups}
+  dependsOn: [${CLUSTER_NAME}]
+  destructionPolicy: onDeletion

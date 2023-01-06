@@ -1,0 +1,82 @@
+apiVersion: testsys.system/v1
+kind: Test
+metadata:
+  name: ${CLUSTER_NAME}-test
+  namespace: testsys
+spec:
+  agent:
+    name: sonobuoy-test-agent
+    image: ${SONOBUOY_TEST_AGENT_IMAGE_URI}
+    keepRunning: true
+    configuration:
+      assumeRole: ${ASSUME_ROLE}
+      kubeconfigBase64: \${${CLUSTER_NAME}.encodedKubeconfig}
+      plugin: "e2e"
+      mode: ${SONOBUOY_MODE}
+    secrets:
+      vsphereCredentials: vsphere-creds
+  dependsOn: []
+  resources: [${CLUSTER_NAME}-vms, ${CLUSTER_NAME}]
+---
+apiVersion: testsys.system/v1
+kind: Resource
+metadata:
+  name: ${CLUSTER_NAME}
+  namespace: testsys
+spec:
+  agent:
+    name: agent
+    image: ${VSPHERE_K8S_CLUSTER_RESOURCE_AGENT_IMAGE_URI}
+    keepRunning: true
+    configuration:
+      controlPlaneEndpointIp: ${CONTROL_PLANE_ENDPOINT_IP}
+      creationPolicy: ifNotExists
+      mgmtClusterKubeconfigBase64: ${MGMT_CLUSTER_KUBECONFIG_BASE64}
+      name: ${CLUSTER_NAME}
+      ovaName: ${OVA_NAME}
+      tufRepo:
+        metadataUrl: ${METADATA_URL}
+        targetsUrl: ${TARGETS_URL}
+      version: ${K8S_VERSION}
+      vcenterDatacenter: ${VCENTER_DATACENTER}
+      vcenterDatastore: ${VCENTER_DATASTORE}
+      vcenterHostUrl: ${VCENTER_HOST_URL}
+      vcenterNetwork: ${VCENTER_NETWORK}
+      vcenterResourcePool: ${VCENTER_RESOURCE_POOL}
+      vcenterWorkloadFolder: ${VCENTER_WORKLOAD_FOLDER}
+    secrets:
+      vsphereCredentials: vsphere-creds
+  dependsOn: []
+  destructionPolicy: onDeletion
+---
+apiVersion: testsys.system/v1
+kind: Resource
+metadata:
+  name: ${CLUSTER_NAME}-vms
+  namespace: testsys
+spec:
+  agent:
+    name: agent
+    image: ${VSPHERE_VM_RESOURCE_AGENT_IMAGE_URI}
+    keepRunning: true
+    configuration:
+      assumeRole: ${ASSUME_ROLE}
+      cluster:
+        controlPlaneEndpointIp: "\${${CLUSTER_NAME}.endpoint}"
+        kubeconfigBase64: "\${${CLUSTER_NAME}.encodedKubeconfig}"
+        name: "\${${CLUSTER_NAME}.clusterName}"
+      ovaName: ${OVA_NAME}
+      tufRepo:
+        metadataUrl: ${METADATA_URL}
+        targetsUrl: ${TARGETS_URL}
+      vcenterDatacenter: ${VCENTER_DATACENTER}
+      vcenterDatastore: ${VCENTER_DATASTORE}
+      vcenterHostUrl: ${VCENTER_HOST_URL}
+      vcenterNetwork: ${VCENTER_NETWORK}
+      vcenterResourcePool: ${VCENTER_RESOURCE_POOL}
+      vcenterWorkloadFolder: ${VCENTER_WORKLOAD_FOLDER}
+      vmCount: 2
+    secrets:
+      vsphereCredentials: vsphere-creds
+  dependsOn: [${CLUSTER_NAME}]
+  destructionPolicy: onDeletion
