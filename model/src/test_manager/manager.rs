@@ -317,7 +317,7 @@ impl TestManager {
         &self,
         test_name: S,
         follow: bool,
-    ) -> Result<impl Stream<Item = core::result::Result<Bytes, Error>>>
+    ) -> Result<impl Stream<Item = Result<Bytes>>>
     where
         S: Into<String>,
     {
@@ -334,6 +334,13 @@ impl TestManager {
             .context(error::KubeSnafu {
                 action: "stream logs",
             })
+            .map(|stream| {
+                stream.map(|res| {
+                    res.context(error::KubeSnafu {
+                        action: "stream logs",
+                    })
+                })
+            })
     }
 
     /// Retrieve the logs of a resource.
@@ -342,7 +349,7 @@ impl TestManager {
         resource_name: S,
         state: ResourceState,
         follow: bool,
-    ) -> Result<impl Stream<Item = core::result::Result<Bytes, Error>>>
+    ) -> Result<impl Stream<Item = Result<Bytes>>>
     where
         S: Into<String>,
     {
@@ -358,6 +365,13 @@ impl TestManager {
             .await
             .context(error::KubeSnafu {
                 action: "stream logs",
+            })
+            .map(|stream| {
+                stream.map(|res| {
+                    res.context(error::KubeSnafu {
+                        action: "stream logs",
+                    })
+                })
             })
     }
 
