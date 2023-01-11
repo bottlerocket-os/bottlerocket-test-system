@@ -31,7 +31,7 @@ spec:
     keepRunning: true
     configuration:
       creationPolicy: ifNotExists
-      cluster_name: ${CLUSTER_NAME}
+      clusterName: ${CLUSTER_NAME}
       region: ${AWS_REGION}
       assumeRole: ${ASSUME_ROLE}
     secrets:
