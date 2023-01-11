@@ -5,6 +5,8 @@
 
 !*/
 
+use base64::engine::general_purpose::STANDARD as base64_engine;
+use base64::Engine as _;
 use constants::DEFAULT_AGENT_LEVEL_FILTER;
 use env_logger::Builder;
 pub use error::Error;
@@ -27,8 +29,9 @@ pub async fn base64_decode_write_file(
     path_to_write_to: &str,
 ) -> Result<(), error::Error> {
     let path = Path::new(path_to_write_to);
-    let decoded_bytes =
-        base64::decode(base64_content.as_bytes()).context(error::Base64DecodeSnafu)?;
+    let decoded_bytes = base64_engine
+        .decode(base64_content.as_bytes())
+        .context(error::Base64DecodeSnafu)?;
     fs::write(path, decoded_bytes).context(error::WriteFileSnafu {
         path: path_to_write_to,
     })?;

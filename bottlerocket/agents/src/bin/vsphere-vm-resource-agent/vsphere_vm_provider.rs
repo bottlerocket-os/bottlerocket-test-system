@@ -1,6 +1,8 @@
 use agent_utils::aws::aws_config;
 use agent_utils::base64_decode_write_file;
 use agent_utils::ssm::{create_ssm_activation, ensure_ssm_service_role, wait_for_ssm_ready};
+use base64::engine::general_purpose::STANDARD as base64_engine;
+use base64::Engine as _;
 use bottlerocket_agents::constants::TEST_CLUSTER_KUBECONFIG_PATH;
 use bottlerocket_agents::tuf::{download_target, tuf_repo_urls};
 use bottlerocket_agents::userdata::{decode_to_string, merge_values};
@@ -355,7 +357,7 @@ impl Create for VMCreator {
             control_host_ctr_userdata
         );
         let encoded_control_host_ctr_userdata =
-            base64::encode(control_host_ctr_userdata.to_string());
+            base64_engine.encode(control_host_ctr_userdata.to_string());
 
         let custom_user_data = spec.configuration.custom_user_data;
 
@@ -535,10 +537,10 @@ fn userdata(
                 .context(Resources::Clear, "Failed to parse TOML")?;
             merge_values(&merge_from, merge_into)
                 .context(Resources::Clear, "Failed to merge TOML")?;
-            Ok(base64::encode(toml::to_string(merge_into).context(
-                Resources::Clear,
-                "Failed to serialize merged TOML",
-            )?))
+            Ok(base64_engine.encode(
+                toml::to_string(merge_into)
+                    .context(Resources::Clear, "Failed to serialize merged TOML")?,
+            ))
         }
     }
 }
@@ -550,7 +552,7 @@ fn default_userdata(
     certificate: &str,
     control_container_userdata: &str,
 ) -> String {
-    base64::encode(format!(
+    base64_engine.encode(format!(
         r#"[settings.updates]
 ignore-waves = true
 

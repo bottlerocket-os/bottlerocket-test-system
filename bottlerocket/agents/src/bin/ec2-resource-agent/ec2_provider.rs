@@ -9,6 +9,8 @@ use aws_sdk_ec2::model::{
 };
 use aws_sdk_ec2::output::RunInstancesOutput;
 use aws_sdk_ec2::types::SdkError;
+use base64::engine::general_purpose::STANDARD as base64_engine;
+use base64::Engine as _;
 use bottlerocket_agents::userdata::{decode_to_string, merge_values};
 use bottlerocket_types::agent_config::{
     ClusterType, CustomUserData, Ec2Config, AWS_CREDENTIALS_SECRET_NAME,
@@ -434,10 +436,10 @@ fn userdata(
                 .context(Resources::Clear, "Failed to parse TOML")?;
             merge_values(&merge_from, merge_into)
                 .context(Resources::Clear, "Failed to merge TOML")?;
-            Ok(base64::encode(toml::to_string(merge_into).context(
-                Resources::Clear,
-                "Failed to serialize merged TOML",
-            )?))
+            Ok(base64_engine.encode(
+                toml::to_string(merge_into)
+                    .context(Resources::Clear, "Failed to serialize merged TOML")?,
+            ))
         }
     }
 }
@@ -449,7 +451,7 @@ fn default_eks_userdata(
     cluster_dns_ip: &Option<String>,
     memo: &ProductionMemo,
 ) -> Result<String, ProviderError> {
-    Ok(base64::encode(format!(
+    Ok(base64_engine.encode(format!(
         r#"[settings.updates]
 ignore-waves = true
 
@@ -472,7 +474,7 @@ cluster-dns-ip = "{}""#,
 }
 
 fn default_ecs_userdata(cluster_name: &str) -> String {
-    base64::encode(format!(
+    base64_engine.encode(format!(
         r#"[settings.ecs]
 cluster = "{}""#,
         cluster_name,

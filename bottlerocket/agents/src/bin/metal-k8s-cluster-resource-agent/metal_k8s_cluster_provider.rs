@@ -26,6 +26,8 @@ k8s artifacts included in the workload cluster config are deleted.
 use agent_utils::aws::aws_config;
 use agent_utils::base64_decode_write_file;
 use agent_utils::ssm::{create_ssm_activation, ensure_ssm_service_role, wait_for_ssm_ready};
+use base64::engine::general_purpose::STANDARD as base64_engine;
+use base64::Engine as _;
 use bottlerocket_agents::clusters::{
     retrieve_workload_cluster_kubeconfig, write_validate_mgmt_kubeconfig,
 };
@@ -176,7 +178,8 @@ impl Create for MetalK8sClusterCreator {
                 "Unable to decode and write hardware requirements",
             )?;
 
-        let decoded_config = base64::decode(&spec.configuration.cluster_config_base64)
+        let decoded_config = base64_engine
+            .decode(&spec.configuration.cluster_config_base64)
             .context(Resources::Clear, "Unable to decode eksctl configuration.")?;
 
         let cluster_name = serde_yaml::Deserializer::from_slice(decoded_config.as_slice())
@@ -262,7 +265,7 @@ impl Create for MetalK8sClusterCreator {
         let k8s_client = kube::client::Client::try_from(
             Config::from_custom_kubeconfig(
                 Kubeconfig::from_yaml(&String::from_utf8_lossy(
-                    &base64::decode(&encoded_kubeconfig).context(
+                    &base64_engine.decode(&encoded_kubeconfig).context(
                         resources,
                         "Unable to decode encoded workload cluster kubeconfig",
                     )?,
@@ -308,7 +311,7 @@ impl Create for MetalK8sClusterCreator {
             "Control container host container userdata: {}",
             control_host_ctr_userdata
         );
-        let ssm_json = json!({"host-containers":{"control":{"enabled":true, "user-data": base64::encode(control_host_ctr_userdata.to_string())}}});
+        let ssm_json = json!({"host-containers":{"control":{"enabled":true, "user-data": base64_engine.encode(control_host_ctr_userdata.to_string())}}});
 
         let custom_settings = &spec
             .configuration
@@ -317,7 +320,7 @@ impl Create for MetalK8sClusterCreator {
                 CustomUserData::Replace { encoded_userdata }
                 | CustomUserData::Merge { encoded_userdata } => encoded_userdata,
             })
-            .map(base64::decode)
+            .map(|userdata| base64_engine.decode(userdata))
             .transpose()
             .context(resources, "Unable to decode custom user data")?
             .map(|userdata| toml::from_slice::<serde_json::Value>(&userdata))
