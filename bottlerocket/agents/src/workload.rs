@@ -28,26 +28,26 @@ where
 {
     info!("Processing workload test plugins");
     let mut plugin_test_args: Vec<String> = Vec::new();
-    for (id, plugin) in workload_config.plugins.iter().enumerate() {
-        info!("Initializing test {}-{}", id, plugin.name);
+    for (id, test) in workload_config.tests.iter().enumerate() {
+        info!("Initializing test {}-{}", id, test.name);
         let output = Command::new(SONOBUOY_BIN_PATH)
             .arg("gen")
             .arg("plugin")
             .arg("--name")
-            .arg(plugin.name.clone())
+            .arg(test.name.clone())
             .arg("--image")
-            .arg(plugin.image.clone())
+            .arg(test.image.clone())
             .output()
             .context(error::WorkloadProcessSnafu)?;
         ensure!(
             output.status.success(),
-            error::WorkloadPluginSnafu {
-                plugin: plugin.name.clone()
+            error::WorkloadTestSnafu {
+                plugin: test.name.clone()
             }
         );
 
         // Write out the output to a file we can reference later
-        let file_name = format!("{}-plugin.yaml", plugin.name);
+        let file_name = format!("{}-plugin.yaml", test.name);
         let plugin_yaml = PathBuf::from(".").join(file_name);
         let mut f = File::create(&plugin_yaml).context(error::FileWriteSnafu {
             path: plugin_yaml.display().to_string(),

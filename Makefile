@@ -23,7 +23,7 @@ TESTSYS_BUILD_GOPROXY ?= direct
 # to the project.
 IMAGES = controller sonobuoy-test-agent ec2-resource-agent eks-resource-agent ecs-resource-agent \
 	migration-test-agent vsphere-vm-resource-agent vsphere-k8s-cluster-resource-agent ecs-test-agent \
-	k8s-workload-agent
+	k8s-workload-agent ecs-workload-agent
 
 # Store targets for tagging images
 TAG_IMAGES = $(addprefix tag-, $(IMAGES))
@@ -139,7 +139,7 @@ tools:
 		./tools
 
 # Build the container image for a testsys agent
-eks-resource-agent ec2-resource-agent ecs-resource-agent vsphere-vm-resource-agent vsphere-k8s-cluster-resource-agent sonobuoy-test-agent migration-test-agent ecs-test-agent k8s-workload-agent: show-variables fetch
+eks-resource-agent ec2-resource-agent ecs-resource-agent vsphere-vm-resource-agent vsphere-k8s-cluster-resource-agent sonobuoy-test-agent migration-test-agent ecs-test-agent k8s-workload-agent ecs-workload-agent: show-variables fetch
 	docker build $(DOCKER_BUILD_FLAGS) \
 		--build-arg ARCH="$(TESTSYS_BUILD_HOST_UNAME_ARCH)" \
 		--build-arg BUILDER_IMAGE="$(BUILDER_IMAGE)" \

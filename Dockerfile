@@ -158,6 +158,16 @@ COPY --from=build-src /usr/share/licenses/testsys /licenses/testsys
 ENTRYPOINT ["./ecs-test-agent"]
 
 # =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^=
+# Builds the ECS workload test agent image
+FROM public.ecr.aws/amazonlinux/amazonlinux:2 as ecs-workload-agent
+# Copy binary
+COPY --from=build-src /src/bottlerocket/agents/bin/ecs-workload-agent ./
+# Copy licenses
+COPY --from=build-src /usr/share/licenses/testsys /licenses/testsys
+
+ENTRYPOINT ["./ecs-workload-agent"]
+
+# =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^=
 # Builds the Sonobuoy test agent image
 FROM public.ecr.aws/amazonlinux/amazonlinux:2 AS sonobuoy-test-agent
 ARG ARCH

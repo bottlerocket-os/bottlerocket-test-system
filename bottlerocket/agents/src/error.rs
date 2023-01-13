@@ -1,8 +1,8 @@
 use aws_sdk_ec2::types::SdkError;
 use aws_sdk_ecs::error::{
     DeleteServiceError, DeregisterTaskDefinitionError, DescribeClustersError,
-    DescribeTaskDefinitionError, DescribeTasksError, RegisterTaskDefinitionError, RunTaskError,
-    UpdateServiceError,
+    DescribeTaskDefinitionError, DescribeTasksError, ListTaskDefinitionsError,
+    RegisterTaskDefinitionError, RunTaskError, UpdateServiceError,
 };
 use aws_sdk_ssm::error::{
     CreateDocumentError, DescribeInstanceInformationError, ListCommandInvocationsError,
@@ -119,6 +119,11 @@ pub enum Error {
         source: SdkError<DescribeTaskDefinitionError>,
     },
 
+    #[snafu(display("Unable to list task definitions: {}", source))]
+    TaskDefinitionList {
+        source: SdkError<ListTaskDefinitionsError>,
+    },
+
     #[snafu(display("Unable to run task: {}", source))]
     TaskRunCreation { source: SdkError<RunTaskError> },
 
@@ -188,7 +193,7 @@ pub enum Error {
     },
 
     #[snafu(display("Failed to initialize workload test plugin: {}", plugin))]
-    WorkloadPlugin { plugin: String },
+    WorkloadTest { plugin: String },
 
     #[snafu(display(
         "Failed to write workload test plugin configuration yaml for: {}",
