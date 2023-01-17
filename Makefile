@@ -78,7 +78,7 @@ build: fetch  ## build, lint, and test the Rust workspace
 	cargo test --locked
 	cargo test --features integ --no-run
 	# We've seen cases where this can fail with a version conflict, so we need to make sure it's working
-	cargo install --path ./cli --force
+	cargo install --path ./cli --force --locked
 
 # Build the container image for the example test-agent program
 example-test-agent: show-variables fetch
