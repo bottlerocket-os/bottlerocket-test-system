@@ -1,4 +1,5 @@
 use super::{error, Result};
+use crate::clients::AllowNotFound;
 use crate::constants::NAMESPACE;
 use crate::system::{
     agent_cluster_role, agent_cluster_role_binding, agent_service_account, controller_cluster_role,
@@ -10,7 +11,9 @@ use crate::{Resource, Test};
 use k8s_openapi::api::core::v1::Namespace;
 use k8s_openapi::apiextensions_apiserver::pkg::apis::apiextensions::v1::CustomResourceDefinition;
 use kube::{Api, CustomResourceExt, ResourceExt};
+use log::info;
 use snafu::ResultExt;
+use std::time::Duration;
 
 impl TestManager {
     /// Create the testsys namespace
@@ -146,6 +149,23 @@ impl TestManager {
             .context(error::KubeSnafu {
                 action: "delete TestSys Resource CRD",
             })?;
+        Ok(())
+    }
+
+    pub(super) async fn wait_for_namespace_deletion(&self) -> Result<()> {
+        let namespace_api: Api<Namespace> = self.api();
+        while namespace_api
+            .get(NAMESPACE)
+            .await
+            .allow_not_found(|_| {})
+            .context(error::KubeSnafu {
+                action: "get Namespace CRD",
+            })?
+            .is_some()
+        {
+            info!("The namespace is still deleting");
+            tokio::time::sleep(Duration::from_secs(5)).await;
+        }
         Ok(())
     }
 }
