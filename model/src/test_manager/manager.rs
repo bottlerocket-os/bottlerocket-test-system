@@ -318,7 +318,7 @@ impl TestManager {
         &self,
         test_name: S,
         follow: bool,
-    ) -> Result<impl Stream<Item = core::result::Result<Bytes, Error>>>
+    ) -> Result<impl Stream<Item = Result<Bytes>>>
     where
         S: Into<String>,
     {
@@ -335,6 +335,13 @@ impl TestManager {
             .context(error::KubeSnafu {
                 action: "stream logs",
             })
+            .map(|stream| {
+                stream.map(|res| {
+                    res.context(error::KubeSnafu {
+                        action: "stream logs",
+                    })
+                })
+            })
     }
 
     /// Retrieve the logs of a resource.
@@ -343,7 +350,7 @@ impl TestManager {
         resource_name: S,
         state: ResourceState,
         follow: bool,
-    ) -> Result<impl Stream<Item = core::result::Result<Bytes, Error>>>
+    ) -> Result<impl Stream<Item = Result<Bytes>>>
     where
         S: Into<String>,
     {
@@ -359,6 +366,13 @@ impl TestManager {
             .await
             .context(error::KubeSnafu {
                 action: "stream logs",
+            })
+            .map(|stream| {
+                stream.map(|res| {
+                    res.context(error::KubeSnafu {
+                        action: "stream logs",
+                    })
+                })
             })
     }
 
@@ -431,9 +445,15 @@ impl TestManager {
 /// Takes a path to a yaml manifest of testsys crds (`Test` and `Resource`) and creates a set of
 /// `Crd`s through deserialization. These can be added using `TestManager::create_object`
 pub fn read_manifest(path: &Path) -> Result<Vec<Crd>> {
-    let mut crds = Vec::new();
     // Create the resource objects from its path.
     let manifest_string = std::fs::read_to_string(path).context(error::FileSnafu { path })?;
+    convert_manifest(manifest_string)
+}
+
+/// Takes a `String` containing a yaml manifest of testsys crds (`Test` and `Resource`) and creates
+/// a set of `Crd`s through deserialization. These can be added using `TestManager::create_object`
+pub fn convert_manifest(manifest_string: String) -> Result<Vec<Crd>> {
+    let mut crds = Vec::new();
     for crd_doc in serde_yaml::Deserializer::from_str(&manifest_string) {
         let value = serde_yaml::Value::deserialize(crd_doc).context(error::SerdeYamlSnafu {
             action: "deserialize manifest",
