@@ -6,7 +6,7 @@ It expects to be run in a pod launched by the TestSys controller.
 You can configure the workload agent to run different types of plugins and tests.
 See `WorkloadConfig` for the different configuration values.
 
-To build the container for the workload test agent, run `make k8s-workload-agent-image` from the
+To build the container for the workload test agent, run `make k8s-workload-agent` from the
 root directory of this repository.
 
 Here is an example manifest for deploying the test definition for the workload test agent to a K8s cluster:
@@ -21,9 +21,10 @@ spec:
   agent:
     configuration:
       kubeconfigBase64: <Base64 encoded kubeconfig for the test cluster workload runs the tests in>
-      plugins:
+      tests:
       - name: nvidia-workload
         image: testsys-nvidia-workload-test:v0.0.3
+        gpu: false
     image: <your k8s-workload-agent image URI>
     name: workload-test-agent
     keepRunning: true
