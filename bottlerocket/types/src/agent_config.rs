@@ -517,3 +517,422 @@ pub struct EcsWorkloadTestConfig {
     pub assume_role: Option<String>,
     pub tests: Vec<WorkloadTest>,
 }
+
+#[cfg(test)]
+mod test {
+    use crate::agent_config::{Ec2Config, EcsClusterConfig, EcsTestConfig, MigrationConfig};
+    use model::{Resource, Test};
+    use serde_json::Value as JsonValue;
+    use std::fs::read_to_string;
+    use std::path::PathBuf;
+
+    use super::{EksClusterConfig, SonobuoyConfig, VSphereK8sClusterConfig, VSphereVmConfig};
+
+    fn samples_dir() -> PathBuf {
+        PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("..")
+            .join("samples")
+    }
+
+    fn read_eks_file(filename: &str) -> String {
+        let p = samples_dir().join("eks").join(filename);
+        read_to_string(&p).expect(&format!("unable to open '{}'", p.display()))
+    }
+
+    fn read_kind_file(filename: &str) -> String {
+        let p = samples_dir().join("kind").join(filename);
+        read_to_string(&p).expect(&format!("unable to open '{}'", p.display()))
+    }
+
+    // These tests assert that the sample configuration files can be deserialized into the agent
+    // configuration structs.
+
+    #[test]
+    fn ecs_migration_test() {
+        let s = read_eks_file("ecs-migration-test.yaml");
+        let s = s
+            .replace("\\${${CLUSTER_NAME}-instances.ids}", r#"["a", "b", "c"]"#)
+            .replace("\\${${CLUSTER_NAME}.publicSubnetIds}", r#"["a", "b", "c"]"#)
+            .replace("${", "<")
+            .replace("}", ">");
+
+        let docs: Vec<&str> = s.split("---").collect();
+        let &yaml = docs.get(0).unwrap();
+        let test_1_initial: Test = serde_yaml::from_str(yaml).unwrap();
+        let _: EcsTestConfig = serde_json::from_value(JsonValue::Object(
+            test_1_initial.spec.agent.configuration.unwrap(),
+        ))
+        .unwrap();
+
+        let &yaml = docs.get(1).unwrap();
+        let test_2_migrate: Test = serde_yaml::from_str(yaml).unwrap();
+        let _: MigrationConfig = serde_json::from_value(JsonValue::Object(
+            test_2_migrate.spec.agent.configuration.unwrap(),
+        ))
+        .unwrap();
+
+        let &yaml = docs.get(2).unwrap();
+        let test_3_migrated: Test = serde_yaml::from_str(yaml).unwrap();
+        let _: EcsTestConfig = serde_json::from_value(JsonValue::Object(
+            test_3_migrated.spec.agent.configuration.unwrap(),
+        ))
+        .unwrap();
+
+        let &yaml = docs.get(3).unwrap();
+        let test_4_migrate: Test = serde_yaml::from_str(yaml).unwrap();
+        let _: MigrationConfig = serde_json::from_value(JsonValue::Object(
+            test_4_migrate.spec.agent.configuration.unwrap(),
+        ))
+        .unwrap();
+
+        let &yaml = docs.get(4).unwrap();
+        let test_5_final: Test = serde_yaml::from_str(yaml).unwrap();
+        let _: EcsTestConfig = serde_json::from_value(JsonValue::Object(
+            test_5_final.spec.agent.configuration.unwrap(),
+        ))
+        .unwrap();
+
+        let &yaml = docs.get(5).unwrap();
+        let cluster_resource: Resource = serde_yaml::from_str(yaml).unwrap();
+        let _: EcsClusterConfig = serde_json::from_value(JsonValue::Object(
+            cluster_resource.spec.agent.configuration.unwrap(),
+        ))
+        .unwrap();
+
+        let &yaml = docs.get(6).unwrap();
+        let ec2_resource: Resource = serde_yaml::from_str(yaml).unwrap();
+        let _: Ec2Config = serde_json::from_value(JsonValue::Object(
+            ec2_resource.spec.agent.configuration.unwrap(),
+        ))
+        .unwrap();
+    }
+
+    #[test]
+    fn ecs_test() {
+        let s = read_eks_file("ecs-test.yaml");
+        let s = s
+            .replace("\\${${CLUSTER_NAME}.publicSubnetIds}", r#"["a", "b", "c"]"#)
+            .replace("${", "<")
+            .replace("}", ">");
+
+        let docs: Vec<&str> = s.split("---").collect();
+        let &yaml = docs.get(0).unwrap();
+        let test_1_initial: Test = serde_yaml::from_str(yaml).unwrap();
+        let _: EcsTestConfig = serde_json::from_value(JsonValue::Object(
+            test_1_initial.spec.agent.configuration.unwrap(),
+        ))
+        .unwrap();
+
+        let &yaml = docs.get(1).unwrap();
+        let cluster_resource: Resource = serde_yaml::from_str(yaml).unwrap();
+        let _: EcsClusterConfig = serde_json::from_value(JsonValue::Object(
+            cluster_resource.spec.agent.configuration.unwrap(),
+        ))
+        .unwrap();
+
+        let &yaml = docs.get(2).unwrap();
+        let ec2_resource: Resource = serde_yaml::from_str(yaml).unwrap();
+        let _: Ec2Config = serde_json::from_value(JsonValue::Object(
+            ec2_resource.spec.agent.configuration.unwrap(),
+        ))
+        .unwrap();
+    }
+
+    #[test]
+    fn sonobuoy_migration_test() {
+        let s = read_eks_file("sonobuoy-migration-test.yaml");
+        let s = s
+            .replace("\\${${CLUSTER_NAME}-instances.ids}", r#"["a", "b", "c"]"#)
+            .replace("\\${${CLUSTER_NAME}.publicSubnetIds}", r#"["a", "b", "c"]"#)
+            .replace("\\${${CLUSTER_NAME}.securityGroups}", r#"["a", "b", "c"]"#)
+            .replace("${", "<")
+            .replace("}", ">");
+
+        let docs: Vec<&str> = s.split("---").collect();
+        let &yaml = docs.get(0).unwrap();
+        let test_1_initial: Test = serde_yaml::from_str(yaml).unwrap();
+        let _: SonobuoyConfig = serde_json::from_value(JsonValue::Object(
+            test_1_initial.spec.agent.configuration.unwrap(),
+        ))
+        .unwrap();
+
+        let &yaml = docs.get(1).unwrap();
+        let test_2_migrate: Test = serde_yaml::from_str(yaml).unwrap();
+        let _: MigrationConfig = serde_json::from_value(JsonValue::Object(
+            test_2_migrate.spec.agent.configuration.unwrap(),
+        ))
+        .unwrap();
+
+        let &yaml = docs.get(2).unwrap();
+        let test_3_migrated: Test = serde_yaml::from_str(yaml).unwrap();
+        let _: SonobuoyConfig = serde_json::from_value(JsonValue::Object(
+            test_3_migrated.spec.agent.configuration.unwrap(),
+        ))
+        .unwrap();
+
+        let &yaml = docs.get(3).unwrap();
+        let test_4_migrate: Test = serde_yaml::from_str(yaml).unwrap();
+        let _: MigrationConfig = serde_json::from_value(JsonValue::Object(
+            test_4_migrate.spec.agent.configuration.unwrap(),
+        ))
+        .unwrap();
+
+        let &yaml = docs.get(4).unwrap();
+        let test_5_final: Test = serde_yaml::from_str(yaml).unwrap();
+        let _: SonobuoyConfig = serde_json::from_value(JsonValue::Object(
+            test_5_final.spec.agent.configuration.unwrap(),
+        ))
+        .unwrap();
+
+        let &yaml = docs.get(5).unwrap();
+        let cluster_resource: Resource = serde_yaml::from_str(yaml).unwrap();
+        let _: EksClusterConfig = serde_json::from_value(JsonValue::Object(
+            cluster_resource.spec.agent.configuration.unwrap(),
+        ))
+        .unwrap();
+
+        let &yaml = docs.get(6).unwrap();
+        let ec2_resource: Resource = serde_yaml::from_str(yaml).unwrap();
+        let _: Ec2Config = serde_json::from_value(JsonValue::Object(
+            ec2_resource.spec.agent.configuration.unwrap(),
+        ))
+        .unwrap();
+    }
+
+    #[test]
+    fn sonobuoy_test() {
+        let s = read_eks_file("sonobuoy-test.yaml");
+        let s = s
+            .replace("\\${${CLUSTER_NAME}-instances.ids}", r#"["a", "b", "c"]"#)
+            .replace("\\${${CLUSTER_NAME}.publicSubnetIds}", r#"["a", "b", "c"]"#)
+            .replace("\\${${CLUSTER_NAME}.securityGroups}", r#"["a", "b", "c"]"#)
+            .replace("${SONOBUOY_MODE}", "quick")
+            .replace("${", "<")
+            .replace("}", ">");
+
+        let docs: Vec<&str> = s.split("---").collect();
+        let &yaml = docs.get(0).unwrap();
+        let test_1_initial: Test = serde_yaml::from_str(yaml).unwrap();
+        let _: SonobuoyConfig = serde_json::from_value(JsonValue::Object(
+            test_1_initial.spec.agent.configuration.unwrap(),
+        ))
+        .unwrap();
+
+        let &yaml = docs.get(1).unwrap();
+        let cluster_resource: Resource = serde_yaml::from_str(yaml).unwrap();
+        let _: EksClusterConfig = serde_json::from_value(JsonValue::Object(
+            cluster_resource.spec.agent.configuration.unwrap(),
+        ))
+        .unwrap();
+
+        let &yaml = docs.get(2).unwrap();
+        let ec2_resource: Resource = serde_yaml::from_str(yaml).unwrap();
+        let _: Ec2Config = serde_json::from_value(JsonValue::Object(
+            ec2_resource.spec.agent.configuration.unwrap(),
+        ))
+        .unwrap();
+    }
+
+    #[test]
+    fn vmware_migration_test() {
+        let s = read_eks_file("vmware-migration-test.yaml");
+        let s = s
+            .replace("\\${${CLUSTER_NAME}-vms.ids}", r#"["a", "b", "c"]"#)
+            .replace("\\${${CLUSTER_NAME}.publicSubnetIds}", r#"["a", "b", "c"]"#)
+            .replace("\\${${CLUSTER_NAME}.securityGroups}", r#"["a", "b", "c"]"#)
+            .replace("${K8S_VERSION}", "v1.24")
+            .replace("${", "<")
+            .replace("}", ">")
+            .replace("\\", "");
+
+        let docs: Vec<&str> = s.split("---").collect();
+        let &yaml = docs.get(0).unwrap();
+        let test_1_initial: Test = serde_yaml::from_str(yaml).unwrap();
+        let _: SonobuoyConfig = serde_json::from_value(JsonValue::Object(
+            test_1_initial.spec.agent.configuration.unwrap(),
+        ))
+        .unwrap();
+
+        let &yaml = docs.get(1).unwrap();
+        let test_2_migrate: Test = serde_yaml::from_str(yaml).unwrap();
+        let _: MigrationConfig = serde_json::from_value(JsonValue::Object(
+            test_2_migrate.spec.agent.configuration.unwrap(),
+        ))
+        .unwrap();
+
+        let &yaml = docs.get(2).unwrap();
+        let test_3_migrated: Test = serde_yaml::from_str(yaml).unwrap();
+        let _: SonobuoyConfig = serde_json::from_value(JsonValue::Object(
+            test_3_migrated.spec.agent.configuration.unwrap(),
+        ))
+        .unwrap();
+
+        let &yaml = docs.get(3).unwrap();
+        let test_4_migrate: Test = serde_yaml::from_str(yaml).unwrap();
+        let _: MigrationConfig = serde_json::from_value(JsonValue::Object(
+            test_4_migrate.spec.agent.configuration.unwrap(),
+        ))
+        .unwrap();
+
+        let &yaml = docs.get(4).unwrap();
+        let test_5_final: Test = serde_yaml::from_str(yaml).unwrap();
+        let _: SonobuoyConfig = serde_json::from_value(JsonValue::Object(
+            test_5_final.spec.agent.configuration.unwrap(),
+        ))
+        .unwrap();
+
+        let &yaml = docs.get(5).unwrap();
+        let cluster_resource: Resource = serde_yaml::from_str(yaml).unwrap();
+        let _: VSphereK8sClusterConfig = serde_json::from_value(JsonValue::Object(
+            cluster_resource.spec.agent.configuration.unwrap(),
+        ))
+        .unwrap();
+
+        let &yaml = docs.get(6).unwrap();
+        let ec2_resource: Resource = serde_yaml::from_str(yaml).unwrap();
+        let _: VSphereVmConfig = serde_json::from_value(JsonValue::Object(
+            ec2_resource.spec.agent.configuration.unwrap(),
+        ))
+        .unwrap();
+    }
+
+    #[test]
+    fn vmware_sonobuoy_test() {
+        let s = read_eks_file("vmware-sonobuoy-test.yaml");
+        let s = s
+            .replace("\\${${CLUSTER_NAME}-vms.ids}", r#"["a", "b", "c"]"#)
+            .replace("\\${${CLUSTER_NAME}.publicSubnetIds}", r#"["a", "b", "c"]"#)
+            .replace("\\${${CLUSTER_NAME}.securityGroups}", r#"["a", "b", "c"]"#)
+            .replace("${K8S_VERSION}", "v1.24")
+            .replace("${SONOBUOY_MODE}", "quick")
+            .replace("${", "<")
+            .replace("}", ">")
+            .replace("\\", "");
+
+        let docs: Vec<&str> = s.split("---").collect();
+        let &yaml = docs.get(0).unwrap();
+        let test_1_initial: Test = serde_yaml::from_str(yaml).unwrap();
+        let _: SonobuoyConfig = serde_json::from_value(JsonValue::Object(
+            test_1_initial.spec.agent.configuration.unwrap(),
+        ))
+        .unwrap();
+
+        let &yaml = docs.get(1).unwrap();
+        let cluster_resource: Resource = serde_yaml::from_str(yaml).unwrap();
+        let _: VSphereK8sClusterConfig = serde_json::from_value(JsonValue::Object(
+            cluster_resource.spec.agent.configuration.unwrap(),
+        ))
+        .unwrap();
+
+        let &yaml = docs.get(2).unwrap();
+        let ec2_resource: Resource = serde_yaml::from_str(yaml).unwrap();
+        let _: VSphereVmConfig = serde_json::from_value(JsonValue::Object(
+            ec2_resource.spec.agent.configuration.unwrap(),
+        ))
+        .unwrap();
+    }
+
+    #[test]
+    fn ecs_test_kind() {
+        let s = read_kind_file("ecs-test.yaml");
+        let s = s
+            .replace("\\${${CLUSTER_NAME}.publicSubnetIds}", r#"["a", "b", "c"]"#)
+            .replace("${", "<")
+            .replace("}", ">");
+
+        let docs: Vec<&str> = s.split("---").collect();
+        let &yaml = docs.get(0).unwrap();
+        let test_1_initial: Test = serde_yaml::from_str(yaml).unwrap();
+        let _: EcsTestConfig = serde_json::from_value(JsonValue::Object(
+            test_1_initial.spec.agent.configuration.unwrap(),
+        ))
+        .unwrap();
+
+        let &yaml = docs.get(1).unwrap();
+        let cluster_resource: Resource = serde_yaml::from_str(yaml).unwrap();
+        let _: EcsClusterConfig = serde_json::from_value(JsonValue::Object(
+            cluster_resource.spec.agent.configuration.unwrap(),
+        ))
+        .unwrap();
+
+        let &yaml = docs.get(2).unwrap();
+        let ec2_resource: Resource = serde_yaml::from_str(yaml).unwrap();
+        let _: Ec2Config = serde_json::from_value(JsonValue::Object(
+            ec2_resource.spec.agent.configuration.unwrap(),
+        ))
+        .unwrap();
+    }
+
+    #[test]
+    fn sonobuoy_test_kind() {
+        let s = read_kind_file("sonobuoy-test.yaml");
+        let s = s
+            .replace("\\${${CLUSTER_NAME}-instances.ids}", r#"["a", "b", "c"]"#)
+            .replace("\\${${CLUSTER_NAME}.publicSubnetIds}", r#"["a", "b", "c"]"#)
+            .replace("\\${${CLUSTER_NAME}.securityGroups}", r#"["a", "b", "c"]"#)
+            .replace("${SONOBUOY_MODE}", "quick")
+            .replace("${", "<")
+            .replace("}", ">");
+
+        let docs: Vec<&str> = s.split("---").collect();
+        let &yaml = docs.get(0).unwrap();
+        let test_1_initial: Test = serde_yaml::from_str(yaml).unwrap();
+        let _: SonobuoyConfig = serde_json::from_value(JsonValue::Object(
+            test_1_initial.spec.agent.configuration.unwrap(),
+        ))
+        .unwrap();
+
+        let &yaml = docs.get(1).unwrap();
+        let cluster_resource: Resource = serde_yaml::from_str(yaml).unwrap();
+        let _: EksClusterConfig = serde_json::from_value(JsonValue::Object(
+            cluster_resource.spec.agent.configuration.unwrap(),
+        ))
+        .unwrap();
+
+        let &yaml = docs.get(2).unwrap();
+        let ec2_resource: Resource = serde_yaml::from_str(yaml).unwrap();
+        let _: Ec2Config = serde_json::from_value(JsonValue::Object(
+            ec2_resource.spec.agent.configuration.unwrap(),
+        ))
+        .unwrap();
+    }
+
+    #[test]
+    fn vmware_sonobuoy_test_kind() {
+        let s = read_kind_file("vmware-sonobuoy-test.yaml");
+        let s = s
+            .replace("\\${${CLUSTER_NAME}-vms.ids}", r#"["a", "b", "c"]"#)
+            .replace("\\${${CLUSTER_NAME}.publicSubnetIds}", r#"["a", "b", "c"]"#)
+            .replace(
+                "\\\\${${CLUSTER_NAME}.securityGroups}",
+                r#"["a", "b", "c"]"#,
+            )
+            .replace("${K8S_VERSION}", "v1.24")
+            .replace("${SONOBUOY_MODE}", "quick")
+            .replace("${", "<")
+            .replace("}", ">")
+            .replace("\\", "");
+
+        let docs: Vec<&str> = s.split("---").collect();
+        let &yaml = docs.get(0).unwrap();
+        let test_1_initial: Test = serde_yaml::from_str(yaml).unwrap();
+        let _: SonobuoyConfig = serde_json::from_value(JsonValue::Object(
+            test_1_initial.spec.agent.configuration.unwrap(),
+        ))
+        .unwrap();
+
+        let &yaml = docs.get(1).unwrap();
+        let cluster_resource: Resource = serde_yaml::from_str(yaml).unwrap();
+        let _: VSphereK8sClusterConfig = serde_json::from_value(JsonValue::Object(
+            cluster_resource.spec.agent.configuration.unwrap(),
+        ))
+        .unwrap();
+
+        let &yaml = docs.get(2).unwrap();
+        let ec2_resource: Resource = serde_yaml::from_str(yaml).unwrap();
+        let _: VSphereVmConfig = serde_json::from_value(JsonValue::Object(
+            ec2_resource.spec.agent.configuration.unwrap(),
+        ))
+        .unwrap();
+    }
+}
