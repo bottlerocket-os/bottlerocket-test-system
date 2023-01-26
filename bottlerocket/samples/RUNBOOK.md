@@ -69,6 +69,37 @@ EOF
 " 2> /dev/null
 ```
 
+### Workload Testing on `aws-ecs` Variants
+
+_Note_: An example of a workload test that can be used with the `ecs-workload-agent` is the `nvidia-smoke` test. See the `nvidia-smoke` [README.md](../tests/workload/nvidia-smoke/README.md) for instructions on how to build and use its image.
+
+```bash
+CLUSTER_NAME="x86-64-aws-ecs-1-nvidia"
+OUTPUT_FILE="${CLUSTER_NAME}.yaml"
+VARIANT="aws-ecs-1-nvidia"
+ARCHITECTURE="x86_64"
+AGENT_IMAGE_VERSION=$(cli --version | sed -e "s/^.* //g")
+ECS_RESOURCE_AGENT_IMAGE_URI="public.ecr.aws/bottlerocket-test-system/ecs-resource-agent:v${AGENT_IMAGE_VERSION}"
+EC2_RESOURCE_AGENT_IMAGE_URI="public.ecr.aws/bottlerocket-test-system/ec2-resource-agent:v${AGENT_IMAGE_VERSION}"
+ECS_WORKLOAD_AGENT_IMAGE_URI="public.ecr.aws/bottlerocket-test-system/ecs-workload-agent:v${AGENT_IMAGE_VERSION}"
+ASSUME_ROLE="~"
+AWS_REGION="us-west-2"
+WORKLOAD_TEST_NAME=
+WORKLOAD_TEST_IMAGE_URI=
+GPU="true"
+INSTANCE_TYPES=$(if [ $GPU = "true" ]; then echo "[\"g4dn.xlarge\"]"; else echo "[\"m5.large\"]"; fi)
+
+BOTTLEROCKET_AMI_ID=$(aws ssm get-parameter \
+  --region ${AWS_REGION} \
+  --name "/aws/service/bottlerocket/${VARIANT}/${ARCHITECTURE}/latest/image_id" \
+  --query Parameter.Value --output text)
+
+eval "cat > ${OUTPUT_FILE} << EOF
+$(< eks/ecs-workload-test.yaml)
+EOF
+" 2> /dev/null
+```
+
 ### Migration Testing on `aws-k8s` Variants
 
 ```bash
@@ -121,6 +152,37 @@ BOTTLEROCKET_AMI_ID=$(aws ssm get-parameter \
 
 eval "cat > ${OUTPUT_FILE} << EOF
 $(< eks/sonobuoy-test.yaml)
+EOF
+" 2> /dev/null
+```
+
+### Workload Testing on `aws-k8s` Variants
+
+_Note_: An example of a workload test that can be used with the `k8s-workload-agent` is the `nvidia-smoke` test. See the `nvidia-smoke` [README.md](../tests/workload/nvidia-smoke/README.md) for instructions on how to build and use its image.
+
+```bash
+CLUSTER_NAME="x86-64-aws-k8s-124-nvidia"
+OUTPUT_FILE="${CLUSTER_NAME}.yaml"
+VARIANT="aws-k8s-1.24-nvidia"
+ARCHITECTURE="x86_64"
+AGENT_IMAGE_VERSION=$(cli --version | sed -e "s/^.* //g")
+K8S_WORKLOAD_AGENT_IMAGE_URI="public.ecr.aws/bottlerocket-test-system/k8s-workload-agent:v${AGENT_IMAGE_VERSION}"
+EKS_RESOURCE_AGENT_IMAGE_URI="public.ecr.aws/bottlerocket-test-system/eks-resource-agent:v${AGENT_IMAGE_VERSION}"
+EC2_RESOURCE_AGENT_IMAGE_URI="public.ecr.aws/bottlerocket-test-system/ec2-resource-agent:v${AGENT_IMAGE_VERSION}"
+ASSUME_ROLE="~"
+AWS_REGION="us-west-2"
+WORKLOAD_TEST_NAME=
+WORKLOAD_TEST_IMAGE_URI=
+GPU="true"
+INSTANCE_TYPES=$(if [ $GPU = "true" ]; then echo "[\"g4dn.xlarge\"]"; else echo "[\"m5.large\"]"; fi)
+
+BOTTLEROCKET_AMI_ID=$(aws ssm get-parameter \
+  --region ${AWS_REGION} \
+  --name "/aws/service/bottlerocket/${VARIANT}/${ARCHITECTURE}/latest/image_id" \
+  --query Parameter.Value --output text)
+
+eval "cat > ${OUTPUT_FILE} << EOF
+$(< eks/k8s-workload-test.yaml)
 EOF
 " 2> /dev/null
 ```
@@ -234,6 +296,42 @@ EOF
 " 2> /dev/null
 ```
 
+### Workload Testing on `aws-ecs` Variants
+
+_Note_: An example of a workload test that can be used with the `ecs-workload-agent` is the `nvidia-smoke` test. See the `nvidia-smoke` [README.md](../tests/workload/nvidia-smoke/README.md) for instructions on how to build and use its image.
+
+```bash
+CLUSTER_NAME="x86-64-aws-ecs-1-nvidia"
+OUTPUT_FILE="${CLUSTER_NAME}.yaml"
+VARIANT="aws-ecs-1-nvidia"
+ARCHITECTURE="x86_64"
+AGENT_IMAGE_VERSION=$(cli --version | sed -e "s/^.* //g")
+ECS_RESOURCE_AGENT_IMAGE_URI="public.ecr.aws/bottlerocket-test-system/ecs-resource-agent:v${AGENT_IMAGE_VERSION}"
+EC2_RESOURCE_AGENT_IMAGE_URI="public.ecr.aws/bottlerocket-test-system/ec2-resource-agent:v${AGENT_IMAGE_VERSION}"
+ECS_WORKLOAD_AGENT_IMAGE_URI="public.ecr.aws/bottlerocket-test-system/ecs-workload-agent:v${AGENT_IMAGE_VERSION}"
+ASSUME_ROLE="~"
+AWS_REGION="us-west-2"
+WORKLOAD_TEST_NAME=
+WORKLOAD_TEST_IMAGE_URI=
+GPU="true"
+INSTANCE_TYPES=$(if [ $GPU = "true" ]; then echo "[\"g4dn.xlarge\"]"; else echo "[\"m5.large\"]"; fi)
+
+BOTTLEROCKET_AMI_ID=$(aws ssm get-parameter \
+  --region ${AWS_REGION} \
+  --name "/aws/service/bottlerocket/${VARIANT}/${ARCHITECTURE}/latest/image_id" \
+  --query Parameter.Value --output text)
+
+cli add-secret map  \
+ --name "aws-creds" \
+ "ACCESS_KEY_ID=${ACCESS_KEY_ID}" \
+ "SECRET_ACCESS_KEY=${SECRET_ACCESS_KEY}"
+
+eval "cat > ${OUTPUT_FILE} << EOF
+$(< kind/ecs-workload-test.yaml)
+EOF
+" 2> /dev/null
+```
+
 ### Conformance Testing on `aws-k8s` Variants
 
 ```bash
@@ -263,6 +361,42 @@ cli add-secret map  \
 
 eval "cat > ${OUTPUT_FILE} << EOF
 $(< kind/sonobuoy-test.yaml)
+EOF
+" 2> /dev/null
+```
+
+### Workload Testing on `aws-k8s` Variants
+
+_Note_: An example of a workload test that can be used with the `k8s-workload-agent` is the `nvidia-smoke` test. See the `nvidia-smoke` [README.md](../tests/workload/nvidia-smoke/README.md) for instructions on how to build and use its image.
+
+```bash
+CLUSTER_NAME="x86-64-aws-k8s-124-nvidia"
+OUTPUT_FILE="${CLUSTER_NAME}.yaml"
+VARIANT="aws-k8s-1.24-nvidia"
+ARCHITECTURE="x86_64"
+AGENT_IMAGE_VERSION=$(cli --version | sed -e "s/^.* //g")
+K8S_WORKLOAD_AGENT_IMAGE_URI="public.ecr.aws/bottlerocket-test-system/k8s-workload-agent:v${AGENT_IMAGE_VERSION}"
+EKS_RESOURCE_AGENT_IMAGE_URI="public.ecr.aws/bottlerocket-test-system/eks-resource-agent:v${AGENT_IMAGE_VERSION}"
+EC2_RESOURCE_AGENT_IMAGE_URI="public.ecr.aws/bottlerocket-test-system/ec2-resource-agent:v${AGENT_IMAGE_VERSION}"
+ASSUME_ROLE="~"
+AWS_REGION="us-west-2"
+WORKLOAD_TEST_NAME=
+WORKLOAD_TEST_IMAGE_URI=
+GPU="true"
+INSTANCE_TYPES=$(if [ $GPU = "true" ]; then echo "[\"g4dn.xlarge\"]"; else echo "[\"m5.large\"]"; fi)
+
+BOTTLEROCKET_AMI_ID=$(aws ssm get-parameter \
+  --region ${AWS_REGION} \
+  --name "/aws/service/bottlerocket/${VARIANT}/${ARCHITECTURE}/latest/image_id" \
+  --query Parameter.Value --output text)
+
+cli add-secret map  \
+ --name "aws-creds" \
+ "ACCESS_KEY_ID=${ACCESS_KEY_ID}" \
+ "SECRET_ACCESS_KEY=${SECRET_ACCESS_KEY}"
+
+eval "cat > ${OUTPUT_FILE} << EOF
+$(< kind/k8s-workload-test.yaml)
 EOF
 " 2> /dev/null
 ```

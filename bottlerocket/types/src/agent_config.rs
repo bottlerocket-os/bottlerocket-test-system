@@ -526,7 +526,10 @@ mod test {
     use std::fs::read_to_string;
     use std::path::PathBuf;
 
-    use super::{EksClusterConfig, SonobuoyConfig, VSphereK8sClusterConfig, VSphereVmConfig};
+    use super::{
+        EcsWorkloadTestConfig, EksClusterConfig, SonobuoyConfig, VSphereK8sClusterConfig,
+        VSphereVmConfig, WorkloadConfig,
+    };
 
     fn samples_dir() -> PathBuf {
         PathBuf::from(env!("CARGO_MANIFEST_DIR"))
@@ -639,6 +642,39 @@ mod test {
     }
 
     #[test]
+    fn ecs_workload_test() {
+        let s = read_eks_file("ecs-workload-test.yaml");
+        let s = s
+            .replace("\\${${CLUSTER_NAME}.publicSubnetIds}", r#"["a", "b", "c"]"#)
+            .replace("${GPU}", "true")
+            .replace("${INSTANCE_TYPES}", r#"["a", "b", "c"]"#)
+            .replace("${", "<")
+            .replace("}", ">");
+
+        let docs: Vec<&str> = s.split("---").collect();
+        let &yaml = docs.get(0).unwrap();
+        let test_1_initial: Test = serde_yaml::from_str(yaml).unwrap();
+        let _: EcsWorkloadTestConfig = serde_json::from_value(JsonValue::Object(
+            test_1_initial.spec.agent.configuration.unwrap(),
+        ))
+        .unwrap();
+
+        let &yaml = docs.get(1).unwrap();
+        let cluster_resource: Resource = serde_yaml::from_str(yaml).unwrap();
+        let _: EcsClusterConfig = serde_json::from_value(JsonValue::Object(
+            cluster_resource.spec.agent.configuration.unwrap(),
+        ))
+        .unwrap();
+
+        let &yaml = docs.get(2).unwrap();
+        let ec2_resource: Resource = serde_yaml::from_str(yaml).unwrap();
+        let _: Ec2Config = serde_json::from_value(JsonValue::Object(
+            ec2_resource.spec.agent.configuration.unwrap(),
+        ))
+        .unwrap();
+    }
+
+    #[test]
     fn sonobuoy_migration_test() {
         let s = read_eks_file("sonobuoy-migration-test.yaml");
         let s = s
@@ -703,7 +739,6 @@ mod test {
     fn sonobuoy_test() {
         let s = read_eks_file("sonobuoy-test.yaml");
         let s = s
-            .replace("\\${${CLUSTER_NAME}-instances.ids}", r#"["a", "b", "c"]"#)
             .replace("\\${${CLUSTER_NAME}.publicSubnetIds}", r#"["a", "b", "c"]"#)
             .replace("\\${${CLUSTER_NAME}.securityGroups}", r#"["a", "b", "c"]"#)
             .replace("${SONOBUOY_MODE}", "quick")
@@ -714,6 +749,40 @@ mod test {
         let &yaml = docs.get(0).unwrap();
         let test_1_initial: Test = serde_yaml::from_str(yaml).unwrap();
         let _: SonobuoyConfig = serde_json::from_value(JsonValue::Object(
+            test_1_initial.spec.agent.configuration.unwrap(),
+        ))
+        .unwrap();
+
+        let &yaml = docs.get(1).unwrap();
+        let cluster_resource: Resource = serde_yaml::from_str(yaml).unwrap();
+        let _: EksClusterConfig = serde_json::from_value(JsonValue::Object(
+            cluster_resource.spec.agent.configuration.unwrap(),
+        ))
+        .unwrap();
+
+        let &yaml = docs.get(2).unwrap();
+        let ec2_resource: Resource = serde_yaml::from_str(yaml).unwrap();
+        let _: Ec2Config = serde_json::from_value(JsonValue::Object(
+            ec2_resource.spec.agent.configuration.unwrap(),
+        ))
+        .unwrap();
+    }
+
+    #[test]
+    fn k8s_workload_test() {
+        let s = read_eks_file("k8s-workload-test.yaml");
+        let s = s
+            .replace("\\${${CLUSTER_NAME}.publicSubnetIds}", r#"["a", "b", "c"]"#)
+            .replace("\\${${CLUSTER_NAME}.securityGroups}", r#"["a", "b", "c"]"#)
+            .replace("${GPU}", "true")
+            .replace("${INSTANCE_TYPES}", r#"["a", "b", "c"]"#)
+            .replace("${", "<")
+            .replace("}", ">");
+
+        let docs: Vec<&str> = s.split("---").collect();
+        let &yaml = docs.get(0).unwrap();
+        let test_1_initial: Test = serde_yaml::from_str(yaml).unwrap();
+        let _: WorkloadConfig = serde_json::from_value(JsonValue::Object(
             test_1_initial.spec.agent.configuration.unwrap(),
         ))
         .unwrap();
@@ -864,10 +933,42 @@ mod test {
     }
 
     #[test]
+    fn ecs_workload_test_kind() {
+        let s = read_kind_file("ecs-workload-test.yaml");
+        let s = s
+            .replace("\\${${CLUSTER_NAME}.publicSubnetIds}", r#"["a", "b", "c"]"#)
+            .replace("${GPU}", "true")
+            .replace("${INSTANCE_TYPES}", r#"["a", "b", "c"]"#)
+            .replace("${", "<")
+            .replace("}", ">");
+
+        let docs: Vec<&str> = s.split("---").collect();
+        let &yaml = docs.get(0).unwrap();
+        let test_1_initial: Test = serde_yaml::from_str(yaml).unwrap();
+        let _: EcsWorkloadTestConfig = serde_json::from_value(JsonValue::Object(
+            test_1_initial.spec.agent.configuration.unwrap(),
+        ))
+        .unwrap();
+
+        let &yaml = docs.get(1).unwrap();
+        let cluster_resource: Resource = serde_yaml::from_str(yaml).unwrap();
+        let _: EcsClusterConfig = serde_json::from_value(JsonValue::Object(
+            cluster_resource.spec.agent.configuration.unwrap(),
+        ))
+        .unwrap();
+
+        let &yaml = docs.get(2).unwrap();
+        let ec2_resource: Resource = serde_yaml::from_str(yaml).unwrap();
+        let _: Ec2Config = serde_json::from_value(JsonValue::Object(
+            ec2_resource.spec.agent.configuration.unwrap(),
+        ))
+        .unwrap();
+    }
+
+    #[test]
     fn sonobuoy_test_kind() {
         let s = read_kind_file("sonobuoy-test.yaml");
         let s = s
-            .replace("\\${${CLUSTER_NAME}-instances.ids}", r#"["a", "b", "c"]"#)
             .replace("\\${${CLUSTER_NAME}.publicSubnetIds}", r#"["a", "b", "c"]"#)
             .replace("\\${${CLUSTER_NAME}.securityGroups}", r#"["a", "b", "c"]"#)
             .replace("${SONOBUOY_MODE}", "quick")
