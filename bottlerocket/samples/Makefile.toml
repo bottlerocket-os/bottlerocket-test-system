@@ -1,0 +1,283 @@
+[config]
+skip_core_tasks = true
+
+[env]
+AGENT_IMAGE_REGISTRY = { value = "public.ecr.aws/bottlerocket-test-system", condition = { env_not_set = ["AGENT_IMAGE_REGISTRY"] } }
+AGENTS = ["eks-resource-agent"]
+METADATA_BASE_URL = { value = "https://updates.bottlerocket.aws/2020-07-07", condition = { env_not_set = ["METADATA_BASE_URL"] } }
+ARCHITECTURE = { value = "x86_64", condition = { env_not_set = ["ARCHITECTURE"] } }
+CLUSTER_TYPE = { value = "eks", condition = { env_not_set = ["CLUSTER_TYPE"] } }
+ASSUME_ROLE = { value = "~", condition = { env_not_set = ["ASSUME_ROLE"] } }
+AWS_REGION = { value = "us-west-2", condition = { env_not_set = ["AWS_REGION"] } }
+UPGRADE_VERSION = { value = "v1.11.1", condition = { env_not_set = ["UPGRADE_VERSION"] } }
+STARTING_VERSION = { value = "v1.11.0", condition = { env_not_set = ["STARTING_VERSION"] } }
+SONOBUOY_MODE = { value = "quick", condition = { env_not_set = ["SONOBUOY_MODE"] } }
+TARGETS_URL = { value = "https://updates.bottlerocket.aws/targets", condition = { env_not_set = ["TARGETS_URL"] } }
+K8S_VERSION = { value = "1.24", condition = { env_not_set = ["K8S_VERSION"] } }
+
+# The following variables need values only if a workload test file is being created. `WORKLOAD_TEST_NAME` is an identifier for the workload test. `WORKLOAD_TEST_IMAGE_URI` is the URI to the workload test image.
+
+# WORKLOAD_TEST_NAME = 
+# WORKLOAD_TEST_IMAGE_URI = 
+
+
+# The following variables need values only if a vmware test file is being created. The GOVC values can be retrieved from a vSphere config file.
+
+# CONTROL_PLANE_ENDPOINT_IP = 
+# MGMT_CLUSTER_KUBECONFIG_PATH = 
+# GOVC_USERNAME = 
+# GOVC_PASSWORD = 
+# GOVC_DATACENTER = 
+# GOVC_DATASTORE = 
+# GOVC_URL = 
+# GOVC_NETWORK = 
+# GOVC_RESOURCE_POOL = 
+# GOVC_FOLDER = 
+
+[tasks.install-cli]
+script=['''
+cargo install --path "${CARGO_MAKE_WORKING_DIRECTORY}/../../cli"
+''']
+
+[tasks.set-agent-version]
+dependencies = ["install-cli"]
+
+[tasks.set-agent-version.env]
+AGENT_IMAGE_VERSION = { script=["echo $(cli --version | awk '{print $2}')"], condition = { env_not_set = ["AGENT_IMAGE_VERSION"] } }
+
+[tasks.set-agent-images]
+dependencies = ["set-agent-version"]
+
+[tasks.set-agent-images.env]
+ECS_TEST_AGENT_IMAGE_URI = { value = "${AGENT_IMAGE_REGISTRY}/ecs-test-agent:v${AGENT_IMAGE_VERSION}", condition = { env_not_set = ["ECS_TEST_AGENT_IMAGE_URI"] } }
+MIGRATION_TEST_AGENT_IMAGE_URI = { value = "${AGENT_IMAGE_REGISTRY}/migration-test-agent:v${AGENT_IMAGE_VERSION}", condition = { env_not_set = ["MIGRATION_TEST_AGENT_IMAGE_URI"] } }
+ECS_RESOURCE_AGENT_IMAGE_URI = { value = "${AGENT_IMAGE_REGISTRY}/ecs-resource-agent:v${AGENT_IMAGE_VERSION}", condition = { env_not_set = ["ECS_RESOURCE_AGENT_IMAGE_URI"] } }
+EC2_RESOURCE_AGENT_IMAGE_URI = { value = "${AGENT_IMAGE_REGISTRY}/ec2-resource-agent:v${AGENT_IMAGE_VERSION}", condition = { env_not_set = ["EC2_RESOURCE_AGENT_IMAGE_URI"] } }
+ECS_WORKLOAD_AGENT_IMAGE_URI = { value = "${AGENT_IMAGE_REGISTRY}/ecs-workload-agent:v${AGENT_IMAGE_VERSION}", condition = { env_not_set = ["ECS_WORKLOAD_AGENT_IMAGE_URI"] } }
+K8S_WORKLOAD_AGENT_IMAGE_URI = { value = "${AGENT_IMAGE_REGISTRY}/k8s-workload-agent:v${AGENT_IMAGE_VERSION}", condition = { env_not_set = ["K8S_WORKLOAD_AGENT_IMAGE_URI"] } }
+SONOBUOY_TEST_AGENT_IMAGE_URI = { value = "${AGENT_IMAGE_REGISTRY}/sonobuoy-test-agent:v${AGENT_IMAGE_VERSION}", condition = { env_not_set = ["SONOBUOY_TEST_AGENT_IMAGE_URI"] } }
+EKS_RESOURCE_AGENT_IMAGE_URI = { value = "${AGENT_IMAGE_REGISTRY}/eks-resource-agent:v${AGENT_IMAGE_VERSION}", condition = { env_not_set = ["EKS_RESOURCE_AGENT_IMAGE_URI"] } }
+VSPHERE_K8S_CLUSTER_RESOURCE_AGENT_IMAGE_URI = { value = "${AGENT_IMAGE_REGISTRY}/vsphere-k8s-cluster-resource-agent:v${AGENT_IMAGE_VERSION}", condition = { env_not_set = ["VSPHERE_K8S_CLUSTER_RESOURCE_AGENT_IMAGE_URI"] } }
+VSPHERE_VM_RESOURCE_AGENT_IMAGE_URI = { value = "${AGENT_IMAGE_REGISTRY}/vsphere-vm-resource-agent:v${AGENT_IMAGE_VERSION}", condition = { env_not_set = ["VSPHERE_VM_RESOURCE_AGENT_IMAGE_URI"] } }
+CONTROLLER_IMAGE_URI = { value = "${AGENT_IMAGE_REGISTRY}/controller:v${AGENT_IMAGE_VERSION}", condition = { env_not_set = ["CONTROLLER_IMAGE_URI"] } }
+
+[tasks.metadata-url.env]
+METADATA_URL = { script=["echo ${METADATA_BASE_URL}/${VARIANT}/${ARCHITECTURE}"], condition = { env_not_set = ["METADATA_URL"] } }
+
+[tasks.cluster-name.env]
+CLUSTER_NAME = { script=["echo $(echo ${ARCHITECTURE} | tr '_' '-')-$(echo ${VARIANT} | tr -d '.')"], condition = { env_not_set = ["CLUSTER_NAME"] } }
+
+[tasks.ova-name.env]
+OVA_NAME = { script=["echo bottlerocket-${VARIANT}-x86_64-${STARTING_VERSION}.ova"], condition = { env_not_set = ["OVA_NAME"] } }
+
+[tasks.bottlerocket-ami-id]
+condition = { env_not_set = ["BOTTLEROCKET_AMI_ID"], env_contains = { "VARIANT" = "aws" } }
+
+[tasks.bottlerocket-ami-id.env]
+BOTTLEROCKET_AMI_ID = { script=['''
+if [ -n "${STARTING_VERSION}" ]; then
+    AMI_VERSION=$(echo ${STARTING_VERSION} | tr -d "v")
+else
+    AMI_VERSION="latest"
+fi
+aws ssm get-parameter \
+    --region ${AWS_REGION} \
+    --name "/aws/service/bottlerocket/${VARIANT}/$(echo ${ARCHITECTURE} | sed -e 's/aarch64/arm64/g')/${AMI_VERSION}/image_id" \
+    --query Parameter.Value --output text 
+'''] }
+
+[tasks.gpu.env]
+GPU = { script=['''
+if echo ${VARIANT} | grep 'nvidia' > /dev/null; then
+    echo true
+else
+    echo false
+fi
+'''], condition = { env_not_set = ["GPU"] } }
+
+[tasks.mgmt-cluster-kubeconfig-base64.env]
+MGMT_CLUSTER_KUBECONFIG_BASE64 = {script=['''
+if [ -n "${MGMT_CLUSTER_KUBECONFIG_PATH}" ]; then
+    cat ${MGMT_CLUSTER_KUBECONFIG_PATH} | base64
+fi
+''']}
+
+[tasks.instance-types]
+dependencies = ["gpu"]
+
+[tasks.instance-types.env]
+INSTANCE_TYPES = {script=['''
+if [ -z ${INSTANCE_TYPES} ]; then
+    if [ ${ARCHITECTURE} = "x86_64" ]; then
+        if [ ${GPU} = "true" ]; then
+            echo "[\"g4dn.xlarge\"]"
+        else
+            echo "[\"m5.large\"]"
+        fi
+    else
+        if [ ${GPU} = "true" ]; then
+            echo "[\"g5g.xlarge\"]"
+        else
+            echo "[\"m6g.large\"]"
+        fi
+    fi
+else
+    echo ${INSTANCE_TYPES}
+fi
+''']}
+
+[tasks.set-env]
+dependencies = ["set-agent-images", "cluster-name", "gpu", "metadata-url", "ova-name", "bottlerocket-ami-id", "mgmt-cluster-kubeconfig-base64", "instance-types"]
+
+[tasks.install-controller]
+dependencies = ["set-agent-images"]
+script = "cli install --controller-uri ${CONTROLLER_IMAGE_URI}"
+
+[tasks.add-aws-secret]
+dependencies = ["install-controller"]
+condition = { env_contains = { "CLUSTER_TYPE" = "kind" } }
+script = '''
+ACCESS_KEY_ID=$(aws configure get aws_access_key_id)
+SECRET_ACCESS_KEY=$(aws configure get aws_secret_access_key)
+cli add-secret map  \
+ --name "aws-creds" \
+ "ACCESS_KEY_ID=${ACCESS_KEY_ID}" \
+ "SECRET_ACCESS_KEY=${SECRET_ACCESS_KEY}"
+'''
+
+[tasks.add-vsphere-secret]
+dependencies = ["install-controller"]
+condition = { env_contains = { "VARIANT" = "vmware" } }
+script = '''
+cli add-secret map  \
+ --name "vsphere-creds" \
+ "username=${GOVC_USERNAME}" \
+ "password=${GOVC_PASSWORD}"
+'''
+
+[tasks.create-output-dir]
+condition = { files_not_exist = [ "${CARGO_MAKE_WORKING_DIRECTORY}/output" ] }
+script = "mkdir ${CARGO_MAKE_WORKING_DIRECTORY}/output"
+
+[tasks.clean-output]
+condition = { files_exist = [ "${CARGO_MAKE_WORKING_DIRECTORY}/output" ] }
+script = '''
+    rm ${CARGO_MAKE_WORKING_DIRECTORY}/output/*.yaml
+    rmdir ${CARGO_MAKE_WORKING_DIRECTORY}/output
+'''
+
+[tasks.workload-preconditions]
+condition = { env_contains = { "TEST_TYPE" = "workload" } }
+script = '''
+if [ -z ${WORKLOAD_TEST_NAME} ] || [ -z ${WORKLOAD_TEST_IMAGE} ]; then
+    echo "WORKLOAD_TEST_NAME or WORKLOAD_TEST_IMAGE_URI not set"
+    exit 1
+fi
+'''
+
+[tasks.vmware-preconditions]
+condition = { env_contains = { "TEST_TYPE" = "vmware" } }
+script = '''
+if [ -z ${CONTROL_PLANE_ENDPOINT_IP} ] || [ -z ${MGMT_CLUSTER_KUBECONFIG_PATH} ] || [ -z ${GOVC_USERNAME} ] || [ -z ${GOVC_PASSWORD} ] \
+    || [ -z ${GOVC_DATACENTER} ] || [ -z ${GOVC_DATASTORE} ] || [ -z ${GOVC_URL} ] || [ -z ${GOVC_NETWORK} ] \
+    || [ -z ${GOVC_RESOURCE_POOL} ] || [ -z ${GOVC_FOLDER} ]; then
+    echo "CONTROL_PLANE_ENDPOINT_IP, MGMT_CLUSTER_KUBECONFIG_PATH, or GOVC variables not set"
+    exit 1
+fi
+'''
+
+[tasks.create-inner]
+dependencies = ["set-env", "workload-preconditions", "vmware-preconditions", "create-output-dir"]
+script_runner = "bash"
+script = '''
+eval "cat > ${OUTPUT_FILE} << EOF
+$(< ${CLUSTER_TYPE}/${TEST_TYPE}.yaml)
+EOF
+" 2> /dev/null
+
+echo "${OUTPUT_FILE}"
+'''
+
+[tasks.create-inner.env]
+OUTPUT_FILE = {script=['''
+if echo ${TEST_TYPE} | grep 'migration' > /dev/null; then
+    echo "output/${CLUSTER_NAME}-migration.yaml"
+elif echo ${TEST_TYPE} | grep 'workload' > /dev/null; then
+    echo "output/${CLUSTER_NAME}-workload.yaml"
+else
+    echo "output/${CLUSTER_NAME}.yaml"
+fi
+''']}
+
+[tasks.create]
+script = '''
+#!@duckscript
+set_env TEST_TYPE ${1}
+cm_run_task ${1}
+cm_run_task create-inner
+'''
+
+[tasks.run-inner]
+dependencies = ["install-controller", "add-aws-secret", "add-vsphere-secret"]
+script = "cli run file ${OUTPUT_FILE}"
+
+[tasks.run]
+dependencies = ["create"]
+script = '''
+#!@duckscript
+cm_run_task run-inner
+'''
+
+[tasks.get-samples.env]
+SAMPLES = {script=["echo $(ls ${CLUSTER_TYPE})"]}
+
+[tasks.unset-variables.env]
+CLUSTER_NAME = {unset = true}
+GPU = {unset = true}
+METADATA_URL = {unset = true}
+OVA_NAME = {unset = true}
+BOTTLEROCKET_AMI_ID = {unset = true}
+INSTANCE_TYPES = {unset = true}
+VARIANT = {unset = true}
+
+[tasks.run-samples]
+dependencies = ["get-samples"]
+script_runner = "@duckscript"
+# Each iteration of the loop will unset some variables by calling the `unset-variables` target, meaning that these variables cannot be overridden by the user for the `run-samples` target
+script = '''
+samples = array %{SAMPLES}
+for i in ${samples}
+    cm_run_task unset-variables
+    l = length ${i}
+    e = calc ${l} - 5
+    f = substring ${i} 0 ${e}
+    set_env TEST_TYPE ${f}
+    cm_run_task ${f}
+    cm_run_task create-inner
+    cm_run_task run-inner
+end
+'''
+
+[tasks.ecs-migration-test.env]
+VARIANT = { value = "aws-ecs-1", condition = { env_not_set = ["VARIANT"] } }
+
+[tasks.ecs-test.env]
+VARIANT = { value = "aws-ecs-1", condition = { env_not_set = ["VARIANT"] } }
+
+[tasks.ecs-workload-test.env]
+VARIANT = { value = "aws-ecs-1-nvidia", condition = { env_not_set = ["VARIANT"] } }
+
+[tasks.sonobuoy-migration-test.env]
+VARIANT = { value = "aws-k8s-1.24", condition = { env_not_set = ["VARIANT"] } }
+
+[tasks.sonobuoy-test.env]
+VARIANT = { value = "aws-k8s-1.24", condition = { env_not_set = ["VARIANT"] } }
+
+[tasks.k8s-workload-test.env]
+VARIANT = { value = "aws-k8s-1.24-nvidia", condition = { env_not_set = ["VARIANT"] } }
+
+[tasks.vmware-migration-test.env]
+VARIANT = { value = "vmware-k8s-1.24", condition = { env_not_set = ["VARIANT"] } }
+
+[tasks.vmware-sonobuoy-test.env]
+VARIANT = { value = "vmware-k8s-1.24", condition = { env_not_set = ["VARIANT"] } }

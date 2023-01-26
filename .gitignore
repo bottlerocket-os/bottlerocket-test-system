@@ -3,3 +3,4 @@
 !.cargo/config.toml
 /bin/kind
 *.tar.*
+/bottlerocket/samples/output
