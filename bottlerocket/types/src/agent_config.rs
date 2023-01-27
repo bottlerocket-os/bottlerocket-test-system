@@ -505,6 +505,7 @@ pub struct WorkloadTest {
 pub struct WorkloadConfig {
     pub kubeconfig_base64: String,
     pub tests: Vec<WorkloadTest>,
+    pub assume_role: Option<String>,
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize, Configuration, Builder)]

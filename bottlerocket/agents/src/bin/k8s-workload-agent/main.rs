@@ -33,14 +33,15 @@ spec:
 
 !*/
 
+use agent_utils::aws::aws_config;
 use agent_utils::{base64_decode_write_file, init_agent_logger};
 use async_trait::async_trait;
 use bottlerocket_agents::constants::TEST_CLUSTER_KUBECONFIG_PATH;
 use bottlerocket_agents::error::Error;
 use bottlerocket_agents::workload::{delete_workload, rerun_failed_workload, run_workload};
-use bottlerocket_types::agent_config::WorkloadConfig;
+use bottlerocket_types::agent_config::{WorkloadConfig, AWS_CREDENTIALS_SECRET_NAME};
 use log::info;
-use model::TestResults;
+use model::{SecretName, TestResults};
 use std::path::PathBuf;
 use test_agent::{
     BootstrapData, ClientError, DefaultClient, DefaultInfoClient, InfoClient, Spec, TestAgent,
@@ -48,6 +49,7 @@ use test_agent::{
 
 struct WorkloadTestRunner {
     config: WorkloadConfig,
+    aws_secret_name: Option<SecretName>,
     results_dir: PathBuf,
 }
 
@@ -63,11 +65,21 @@ where
         info!("Initializing Workload test agent...");
         Ok(Self {
             config: spec.configuration,
+            aws_secret_name: spec.secrets.get(AWS_CREDENTIALS_SECRET_NAME).cloned(),
             results_dir: spec.results_dir,
         })
     }
 
     async fn run(&mut self, info_client: &I) -> Result<TestResults, Self::E> {
+        aws_config(
+            &self.aws_secret_name.as_ref(),
+            &self.config.assume_role,
+            &None,
+            &None,
+            true,
+        )
+        .await?;
+
         info!("Decoding kubeconfig for test cluster");
         base64_decode_write_file(&self.config.kubeconfig_base64, TEST_CLUSTER_KUBECONFIG_PATH)
             .await?;
