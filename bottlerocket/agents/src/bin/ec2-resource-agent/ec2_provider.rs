@@ -3,7 +3,8 @@ use agent_utils::json_display;
 use aws_sdk_ec2::client::fluent_builders::RunInstances;
 use aws_sdk_ec2::error::RunInstancesError;
 use aws_sdk_ec2::model::{
-    ArchitectureValues, Filter, IamInstanceProfileSpecification, InstanceType, ResourceType, Tag,
+    ArchitectureValues, Filter, HttpTokensState, IamInstanceProfileSpecification,
+    InstanceMetadataEndpointState, InstanceMetadataOptionsRequest, InstanceType, ResourceType, Tag,
     TagSpecification,
 };
 use aws_sdk_ec2::output::RunInstancesOutput;
@@ -264,6 +265,13 @@ where
                 .iam_instance_profile(
                     IamInstanceProfileSpecification::builder()
                         .arn(&spec.configuration.instance_profile_arn)
+                        .build(),
+                )
+                .metadata_options(
+                    InstanceMetadataOptionsRequest::builder()
+                        .http_tokens(HttpTokensState::Required)
+                        .http_endpoint(InstanceMetadataEndpointState::Enabled)
+                        .http_put_response_hop_limit(1)
                         .build(),
                 );
 
