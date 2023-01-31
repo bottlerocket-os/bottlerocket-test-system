@@ -10,7 +10,6 @@ members = [
     "bottlerocket/agents",
     "cli",
     "bottlerocket/types",
-    "bottlerocket/testsys",
     "controller",
     "model",
     "selftest",
