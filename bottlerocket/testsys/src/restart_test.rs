@@ -1,8 +1,8 @@
 use crate::error::{self, Result};
 use kube::Client;
-use model::clients::{CrdClient, TestClient};
 use snafu::ResultExt;
 use structopt::StructOpt;
+use testsys_model::clients::{CrdClient, TestClient};
 
 /// Restart an object from a testsys cluster.
 #[derive(Debug, StructOpt)]

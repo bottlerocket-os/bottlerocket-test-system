@@ -1,7 +1,7 @@
 use anyhow::{Context, Result};
 use clap::Parser;
 use futures::TryStreamExt;
-use model::test_manager::{DeleteEvent, TestManager};
+use testsys_model::test_manager::{DeleteEvent, TestManager};
 
 /// Delete all objects from a testsys cluster.
 #[derive(Debug, Parser)]

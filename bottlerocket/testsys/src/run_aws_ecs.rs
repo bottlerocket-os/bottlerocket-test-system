@@ -6,17 +6,17 @@ use bottlerocket_types::agent_config::{
 use kube::ResourceExt;
 use kube::{api::ObjectMeta, Client};
 use maplit::btreemap;
-use model::clients::{CrdClient, ResourceClient, TestClient};
-use model::constants::NAMESPACE;
-use model::{
-    Agent, Configuration, DestructionPolicy, Resource, ResourceSpec, SecretName, Test, TestSpec,
-};
 use serde_json::Value;
 use snafu::ResultExt;
 use std::collections::BTreeMap;
 use std::fs::read_to_string;
 use std::str::FromStr;
 use structopt::StructOpt;
+use testsys_model::clients::{CrdClient, ResourceClient, TestClient};
+use testsys_model::constants::NAMESPACE;
+use testsys_model::{
+    Agent, Configuration, DestructionPolicy, Resource, ResourceSpec, SecretName, Test, TestSpec,
+};
 
 #[derive(Clone, Debug)]
 enum CustomUserDataMode {

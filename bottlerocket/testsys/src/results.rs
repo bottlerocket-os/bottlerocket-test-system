@@ -5,10 +5,10 @@ use kube::{
     api::{AttachParams, ListParams},
     Api, Client, ResourceExt,
 };
-use model::constants::{NAMESPACE, TESTSYS_RESULTS_FILE};
 use snafu::ResultExt;
 use std::path::PathBuf;
 use structopt::StructOpt;
+use testsys_model::constants::{NAMESPACE, TESTSYS_RESULTS_FILE};
 use tokio::io::AsyncWriteExt;
 
 /// Retrieve the results of a test.

@@ -1,7 +1,6 @@
 use crate::error;
 use bottlerocket_types::agent_config::{SonobuoyConfig, SONOBUOY_RESULTS_FILENAME};
 use log::{error, info, trace};
-use model::{Outcome, TestResults};
 use serde_json::Value;
 use snafu::{ensure, OptionExt, ResultExt};
 use std::collections::HashMap;
@@ -10,6 +9,7 @@ use std::path::Path;
 use std::process::Command;
 use std::time::Duration;
 use test_agent::InfoClient;
+use testsys_model::{Outcome, TestResults};
 
 /// Runs the sonobuoy conformance tests according to the provided configuration and returns a test
 /// result at the end.

@@ -1,7 +1,7 @@
 use anyhow::{Context, Error, Result};
 use clap::Parser;
 use futures::StreamExt;
-use model::test_manager::{ResourceState, TestManager};
+use testsys_model::test_manager::{ResourceState, TestManager};
 
 /// Restart an object from a testsys cluster.
 #[derive(Debug, Parser)]

@@ -52,9 +52,9 @@ pub fn init_agent_logger(bin_crate: &str, log_level: Option<LevelFilter>) {
                 .filter(Some(bin_crate), log_level)
                 .filter(Some("agent_common"), log_level)
                 .filter(Some("bottlerocket_agents"), log_level)
-                .filter(Some("model"), log_level)
                 .filter(Some("resource_agent"), log_level)
                 .filter(Some("test_agent"), log_level)
+                .filter(Some("testsys_model"), log_level)
                 .init();
         }
     }

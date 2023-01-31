@@ -8,8 +8,8 @@ use k8s_openapi::chrono::{Duration, Utc};
 use kube::api::{DeleteParams, PropagationPolicy};
 use kube::Api;
 use log::debug;
-use model::constants::NAMESPACE;
 use snafu::ensure;
+use testsys_model::constants::NAMESPACE;
 
 lazy_static::lazy_static! {
     /// The maximum amount of time for a test to begin running (in seconds).

@@ -49,13 +49,13 @@ use bottlerocket_types::agent_config::{
     EcsWorkloadTestConfig, WorkloadTest, AWS_CREDENTIALS_SECRET_NAME,
 };
 use log::info;
-use model::{Outcome, SecretName, TestResults};
 use snafu::{OptionExt, ResultExt};
 use std::time::Duration;
 use test_agent::{
     BootstrapData, ClientError, DefaultClient, DefaultInfoClient, InfoClient, Runner, Spec,
     TestAgent,
 };
+use testsys_model::{Outcome, SecretName, TestResults};
 
 pub const DEFAULT_TASK_DEFINITION_PREFIX: &str = "testsys-bottlerocket-";
 

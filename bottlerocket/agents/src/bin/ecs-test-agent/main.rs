@@ -15,13 +15,13 @@ use bottlerocket_agents::constants::DEFAULT_TASK_DEFINITION;
 use bottlerocket_agents::error::{self, Error};
 use bottlerocket_types::agent_config::{EcsTestConfig, AWS_CREDENTIALS_SECRET_NAME};
 use log::info;
-use model::{Outcome, SecretName, TestResults};
 use snafu::{OptionExt, ResultExt};
 use std::time::Duration;
 use test_agent::{
     BootstrapData, ClientError, DefaultClient, DefaultInfoClient, InfoClient, Runner, Spec,
     TestAgent,
 };
+use testsys_model::{Outcome, SecretName, TestResults};
 
 struct EcsTestRunner {
     config: EcsTestConfig,

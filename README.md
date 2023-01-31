@@ -31,13 +31,13 @@ See the [Developer Guide for TestSys](docs/DEVELOPER.md) for an introduction to 
 
 ### Project Structure
 
-- `model` is the root dependency. It includes the CRDs and clients for interacting with them.
+- `testsys-model` is the root dependency. It includes the CRDs and clients for interacting with them.
 - `controller` contains the Kubernetes controller responsible for running resource and test pods.
 - `agent` contains libraries with the traits and harnesses for creating test and resource agents.
 - `bottlerocket/agents` contains the implementations of the test and resource traits that we use for Bottlerocket testing.
 - `bottlerocket/testsys` contains the command line interface for installing the system and running tests.
 
-The `model`, `agents` and `controller` crates are general-purpose, and define the TestSys system.
+The `testsys-model`, `agents` and `controller` crates are general-purpose, and define the TestSys system.
 It is possible to use these libraries and controller for testing purposes other than Bottlerocket.
 
 The `bottlerocket/testsys` CLI and `bottlerocket/agents` crates are more specialized to Bottlerocket's testing use cases.

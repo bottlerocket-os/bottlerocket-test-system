@@ -60,7 +60,7 @@ fn init_logger() {
             Builder::new()
                 .filter(Some(env!("CARGO_CRATE_NAME")), LevelFilter::Trace)
                 .filter(Some("resource_agent"), LevelFilter::Trace)
-                .filter(Some("model"), LevelFilter::Trace)
+                .filter(Some("testsys_model"), LevelFilter::Trace)
                 .init();
         }
     }

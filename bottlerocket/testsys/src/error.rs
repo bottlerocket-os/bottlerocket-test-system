@@ -37,15 +37,19 @@ pub(crate) enum Error {
     Creation { what: String, source: kube::Error },
 
     #[snafu(display("Error creating test: {}", source))]
-    CreateTest { source: model::clients::Error },
+    CreateTest {
+        source: testsys_model::clients::Error,
+    },
 
     #[snafu(display("Error creating resource: {}", source))]
-    CreateResource { source: model::clients::Error },
+    CreateResource {
+        source: testsys_model::clients::Error,
+    },
 
     #[snafu(display("Unable to delete '{}': {}", what, source))]
     Delete {
         what: String,
-        source: model::clients::Error,
+        source: testsys_model::clients::Error,
     },
 
     #[snafu(display("{} objects failed to be deleted.", count))]
@@ -82,7 +86,7 @@ pub(crate) enum Error {
     #[snafu(display("Unable to get '{}': {}", what, source))]
     Get {
         what: String,
-        source: model::clients::Error,
+        source: testsys_model::clients::Error,
     },
 
     #[snafu(display("The arguments given were invalid: {}", why))]
@@ -92,7 +96,7 @@ pub(crate) enum Error {
     JsonSerialize { source: serde_json::Error },
 
     #[snafu(display("Could not create map: {}", source))]
-    ConfigMap { source: model::Error },
+    ConfigMap { source: testsys_model::Error },
 
     #[snafu(display("Could not extract registry url from '{}'", uri))]
     MissingRegistry { uri: String },
@@ -100,7 +104,7 @@ pub(crate) enum Error {
     #[snafu(display("{}: {}", message, source))]
     ModelClient {
         message: String,
-        source: model::clients::Error,
+        source: testsys_model::clients::Error,
     },
 
     #[snafu(display("No stdout from request"))]
@@ -128,11 +132,13 @@ pub(crate) enum Error {
     Set {
         name: String,
         what: String,
-        source: model::clients::Error,
+        source: testsys_model::clients::Error,
     },
 
     #[snafu(display("Unable to create client: {}", source))]
-    TestClientNew { source: model::clients::Error },
+    TestClientNew {
+        source: testsys_model::clients::Error,
+    },
 
     #[snafu(display("Unable to create Test CRD from '{}': {}", path.display(), source))]
     TestFileParse {

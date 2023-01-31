@@ -1,8 +1,8 @@
 #![cfg(feature = "integ")]
 mod data;
 use assert_cmd::Command;
-use model::{constants::NAMESPACE, Test};
 use selftest::Cluster;
+use testsys_model::{constants::NAMESPACE, Test};
 use tokio::time::Duration;
 
 const POD_TIMEOUT: Duration = Duration::from_secs(300);

@@ -33,7 +33,7 @@ lazy_static::lazy_static! {
 /// # Example
 ///
 /// ```
-///# use model::clients::{CrdClient, ResourceClient};
+///# use testsys_model::clients::{CrdClient, ResourceClient};
 ///# async fn no_run() {
 /// let resource_client = ResourceClient::new().await.unwrap();
 /// let test = resource_client.get("my-resource").await.unwrap();

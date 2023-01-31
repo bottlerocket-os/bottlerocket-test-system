@@ -2,9 +2,9 @@ mod error;
 
 pub use self::error::{AsResources, IntoProviderError, ProviderError, ProviderResult, Resources};
 use crate::clients::InfoClient;
-use model::{Configuration, SecretName, SecretType};
 use serde::Serialize;
 use std::collections::BTreeMap;
+use testsys_model::{Configuration, SecretName, SecretType};
 
 #[derive(Debug, Default, Clone, Serialize)]
 pub struct Spec<C>

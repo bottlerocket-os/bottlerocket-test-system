@@ -522,10 +522,10 @@ pub struct EcsWorkloadTestConfig {
 #[cfg(test)]
 mod test {
     use crate::agent_config::{Ec2Config, EcsClusterConfig, EcsTestConfig, MigrationConfig};
-    use model::{Resource, Test};
     use serde_json::Value as JsonValue;
     use std::fs::read_to_string;
     use std::path::PathBuf;
+    use testsys_model::{Resource, Test};
 
     use super::{
         EcsWorkloadTestConfig, EksClusterConfig, SonobuoyConfig, VSphereK8sClusterConfig,

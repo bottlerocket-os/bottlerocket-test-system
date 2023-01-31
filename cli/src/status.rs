@@ -1,7 +1,9 @@
 use anyhow::{Context, Result};
 use clap::Parser;
-use model::test_manager::{CrdState, CrdType, SelectionParams, StatusProgress, TestManager};
 use terminal_size::{Height, Width};
+use testsys_model::test_manager::{
+    CrdState, CrdType, SelectionParams, StatusProgress, TestManager,
+};
 
 /// Check the status of a TestSys object.
 #[derive(Debug, Parser)]

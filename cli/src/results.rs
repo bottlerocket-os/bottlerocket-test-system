@@ -1,7 +1,7 @@
 use anyhow::{Context, Result};
 use clap::{value_parser, Parser};
-use model::test_manager::TestManager;
 use std::path::PathBuf;
+use testsys_model::test_manager::TestManager;
 
 /// Retrieve the results of a test.
 #[derive(Debug, Parser)]

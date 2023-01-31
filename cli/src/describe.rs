@@ -1,8 +1,8 @@
 use anyhow::{Error, Result};
 use clap::Parser;
-use model::clients::CrdClient;
-use model::test_manager::TestManager;
-use model::CrdExt;
+use testsys_model::clients::CrdClient;
+use testsys_model::test_manager::TestManager;
+use testsys_model::CrdExt;
 
 /// Retrieve the YAML description of a test or resource.
 #[derive(Debug, Parser)]

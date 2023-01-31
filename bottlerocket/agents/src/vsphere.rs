@@ -1,7 +1,7 @@
-use model::SecretName;
 use resource_agent::clients::InfoClient;
 use resource_agent::provider::{IntoProviderError, ProviderResult, Resources};
 use std::env;
+use testsys_model::SecretName;
 
 // Helper for getting the vsphere credentials and setting up GOVC_USERNAME and GOVC_PASSWORD env vars
 pub async fn vsphere_credentials<I>(

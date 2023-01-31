@@ -4,7 +4,6 @@ use crate::sonobuoy::{
 };
 use bottlerocket_types::agent_config::{WorkloadConfig, SONOBUOY_RESULTS_FILENAME};
 use log::{info, trace};
-use model::TestResults;
 use snafu::{ensure, ResultExt};
 use std::fs::File;
 use std::io::Write;
@@ -12,6 +11,7 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::time::Duration;
 use test_agent::InfoClient;
+use testsys_model::TestResults;
 
 const SONOBUOY_BIN_PATH: &str = "/usr/bin/sonobuoy";
 

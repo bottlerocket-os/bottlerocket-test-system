@@ -5,10 +5,10 @@ use crate::utils::parse_duration;
 use anyhow::Context;
 use kube::{Api, ResourceExt};
 use log::trace;
-use model::clients::{CrdClient, HttpStatusCode, StatusCode};
-use model::constants::{FINALIZER_MAIN, FINALIZER_TEST_JOB, NAMESPACE};
-use model::{CrdExt, Outcome, Resource, ResourceAction, TaskState};
 use std::fmt::{Display, Formatter};
+use testsys_model::clients::{CrdClient, HttpStatusCode, StatusCode};
+use testsys_model::constants::{FINALIZER_MAIN, FINALIZER_TEST_JOB, NAMESPACE};
+use testsys_model::{CrdExt, Outcome, Resource, ResourceAction, TaskState};
 
 /// The action that the controller needs to take in order to reconcile the `Test`.
 #[derive(Debug, Clone, Eq, PartialEq)]

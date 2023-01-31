@@ -1,7 +1,7 @@
 use anyhow::{Context, Result};
 use clap::{value_parser, Parser};
-use model::test_manager::{read_manifest, TestManager};
 use std::path::PathBuf;
+use testsys_model::test_manager::{read_manifest, TestManager};
 
 /// Run a test stored in a YAML file at `path`.
 #[derive(Debug, Parser)]

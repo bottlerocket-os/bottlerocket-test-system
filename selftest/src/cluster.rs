@@ -7,10 +7,6 @@ use kube::{
     config::{KubeConfigOptions, Kubeconfig},
     Api, Client, Config,
 };
-use model::clients::{CrdClient, HttpStatusCode, ResourceClient, StatusCode};
-use model::constants::{LABEL_COMPONENT, LABEL_PROVIDER_NAME, NAMESPACE};
-use model::test_manager::ResourceState;
-use model::{Resource, Test};
 use std::fmt::Debug;
 use std::{convert::TryInto, fs::File};
 use std::{
@@ -18,6 +14,10 @@ use std::{
     path::{Path, PathBuf},
 };
 use tempfile::TempDir;
+use testsys_model::clients::{CrdClient, HttpStatusCode, ResourceClient, StatusCode};
+use testsys_model::constants::{LABEL_COMPONENT, LABEL_PROVIDER_NAME, NAMESPACE};
+use testsys_model::test_manager::ResourceState;
+use testsys_model::{Resource, Test};
 use tokio::time::Duration;
 
 pub const KUBECONFIG_FILENAME: &str = "kubeconfig.yaml";

@@ -4,14 +4,14 @@ use k8s_openapi::api::core::v1::Pod;
 use kube::api::ListParams;
 use kube::core::object::HasStatus;
 use kube::{Api, Client, ResourceExt};
-use model::clients::{CrdClient, ResourceClient, TestClient};
-use model::constants::{LABEL_COMPONENT, NAMESPACE};
-use model::{Resource, TaskState, Test};
 use serde::Serialize;
 use snafu::ResultExt;
 use structopt::StructOpt;
 use tabled::{Alignment, Column, Full, MaxWidth, Modify, Style, Table, Tabled};
 use termion::terminal_size;
+use testsys_model::clients::{CrdClient, ResourceClient, TestClient};
+use testsys_model::constants::{LABEL_COMPONENT, NAMESPACE};
+use testsys_model::{Resource, TaskState, Test};
 
 /// Check the status of a TestSys object.
 #[derive(Debug, StructOpt)]

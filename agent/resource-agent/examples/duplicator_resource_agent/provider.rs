@@ -6,13 +6,13 @@ and tests that depend on resources for their inputs.
 
 !*/
 
-use model::Configuration;
 use resource_agent::clients::InfoClient;
 use resource_agent::provider::{
     Create, Destroy, IntoProviderError, ProviderResult, Resources, Spec,
 };
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use testsys_model::Configuration;
 
 #[derive(Clone, Debug, Default, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]

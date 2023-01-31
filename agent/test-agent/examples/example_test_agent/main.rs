@@ -28,10 +28,10 @@ spec:
 
 !*/
 
-use model::{Outcome, TestResults};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use test_agent::{BootstrapData, Configuration, InfoClient, Spec};
+use testsys_model::{Outcome, TestResults};
 use tokio::time::{sleep, Duration};
 
 struct ExampleTestRunner {

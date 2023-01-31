@@ -7,13 +7,13 @@ use k8s_openapi::api::core::v1::{
 use k8s_openapi::apimachinery::pkg::apis::meta::v1::ObjectMeta;
 use kube::api::PostParams;
 use kube::Api;
-use model::constants::{
+use std::collections::BTreeMap;
+use testsys_model::constants::{
     APP_COMPONENT, APP_CREATED_BY, APP_INSTANCE, APP_MANAGED_BY, APP_NAME, APP_PART_OF, CONTROLLER,
     NAMESPACE, RESOURCE_AGENT, RESOURCE_AGENT_SERVICE_ACCOUNT, SECRETS_PATH, TESTSYS, TEST_AGENT,
     TEST_AGENT_SERVICE_ACCOUNT,
 };
-use model::Agent;
-use std::collections::BTreeMap;
+use testsys_model::Agent;
 
 #[derive(Debug, Clone, Copy)]
 pub(crate) enum JobType {

@@ -11,7 +11,6 @@ use bottlerocket_types::agent_config::{
     CreationPolicy, EksClusterConfig, EksctlConfig, K8sVersion, AWS_CREDENTIALS_SECRET_NAME,
 };
 use log::{debug, info, trace};
-use model::{Configuration, SecretName};
 use resource_agent::clients::InfoClient;
 use resource_agent::provider::{
     Create, Destroy, IntoProviderError, ProviderError, ProviderResult, Resources, Spec,
@@ -22,6 +21,7 @@ use std::env::temp_dir;
 use std::fs::write;
 use std::path::Path;
 use std::process::Command;
+use testsys_model::{Configuration, SecretName};
 
 /// The default region for the cluster.
 const DEFAULT_REGION: &str = "us-west-2";

@@ -9,10 +9,10 @@ use aws_smithy_types::retry::RetryMode;
 use aws_types::credentials::{Credentials, SharedCredentialsProvider};
 use aws_types::SdkConfig;
 use log::info;
-use model::SecretName;
 use snafu::{OptionExt, ResultExt};
 use std::env;
 use std::time::Duration;
+use testsys_model::SecretName;
 
 /// Set up the config for aws calls using `aws_secret_name` if provided and `sts::assume_role`
 /// if a role arn is provided. Set credentials as environment variables if `setup_env` is true

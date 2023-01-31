@@ -6,13 +6,13 @@ use aws_sdk_iam::output::GetInstanceProfileOutput;
 use aws_types::sdk_config::SdkConfig;
 use bottlerocket_types::agent_config::{EcsClusterConfig, AWS_CREDENTIALS_SECRET_NAME};
 use log::{error, info};
-use model::{Configuration, SecretName};
 use resource_agent::clients::InfoClient;
 use resource_agent::provider::{
     Create, Destroy, IntoProviderError, ProviderResult, Resources, Spec,
 };
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
+use testsys_model::{Configuration, SecretName};
 
 /// The default region for the cluster.
 const DEFAULT_REGION: &str = "us-west-2";

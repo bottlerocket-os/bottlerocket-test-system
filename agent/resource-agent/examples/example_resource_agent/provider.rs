@@ -7,13 +7,13 @@ color.
 !*/
 
 use log::{debug, info};
-use model::Configuration;
 use nonzero_ext::nonzero;
 use resource_agent::clients::InfoClient;
 use resource_agent::provider::{Create, Destroy, ProviderError, ProviderResult, Resources, Spec};
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 use std::num::NonZeroU16;
+use testsys_model::Configuration;
 use tokio::time::{sleep, Duration};
 
 /// The color of a robot.

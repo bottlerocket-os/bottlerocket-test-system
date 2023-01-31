@@ -12,7 +12,7 @@ use std::collections::BTreeMap;
 /// # Example
 ///
 /// ```
-///# use model::clients::{CrdClient, TestClient};
+///# use testsys_model::clients::{CrdClient, TestClient};
 ///# async fn no_run() {
 /// let test_client = TestClient::new().await.unwrap();
 /// let test = test_client.get("my-test").await.unwrap();

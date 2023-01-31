@@ -14,4 +14,4 @@ pub mod provider;
 
 pub use agent::{Agent, Types};
 pub use bootstrap::BootstrapData;
-pub use model::{Configuration, ResourceAction};
+pub use testsys_model::{Configuration, ResourceAction};

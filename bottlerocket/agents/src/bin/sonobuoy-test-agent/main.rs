@@ -40,11 +40,11 @@ use bottlerocket_agents::error::Error;
 use bottlerocket_agents::sonobuoy::{delete_sonobuoy, rerun_failed_sonobuoy, run_sonobuoy};
 use bottlerocket_types::agent_config::{SonobuoyConfig, AWS_CREDENTIALS_SECRET_NAME};
 use log::{debug, info};
-use model::{SecretName, TestResults};
 use std::path::PathBuf;
 use test_agent::{
     BootstrapData, ClientError, DefaultClient, DefaultInfoClient, InfoClient, Spec, TestAgent,
 };
+use testsys_model::{SecretName, TestResults};
 
 struct SonobuoyTestRunner {
     config: SonobuoyConfig,

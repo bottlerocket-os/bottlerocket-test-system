@@ -7,14 +7,14 @@ use bottlerocket_types::agent_config::{
 use kube::Client;
 use kube::ResourceExt;
 use maplit::btreemap;
-use model::clients::{CrdClient, ResourceClient, TestClient};
-use model::{DestructionPolicy, Resource, SecretName, Test};
 use snafu::OptionExt;
 use snafu::ResultExt;
 use std::collections::BTreeMap;
 use std::fs::read_to_string;
 use std::str::FromStr;
 use structopt::StructOpt;
+use testsys_model::clients::{CrdClient, ResourceClient, TestClient};
+use testsys_model::{DestructionPolicy, Resource, SecretName, Test};
 
 #[derive(Clone, Debug)]
 enum CustomUserDataMode {

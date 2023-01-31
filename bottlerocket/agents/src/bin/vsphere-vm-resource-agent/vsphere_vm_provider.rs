@@ -13,7 +13,6 @@ use kube::api::ListParams;
 use kube::config::{KubeConfigOptions, Kubeconfig};
 use kube::{Api, Config};
 use log::{debug, info};
-use model::{Configuration, SecretName};
 use resource_agent::clients::InfoClient;
 use resource_agent::provider::{
     Create, Destroy, IntoProviderError, ProviderError, ProviderResult, Resources, Spec,
@@ -28,6 +27,7 @@ use std::fs::File;
 use std::path::Path;
 use std::process::Command;
 use std::time::Duration;
+use testsys_model::{Configuration, SecretName};
 use toml::Value;
 
 /// The default number of VMs to spin up.

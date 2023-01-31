@@ -1,6 +1,6 @@
 use anyhow::{Context, Result};
 use clap::Parser;
-use model::test_manager::TestManager;
+use testsys_model::test_manager::TestManager;
 
 /// Restart an object from a testsys cluster.
 #[derive(Debug, Parser)]

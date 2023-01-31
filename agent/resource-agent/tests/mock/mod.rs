@@ -10,10 +10,10 @@ Also provided here are a very simple mock implementations of the [`Create`] and 
 pub(crate) mod agent_client;
 pub(crate) mod info_client;
 
-use model::Configuration;
 use resource_agent::clients::InfoClient;
 use resource_agent::provider::{Create, Destroy, ProviderError, ProviderResult, Resources, Spec};
 use serde::{Deserialize, Serialize};
+use testsys_model::Configuration;
 
 /// InstanceCreator pretends to create instances for the sake demonstrating a mock resource provider.
 pub(crate) struct InstanceCreator {}

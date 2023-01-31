@@ -6,11 +6,11 @@ use crate::test_controller::context::{Context, TestInterface};
 use anyhow::Context as AnyhowContext;
 use kube_runtime::controller::Action as RequeueAction;
 use log::{debug, error, trace};
-use model::clients::CrdClient;
-use model::constants::{ENV_TEST_NAME, FINALIZER_MAIN, FINALIZER_TEST_JOB};
-use model::{TaskState, Test};
 use std::ops::Deref;
 use std::sync::Arc;
+use testsys_model::clients::CrdClient;
+use testsys_model::constants::{ENV_TEST_NAME, FINALIZER_MAIN, FINALIZER_TEST_JOB};
+use testsys_model::{TaskState, Test};
 
 /// `reconcile` is called when a new `Test` object arrives, or when a `Test` object has been
 /// re-queued. This is the entrypoint to the controller logic.

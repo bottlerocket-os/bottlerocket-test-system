@@ -1,6 +1,6 @@
 use http::StatusCode;
-use model::clients::HttpStatusCode;
 use snafu::Snafu;
+use testsys_model::clients::HttpStatusCode;
 
 pub(crate) type JobResult<T> = std::result::Result<T, JobError>;
 

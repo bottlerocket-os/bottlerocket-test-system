@@ -5,12 +5,12 @@ use kube::{
     api::{ListParams, LogParams},
     Api, Client, ResourceExt,
 };
-use model::{
+use snafu::ResultExt;
+use structopt::StructOpt;
+use testsys_model::{
     clients::{CrdClient, TestClient},
     constants::NAMESPACE,
 };
-use snafu::ResultExt;
-use structopt::StructOpt;
 
 /// Retrieve the logs for a testsys test and all resources it depends on.
 #[derive(Debug, StructOpt)]

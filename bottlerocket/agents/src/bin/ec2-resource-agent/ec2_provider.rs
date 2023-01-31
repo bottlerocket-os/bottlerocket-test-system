@@ -14,7 +14,6 @@ use bottlerocket_types::agent_config::{
     ClusterType, CustomUserData, Ec2Config, AWS_CREDENTIALS_SECRET_NAME,
 };
 use log::{debug, info, trace, warn};
-use model::{Configuration, SecretName};
 use resource_agent::clients::InfoClient;
 use resource_agent::provider::{
     AsResources, Create, Destroy, IntoProviderError, ProviderError, ProviderResult, Resources, Spec,
@@ -24,6 +23,7 @@ use std::collections::HashSet;
 use std::fmt::Debug;
 use std::iter::FromIterator;
 use std::time::Duration;
+use testsys_model::{Configuration, SecretName};
 use toml::Value;
 use uuid::Uuid;
 

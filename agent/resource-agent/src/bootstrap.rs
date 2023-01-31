@@ -5,9 +5,9 @@ container environment to construct the [`Agent`] and all of its parts.
 
 !*/
 use crate::ResourceAction;
-use model::constants::{ENV_RESOURCE_ACTION, ENV_RESOURCE_NAME};
 use snafu::{ResultExt, Snafu};
 use std::str::FromStr;
+use testsys_model::constants::{ENV_RESOURCE_ACTION, ENV_RESOURCE_NAME};
 
 /// The public error type for the default [`Bootstrap`].
 #[derive(Debug, Snafu)]
@@ -26,7 +26,10 @@ pub(crate) enum InnerError {
     },
 
     #[snafu(display("Incorrect resource action '{}': {}", value, source))]
-    ResourceActionParse { value: String, source: model::Error },
+    ResourceActionParse {
+        value: String,
+        source: testsys_model::Error,
+    },
 }
 
 /// Data that is read from the TestPod's container environment and filesystem.

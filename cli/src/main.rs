@@ -21,8 +21,8 @@ use anyhow::{Context, Result};
 use clap::Parser;
 use env_logger::Builder;
 use log::LevelFilter;
-use model::test_manager::TestManager;
 use std::path::PathBuf;
+use testsys_model::test_manager::TestManager;
 
 /// The command line interface for setting up a Bottlerocket TestSys cluster and running tests.
 #[derive(Debug, Parser)]

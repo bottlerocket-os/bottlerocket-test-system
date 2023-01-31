@@ -18,13 +18,13 @@ pub use bootstrap::{BootstrapData, BootstrapError};
 use error::InfoClientResult;
 pub use k8s_client::ClientError;
 use log::info;
-use model::clients::TestClient;
-pub use model::{Configuration, TestResults};
-use model::{Outcome, SecretName, SecretType};
 use std::collections::BTreeMap;
 use std::fmt::{Debug, Display};
 use std::path::PathBuf;
 use tempfile::TempDir;
+use testsys_model::clients::TestClient;
+pub use testsys_model::{Configuration, TestResults};
+use testsys_model::{Outcome, SecretName, SecretType};
 
 /// Information that a test [`Runner`] needs before it can begin a test.
 #[derive(Debug, Clone)]
