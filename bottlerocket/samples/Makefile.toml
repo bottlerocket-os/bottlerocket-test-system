@@ -5,7 +5,7 @@ skip_core_tasks = true
 AGENT_IMAGE_REGISTRY = { value = "public.ecr.aws/bottlerocket-test-system", condition = { env_not_set = ["AGENT_IMAGE_REGISTRY"] } }
 AGENTS = ["eks-resource-agent"]
 METADATA_BASE_URL = { value = "https://updates.bottlerocket.aws/2020-07-07", condition = { env_not_set = ["METADATA_BASE_URL"] } }
-ARCHITECTURE = { value = "x86_64", condition = { env_not_set = ["ARCHITECTURE"] } }
+ARCH = { value = "x86_64", condition = { env_not_set = ["ARCH"] } }
 CLUSTER_TYPE = { value = "eks", condition = { env_not_set = ["CLUSTER_TYPE"] } }
 ASSUME_ROLE = { value = "~", condition = { env_not_set = ["ASSUME_ROLE"] } }
 AWS_REGION = { value = "us-west-2", condition = { env_not_set = ["AWS_REGION"] } }
@@ -62,10 +62,10 @@ VSPHERE_VM_RESOURCE_AGENT_IMAGE_URI = { value = "${AGENT_IMAGE_REGISTRY}/vsphere
 CONTROLLER_IMAGE_URI = { value = "${AGENT_IMAGE_REGISTRY}/controller:v${AGENT_IMAGE_VERSION}", condition = { env_not_set = ["CONTROLLER_IMAGE_URI"] } }
 
 [tasks.metadata-url.env]
-METADATA_URL = { script=["echo ${METADATA_BASE_URL}/${VARIANT}/${ARCHITECTURE}"], condition = { env_not_set = ["METADATA_URL"] } }
+METADATA_URL = { script=["echo ${METADATA_BASE_URL}/${VARIANT}/${ARCH}"], condition = { env_not_set = ["METADATA_URL"] } }
 
 [tasks.cluster-name.env]
-CLUSTER_NAME = { script=["echo $(echo ${ARCHITECTURE} | tr '_' '-')-$(echo ${VARIANT} | tr -d '.')"], condition = { env_not_set = ["CLUSTER_NAME"] } }
+CLUSTER_NAME = { script=["echo $(echo ${ARCH} | tr '_' '-')-$(echo ${VARIANT} | tr -d '.')"], condition = { env_not_set = ["CLUSTER_NAME"] } }
 
 [tasks.ova-name.env]
 OVA_NAME = { script=["echo bottlerocket-${VARIANT}-x86_64-${STARTING_VERSION}.ova"], condition = { env_not_set = ["OVA_NAME"] } }
@@ -82,7 +82,7 @@ else
 fi
 aws ssm get-parameter \
     --region ${AWS_REGION} \
-    --name "/aws/service/bottlerocket/${VARIANT}/$(echo ${ARCHITECTURE} | sed -e 's/aarch64/arm64/g')/${AMI_VERSION}/image_id" \
+    --name "/aws/service/bottlerocket/${VARIANT}/$(echo ${ARCH} | sed -e 's/aarch64/arm64/g')/${AMI_VERSION}/image_id" \
     --query Parameter.Value --output text 
 '''] }
 
@@ -108,7 +108,7 @@ dependencies = ["gpu"]
 [tasks.instance-types.env]
 INSTANCE_TYPES = {script=['''
 if [ -z ${INSTANCE_TYPES} ]; then
-    if [ ${ARCHITECTURE} = "x86_64" ]; then
+    if [ ${ARCH} = "x86_64" ]; then
         if [ ${GPU} = "true" ]; then
             echo "[\"g4dn.xlarge\"]"
         else
