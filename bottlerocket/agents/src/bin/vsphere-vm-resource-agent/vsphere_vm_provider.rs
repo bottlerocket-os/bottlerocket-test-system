@@ -242,7 +242,8 @@ impl Create for VMCreator {
         let cluster_certificate = &kubeconfig
             .clusters
             .first()
-            .and_then(|cluster| cluster.cluster.certificate_authority_data.as_ref())
+            .and_then(|cluster| cluster.cluster.as_ref())
+            .and_then(|cluster| cluster.certificate_authority_data.as_ref())
             .context(resources, "Missing Cluster certificate authority data")?;
         debug!("Got certificate-authority-data '{}'", &cluster_certificate);
 
