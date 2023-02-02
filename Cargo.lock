@@ -573,7 +573,7 @@ dependencies = [
  "bottlerocket-types",
  "env_logger",
  "hex",
- "k8s-openapi",
+ "k8s-openapi 0.16.0",
  "kube",
  "log",
  "maplit",
@@ -765,7 +765,7 @@ dependencies = [
  "env_logger",
  "futures",
  "http",
- "k8s-openapi",
+ "k8s-openapi 0.16.0",
  "kube",
  "kube-runtime",
  "lazy_static",
@@ -1464,7 +1464,19 @@ checksum = "eb3fa5a61630976fc4c353c70297f2e93f1930e3ccee574d59d618ccbd5154ce"
 dependencies = [
  "serde",
  "serde_json",
- "treediff",
+ "treediff 3.0.2",
+]
+
+[[package]]
+name = "json-patch"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e712e62827c382a77b87f590532febb1f8b2fdbc3eefa1ee37fe7281687075ef"
+dependencies = [
+ "serde",
+ "serde_json",
+ "thiserror",
+ "treediff 4.0.2",
 ]
 
 [[package]]
@@ -1493,6 +1505,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "k8s-openapi"
+version = "0.17.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3d1985030683a2bac402cbda61222195de80d3f66b4c87ab56e5fea379bd98c3"
+dependencies = [
+ "base64 0.20.0",
+ "bytes",
+ "chrono",
+ "serde",
+ "serde-value",
+ "serde_json",
+]
+
+[[package]]
 name = "kernel32-sys"
 version = "0.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1508,9 +1534,9 @@ version = "0.75.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9bb19108692aeafebb108fd0a1c381c06ac4c03859652599420975165e939b8a"
 dependencies = [
- "k8s-openapi",
- "kube-client",
- "kube-core",
+ "k8s-openapi 0.16.0",
+ "kube-client 0.75.0",
+ "kube-core 0.75.0",
  "kube-derive",
 ]
 
@@ -1533,8 +1559,8 @@ dependencies = [
  "hyper-timeout",
  "hyper-tls",
  "jsonpath_lib",
- "k8s-openapi",
- "kube-core",
+ "k8s-openapi 0.16.0",
+ "kube-core 0.75.0",
  "openssl",
  "pem",
  "pin-project",
@@ -1554,6 +1580,39 @@ dependencies = [
 ]
 
 [[package]]
+name = "kube-client"
+version = "0.78.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7c9ca1f597bd48ed26f45f601bf2fa3aaa0933b8d1652d883b8444519b72af4a"
+dependencies = [
+ "base64 0.20.0",
+ "bytes",
+ "chrono",
+ "dirs-next",
+ "either",
+ "futures",
+ "http",
+ "http-body",
+ "hyper",
+ "hyper-timeout",
+ "jsonpath_lib",
+ "k8s-openapi 0.17.0",
+ "kube-core 0.78.0",
+ "pem",
+ "pin-project",
+ "secrecy",
+ "serde",
+ "serde_json",
+ "serde_yaml",
+ "thiserror",
+ "tokio",
+ "tokio-util",
+ "tower",
+ "tower-http",
+ "tracing",
+]
+
+[[package]]
 name = "kube-core"
 version = "0.75.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1562,10 +1621,27 @@ dependencies = [
  "chrono",
  "form_urlencoded",
  "http",
- "json-patch",
- "k8s-openapi",
+ "json-patch 0.2.7",
+ "k8s-openapi 0.16.0",
  "once_cell",
  "schemars",
+ "serde",
+ "serde_json",
+ "thiserror",
+]
+
+[[package]]
+name = "kube-core"
+version = "0.78.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "61f2c6d1a2d1584859499eb05a41c5a44713818041621fa7515cfdbdf4769ea7"
+dependencies = [
+ "chrono",
+ "form_urlencoded",
+ "http",
+ "json-patch 0.3.0",
+ "k8s-openapi 0.17.0",
+ "once_cell",
  "serde",
  "serde_json",
  "thiserror",
@@ -1586,17 +1662,17 @@ dependencies = [
 
 [[package]]
 name = "kube-runtime"
-version = "0.75.0"
+version = "0.78.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7769af142ee2e46bfa44bd393cf7f40b9d8b80d2e11f6317399551ed17760beb"
+checksum = "7995aaf15656bf3694cd455578d59119acc3ca55f71e9a1b579a34a47d17ecce"
 dependencies = [
  "ahash",
  "backoff",
  "derivative",
  "futures",
- "json-patch",
- "k8s-openapi",
- "kube-client",
+ "json-patch 0.3.0",
+ "k8s-openapi 0.17.0",
+ "kube-client 0.78.0",
  "parking_lot",
  "pin-project",
  "serde",
@@ -2345,7 +2421,7 @@ dependencies = [
  "anyhow",
  "envy",
  "futures",
- "k8s-openapi",
+ "k8s-openapi 0.16.0",
  "kube",
  "lazy_static",
  "serde",
@@ -2673,8 +2749,8 @@ dependencies = [
  "chrono",
  "futures",
  "http",
- "json-patch",
- "k8s-openapi",
+ "json-patch 0.2.7",
+ "k8s-openapi 0.16.0",
  "kube",
  "lazy_static",
  "log",
@@ -3000,6 +3076,15 @@ name = "treediff"
 version = "3.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "761e8d5ad7ce14bb82b7e61ccc0ca961005a275a060b9644a2431aa11553c2ff"
+dependencies = [
+ "serde_json",
+]
+
+[[package]]
+name = "treediff"
+version = "4.0.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "52984d277bdf2a751072b5df30ec0377febdb02f7696d64c2d7d54630bac4303"
 dependencies = [
  "serde_json",
 ]
