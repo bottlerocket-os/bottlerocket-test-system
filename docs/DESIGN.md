@@ -24,7 +24,7 @@ This document describes the design of *TestSys*, a system for abstracting over B
 
 ## General Architecture
 
-TestSys consists of a command-line program (`testsys`) and Kubernetes objects that drive Bottlerocket tests.
+TestSys consists of a command-line program ([`testsys`](https://github.com/bottlerocket-os/bottlerocket/tree/develop/tools/testsys)) and Kubernetes objects that drive Bottlerocket tests.
 Different testing modalities are abstracted-over by packaging them in Kubernetes pods.
 For example, a pod can contain the Sonobuoy binary, and everything else needed to run Sonobuoy tests.
 

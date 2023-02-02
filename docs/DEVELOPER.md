@@ -45,8 +45,6 @@ The bottlerocket directory of the repo is broken into 3 sections: agents, testsy
 
 The types used by the agents can be found in [types](bottlerocket/types).
 
-[testsys](bottlerocket/testsys) contains a CLI implementation that is closely related to bottlerocket agents but will be removed in the near future.
-
 ### [Cli](cli)
 
 Cli is an example command line interface that uses the [TestManager](model/src/test_manager/manager.rs) to interact with a TestSys cluster.
