@@ -7,8 +7,8 @@ use kube::api::ListParams;
 use kube_runtime::controller::Action as RequeueAction;
 use kube_runtime::{controller, Controller};
 use log::{debug, error};
-use model::Test;
 use std::sync::Arc;
+use testsys_model::Test;
 
 mod action;
 mod context;

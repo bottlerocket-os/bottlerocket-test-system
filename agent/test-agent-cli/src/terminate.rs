@@ -1,13 +1,13 @@
 use crate::error::{self, ArchiveSnafu, ClientSnafu, Result};
 use argh::FromArgs;
 use log::{error, info};
-use model::constants::TESTSYS_RESULTS_DIRECTORY;
 use snafu::ResultExt;
 use std::fs::File;
 use std::path::PathBuf;
 use std::time::Duration;
 use tar::Builder;
 use test_agent::{Client, DefaultClient};
+use testsys_model::constants::TESTSYS_RESULTS_DIRECTORY;
 use tokio::time::sleep;
 
 #[derive(Debug, FromArgs, PartialEq)]

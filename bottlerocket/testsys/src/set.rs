@@ -1,8 +1,8 @@
 use crate::error::{self, Result};
 use kube::Client;
-use model::clients::{CrdClient, TestClient};
 use snafu::ResultExt;
 use structopt::StructOpt;
+use testsys_model::clients::{CrdClient, TestClient};
 
 /// Set the field of a testsys test.
 #[derive(Debug, StructOpt)]

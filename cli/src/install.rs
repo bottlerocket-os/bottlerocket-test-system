@@ -1,6 +1,6 @@
 use anyhow::{Context, Result};
 use clap::Parser;
-use model::test_manager::{ImageConfig, TestManager};
+use testsys_model::test_manager::{ImageConfig, TestManager};
 
 /// The install subcommand is responsible for putting all of the necessary components for testsys in
 /// a k8s cluster.

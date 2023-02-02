@@ -1,8 +1,8 @@
 use crate::error::{ClientSnafu, Result};
 use argh::FromArgs;
-use model::{Outcome, TestResults};
 use snafu::ResultExt;
 use test_agent::{Client, DefaultClient};
+use testsys_model::{Outcome, TestResults};
 
 #[derive(Debug, FromArgs, PartialEq)]
 #[argh(

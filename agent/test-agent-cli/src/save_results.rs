@@ -2,10 +2,10 @@ use crate::error::{ArchiveSnafu, Result};
 use argh::FromArgs;
 use copy_dir::copy_dir;
 use log::error;
-use model::constants::TESTSYS_RESULTS_DIRECTORY;
 use snafu::ResultExt;
 use std::path::Path;
 use test_agent::DefaultClient;
+use testsys_model::constants::TESTSYS_RESULTS_DIRECTORY;
 
 #[derive(Debug, FromArgs, PartialEq)]
 #[argh(

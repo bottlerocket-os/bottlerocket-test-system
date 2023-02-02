@@ -3,14 +3,14 @@ use crate::{
     BootstrapData, Client, DefaultClient, DefaultInfoClient, InfoClient, Spec, TestResults,
 };
 use async_trait::async_trait;
-use model::clients::{CrdClient, ResourceClient, TestClient};
-use model::constants::TESTSYS_RESULTS_FILE;
-use model::{Configuration, TaskState};
 use serde_json::Value;
 use snafu::{ResultExt, Snafu};
 use std::fmt::{Debug, Display};
 use std::path::PathBuf;
 use tempfile::TempDir;
+use testsys_model::clients::{CrdClient, ResourceClient, TestClient};
+use testsys_model::constants::TESTSYS_RESULTS_FILE;
+use testsys_model::{Configuration, TaskState};
 
 /// The public error type for the default [`Client`].
 #[derive(Debug, Snafu)]
@@ -23,16 +23,22 @@ pub(crate) enum InnerError {
     /// `DefaultClient` is in a better position to provide context than we are, so we forward the
     /// error message.
     #[snafu(display("{}", source))]
-    K8s { source: model::clients::Error },
+    K8s {
+        source: testsys_model::clients::Error,
+    },
 
     #[snafu(display("Unable to deserialize test configuration: {}", source))]
     Deserialization { source: serde_json::Error },
 
     #[snafu(display("Unable to create resource client: {}", source))]
-    ResourceClientCreate { source: model::clients::Error },
+    ResourceClientCreate {
+        source: testsys_model::clients::Error,
+    },
 
     #[snafu(display("Unable to resolve config templates: {}", source))]
-    ResolveConfig { source: model::clients::Error },
+    ResolveConfig {
+        source: testsys_model::clients::Error,
+    },
 
     #[snafu(display("An error occured while creating a `TempDir`: {}", source))]
     TempDirCreate { source: std::io::Error },

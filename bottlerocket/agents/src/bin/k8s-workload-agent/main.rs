@@ -41,11 +41,11 @@ use bottlerocket_agents::error::Error;
 use bottlerocket_agents::workload::{delete_workload, rerun_failed_workload, run_workload};
 use bottlerocket_types::agent_config::{WorkloadConfig, AWS_CREDENTIALS_SECRET_NAME};
 use log::info;
-use model::{SecretName, TestResults};
 use std::path::PathBuf;
 use test_agent::{
     BootstrapData, ClientError, DefaultClient, DefaultInfoClient, InfoClient, Spec, TestAgent,
 };
+use testsys_model::{SecretName, TestResults};
 
 struct WorkloadTestRunner {
     config: WorkloadConfig,

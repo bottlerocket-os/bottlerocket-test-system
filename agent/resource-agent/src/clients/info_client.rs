@@ -1,8 +1,8 @@
 use super::error::ClientResult;
 use crate::BootstrapData;
 use agent_common::secrets::SecretData;
-use model::clients::ResourceClient;
-use model::{Configuration, SecretName};
+use testsys_model::clients::ResourceClient;
+use testsys_model::{Configuration, SecretName};
 
 /// `InfoClient` allows [`Create`] and [`Destroy`] objects to store arbitrary information in the
 /// Kubernetes status fields associated with the `Resource` CRD. For example, you might want to

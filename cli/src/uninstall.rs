@@ -1,6 +1,6 @@
 use anyhow::{Context, Result};
 use clap::Parser;
-use model::test_manager::TestManager;
+use testsys_model::test_manager::TestManager;
 
 /// The uninstall subcommand is responsible for removing all testsys components from a k8s cluster.
 #[derive(Debug, Parser)]

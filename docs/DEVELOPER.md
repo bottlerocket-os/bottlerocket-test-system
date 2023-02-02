@@ -63,12 +63,12 @@ Once a resource is marked for deletion (`cli delete`), the `destroy` function of
 
 For more info, see the [design](DESIGN.md) document.
 
-### [Model](model)
+### [TestSys-Model](model)
 
-The model library contains the infrastructure that TestSys is built upon.
+The testsys-model library contains the infrastructure that TestSys is built upon.
 This includes the CRDs for [tests](model/src/test.rs) and [resources](model/src/resource.rs) as well as [everything](model/system) needed to be installed to the TestSys cluster.
 
-All interactions with the TestSys cluster should be done using the model library through `TestManager`, `TestClient`, or `ResourceClient`.
+All interactions with the TestSys cluster should be done using the testsys-model library through `TestManager`, `TestClient`, or `ResourceClient`.
 
 The model provides [TestManager](model/src/test_manager/manager.rs) which can be used as an entry point for user interactions with TestSys.
 To see how to use the TestManager look at the [example CLI](cli).

@@ -1,7 +1,7 @@
-use model::Configuration;
 use resource_agent::clients::{AgentClient, ClientResult};
 use resource_agent::provider::{ProviderError, Spec};
 use resource_agent::{BootstrapData, ResourceAction};
+use testsys_model::Configuration;
 
 /// Create an [`AgentClient`] that does nothing so that we can test without Kubernetes.
 pub(crate) struct MockAgentClient;

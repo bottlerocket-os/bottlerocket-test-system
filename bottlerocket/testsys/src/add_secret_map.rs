@@ -2,11 +2,11 @@ use crate::error::{self, Result};
 use crate::k8s::create_or_update;
 use k8s_openapi::api::core::v1::Secret;
 use kube::{Api, Client};
-use model::constants::NAMESPACE;
-use model::SecretName;
 use snafu::OptionExt;
 use std::collections::BTreeMap;
 use structopt::StructOpt;
+use testsys_model::constants::NAMESPACE;
+use testsys_model::SecretName;
 
 /// Add a `Secret` with key value pairs.
 #[derive(Debug, StructOpt)]

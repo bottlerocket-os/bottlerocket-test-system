@@ -1,7 +1,7 @@
 use crate::run_file;
 use anyhow::Result;
 use clap::Parser;
-use model::test_manager::TestManager;
+use testsys_model::test_manager::TestManager;
 
 /// Run testsys tests.
 #[derive(Debug, Parser)]

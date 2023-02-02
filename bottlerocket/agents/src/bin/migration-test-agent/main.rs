@@ -48,13 +48,13 @@ use bottlerocket_agents::error::{self, Error};
 use bottlerocket_types::agent_config::{MigrationConfig, AWS_CREDENTIALS_SECRET_NAME};
 use log::{error, info};
 use maplit::hashmap;
-use model::{Outcome, SecretName, TestResults};
 use snafu::ResultExt;
 use std::path::Path;
 use std::time::Duration;
 use test_agent::{
     BootstrapData, ClientError, DefaultClient, DefaultInfoClient, InfoClient, Spec, TestAgent,
 };
+use testsys_model::{Outcome, SecretName, TestResults};
 
 const BR_CHANGE_UPDATE_REPO_DOCUMENT_NAME: &str = "BR-ChangeUpdateRepo";
 const BR_CHANGE_UPDATE_REPO_DOCUMENT_PATH: &str = "/local/ssm-documents/ssm-change-update-repo.yml";

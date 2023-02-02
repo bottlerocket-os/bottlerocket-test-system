@@ -1,7 +1,7 @@
 use anyhow::{Context, Result};
 use clap::Parser;
-use model::test_manager::TestManager;
-use model::SecretName;
+use testsys_model::test_manager::TestManager;
+use testsys_model::SecretName;
 
 /// Add a secret to the cluster.
 #[derive(Debug, Parser)]

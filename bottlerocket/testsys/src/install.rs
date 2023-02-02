@@ -5,17 +5,17 @@ use k8s_openapi::{
     api::core::v1::Secret, apiextensions_apiserver::pkg::apis::apiextensions::v1 as apiexts,
 };
 use kube::{Api, Client, CustomResourceExt};
-use model::constants::NAMESPACE;
-use model::system::{
-    agent_cluster_role, agent_cluster_role_binding, agent_service_account, controller_cluster_role,
-    controller_cluster_role_binding, controller_deployment, controller_service_account,
-    testsys_namespace, AgentType,
-};
-use model::{Resource, Test};
 use snafu::ResultExt;
 use std::collections::BTreeMap;
 use std::fmt::Debug;
 use structopt::StructOpt;
+use testsys_model::constants::NAMESPACE;
+use testsys_model::system::{
+    agent_cluster_role, agent_cluster_role_binding, agent_service_account, controller_cluster_role,
+    controller_cluster_role_binding, controller_deployment, controller_service_account,
+    testsys_namespace, AgentType,
+};
+use testsys_model::{Resource, Test};
 
 const CONTROLLER_SECRET: &str = "testsys-controller-pull-cred";
 

@@ -14,11 +14,13 @@ use kube::{Api, Client};
 use kube_runtime::controller::Action as RequeueAction;
 use kube_runtime::{controller, Controller};
 use log::{debug, error, trace, warn};
-use model::clients::CrdClient;
-use model::constants::{FINALIZER_CREATION_JOB, FINALIZER_MAIN, FINALIZER_RESOURCE, NAMESPACE};
-use model::{CrdExt, ErrorResources, Resource, ResourceAction, ResourceError};
 use std::ops::Deref;
 use std::sync::Arc;
+use testsys_model::clients::CrdClient;
+use testsys_model::constants::{
+    FINALIZER_CREATION_JOB, FINALIZER_MAIN, FINALIZER_RESOURCE, NAMESPACE,
+};
+use testsys_model::{CrdExt, ErrorResources, Resource, ResourceAction, ResourceError};
 
 pub(crate) async fn run_resource_controller(client: Client) {
     let context = new_context(client.clone());

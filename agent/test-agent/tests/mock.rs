@@ -6,7 +6,6 @@ to test a [`Runner`] with the [`TestAgent`].
 !*/
 
 use async_trait::async_trait;
-use model::{Configuration, Outcome};
 use serde::{Deserialize, Serialize};
 use std::fmt::{Debug, Display};
 use std::path::PathBuf;
@@ -14,6 +13,7 @@ use tempfile::{tempdir, TempDir};
 use test_agent::error::InfoClientResult;
 use test_agent::{BootstrapData, Client, InfoClient, Runner};
 use test_agent::{Spec, TestResults};
+use testsys_model::{Configuration, Outcome};
 use tokio::time::{sleep, Duration};
 
 /// When creating a test, this is the object that you create which will implement the [`Runner`]

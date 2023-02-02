@@ -1,12 +1,12 @@
 use crate::error::{self, AgentError, Error, Result};
 use crate::{BootstrapData, Client, InfoClient, Runner};
 use log::{debug, error, info, trace};
-use model::{Outcome, TestResults};
 use snafu::ResultExt;
 use std::fs::File;
 use std::path::PathBuf;
 use std::time::Duration;
 use tar::Builder;
+use testsys_model::{Outcome, TestResults};
 use tokio::time::sleep;
 
 /// The `TestAgent` is the main entrypoint for the program running in a TestPod. It starts a test

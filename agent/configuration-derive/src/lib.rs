@@ -11,7 +11,7 @@ pub fn derive_configuration(input: TokenStream) -> TokenStream {
     let ident = ast.ident;
 
     quote! {
-       impl model::Configuration for #ident{}
+       impl testsys_model::Configuration for #ident{}
     }
     .into()
 }

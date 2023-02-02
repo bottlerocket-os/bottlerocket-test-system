@@ -1,8 +1,8 @@
 #![cfg(feature = "integ")]
 mod data;
 use assert_cmd::Command;
-use model::{constants::NAMESPACE, Resource, Test};
 use selftest::Cluster;
+use testsys_model::{constants::NAMESPACE, Resource, Test};
 use tokio::time::Duration;
 
 /// The amount of time we will wait for the controller to run, a test-agent to run, etc. before we

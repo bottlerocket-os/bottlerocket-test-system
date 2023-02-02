@@ -1,10 +1,10 @@
-use model::constants::SECRETS_PATH;
-use model::SecretName;
 use snafu::{OptionExt, ResultExt};
 use std::collections::BTreeMap;
 use std::fmt::{Display, Formatter};
 use std::fs;
 use std::path::PathBuf;
+use testsys_model::constants::SECRETS_PATH;
+use testsys_model::SecretName;
 
 /// Reads the keys (which become files) and values of a Kubernetes generic/[opaque] secret.
 /// [opaque]: https://kubernetes.io/docs/concepts/configuration/secret/#opaque-secrets
@@ -111,9 +111,9 @@ impl Default for SecretsReader {
 }
 
 mod error {
-    use model::SecretName;
     use snafu::Snafu;
     use std::path::PathBuf;
+    use testsys_model::SecretName;
 
     #[derive(Debug, Snafu)]
     #[snafu(visibility(pub(super)))]

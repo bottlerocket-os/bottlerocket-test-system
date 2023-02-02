@@ -1,12 +1,12 @@
 use crate::error::{ArchiveSnafu, ClientSnafu, JsonSerializeSnafu, Result};
 use argh::FromArgs;
-use model::constants::TESTSYS_RESULTS_DIRECTORY;
-use model::Configuration;
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
 use snafu::ResultExt;
 use std::fs;
 use test_agent::{Client, DefaultClient, Spec};
+use testsys_model::constants::TESTSYS_RESULTS_DIRECTORY;
+use testsys_model::Configuration;
 
 #[derive(Debug, FromArgs, PartialEq)]
 #[argh(

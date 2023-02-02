@@ -3,13 +3,13 @@ use crate::clients::{AgentClient, ClientError, DefaultAgentClient, DefaultInfoCl
 use crate::provider::{ProviderError, Resources, Spec};
 use crate::{BootstrapData, ResourceAction};
 use agent_common::secrets::{SecretData, SecretsReader};
-use model::clients::{CrdClient, ResourceClient};
-use model::{
+use testsys_model::clients::{CrdClient, ResourceClient};
+use testsys_model::{
     Configuration, Error as ModelError, ErrorResources, ResourceError, SecretName, TaskState,
 };
 
-impl From<model::clients::Error> for ClientError {
-    fn from(e: model::clients::Error) -> Self {
+impl From<testsys_model::clients::Error> for ClientError {
+    fn from(e: testsys_model::clients::Error) -> Self {
         ClientError::RequestFailed(Some(Box::new(e)))
     }
 }

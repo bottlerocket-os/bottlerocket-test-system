@@ -6,9 +6,9 @@ version = 3
 name = "agent-common"
 version = "0.0.5"
 dependencies = [
- "model",
  "snafu",
  "tempfile",
+ "testsys-model",
 ]
 
 [[package]]
@@ -23,12 +23,12 @@ dependencies = [
  "base64 0.20.0",
  "env_logger",
  "log",
- "model",
  "resource-agent",
  "serde",
  "serde_json",
  "snafu",
  "test-agent",
+ "testsys-model",
 ]
 
 [[package]]
@@ -597,7 +597,6 @@ dependencies = [
  "kube",
  "log",
  "maplit",
- "model",
  "reqwest",
  "resource-agent",
  "serde",
@@ -607,6 +606,7 @@ dependencies = [
  "sha2",
  "snafu",
  "test-agent",
+ "testsys-model",
  "tokio",
  "toml",
  "tough",
@@ -620,11 +620,11 @@ version = "0.0.5"
 dependencies = [
  "builder-derive",
  "configuration-derive",
- "model",
  "serde",
  "serde_json",
  "serde_plain",
  "serde_yaml",
+ "testsys-model",
 ]
 
 [[package]]
@@ -643,12 +643,12 @@ name = "builder-derive"
 version = "0.0.5"
 dependencies = [
  "configuration-derive",
- "model",
  "proc-macro2",
  "quote",
  "serde",
  "serde_json",
  "syn",
+ "testsys-model",
 ]
 
 [[package]]
@@ -775,12 +775,12 @@ dependencies = [
  "env_logger",
  "futures",
  "log",
- "model",
  "selftest",
  "serde",
  "serde_json",
  "serde_plain",
  "terminal_size",
+ "testsys-model",
  "tokio",
 ]
 
@@ -805,11 +805,11 @@ dependencies = [
  "kube-runtime",
  "lazy_static",
  "log",
- "model",
  "schemars",
  "serde",
  "serde_json",
  "snafu",
+ "testsys-model",
  "tokio",
 ]
 
@@ -1738,37 +1738,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "model"
-version = "0.0.5"
-dependencies = [
- "async-recursion",
- "async-trait",
- "base64 0.20.0",
- "bytes",
- "chrono",
- "futures",
- "http",
- "json-patch",
- "k8s-openapi",
- "kube",
- "lazy_static",
- "log",
- "maplit",
- "regex",
- "schemars",
- "selftest",
- "serde",
- "serde_json",
- "serde_plain",
- "serde_yaml",
- "snafu",
- "tabled 0.10.0",
- "tokio",
- "tokio-util",
- "topological-sort",
-]
-
-[[package]]
 name = "native-tls"
 version = "0.2.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2240,11 +2209,11 @@ dependencies = [
  "async-trait",
  "env_logger",
  "log",
- "model",
  "nonzero_ext",
  "serde",
  "serde_json",
  "snafu",
+ "testsys-model",
  "tokio",
 ]
 
@@ -2450,9 +2419,9 @@ dependencies = [
  "k8s-openapi",
  "kube",
  "lazy_static",
- "model",
  "serde",
  "tempfile",
+ "testsys-model",
  "tokio",
 ]
 
@@ -2793,12 +2762,12 @@ dependencies = [
  "agent-common",
  "async-trait",
  "log",
- "model",
  "serde",
  "serde_json",
  "snafu",
  "tar",
  "tempfile",
+ "testsys-model",
  "tokio",
 ]
 
@@ -2813,7 +2782,6 @@ dependencies = [
  "copy_dir",
  "env_logger",
  "log",
- "model",
  "selftest",
  "serde",
  "serde_derive",
@@ -2823,6 +2791,7 @@ dependencies = [
  "tar",
  "tempfile",
  "test-agent",
+ "testsys-model",
  "tokio",
  "tokio-util",
 ]
@@ -2841,7 +2810,6 @@ dependencies = [
  "kube",
  "log",
  "maplit",
- "model",
  "selftest",
  "serde",
  "serde_json",
@@ -2851,6 +2819,38 @@ dependencies = [
  "structopt",
  "tabled 0.4.2",
  "termion",
+ "testsys-model",
+ "tokio",
+ "tokio-util",
+ "topological-sort",
+]
+
+[[package]]
+name = "testsys-model"
+version = "0.0.5"
+dependencies = [
+ "async-recursion",
+ "async-trait",
+ "base64 0.20.0",
+ "bytes",
+ "chrono",
+ "futures",
+ "http",
+ "json-patch",
+ "k8s-openapi",
+ "kube",
+ "lazy_static",
+ "log",
+ "maplit",
+ "regex",
+ "schemars",
+ "selftest",
+ "serde",
+ "serde_json",
+ "serde_plain",
+ "serde_yaml",
+ "snafu",
+ "tabled 0.10.0",
  "tokio",
  "tokio-util",
  "topological-sort",

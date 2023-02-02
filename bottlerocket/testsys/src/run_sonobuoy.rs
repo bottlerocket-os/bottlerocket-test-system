@@ -1,12 +1,12 @@
 use crate::error::{self, Result};
 use bottlerocket_types::agent_config::{SonobuoyConfig, SonobuoyMode, AWS_CREDENTIALS_SECRET_NAME};
 use kube::{api::ObjectMeta, Client};
-use model::clients::CrdClient;
-use model::constants::NAMESPACE;
-use model::{clients::TestClient, Agent, Configuration, SecretName, Test, TestSpec};
 use snafu::ResultExt;
 use std::{collections::BTreeMap, fs::read_to_string, path::PathBuf};
 use structopt::StructOpt;
+use testsys_model::clients::CrdClient;
+use testsys_model::constants::NAMESPACE;
+use testsys_model::{clients::TestClient, Agent, Configuration, SecretName, Test, TestSpec};
 
 /// Run a test stored in a YAML file at `path`.
 #[derive(Debug, StructOpt)]

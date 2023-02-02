@@ -2,9 +2,9 @@ use crate::error::Result;
 use crate::job::{delete_job, get_job_state, JobState};
 use anyhow::Context as AnyhowContext;
 use kube::{Api, Client};
-use model::clients::{CrdClient, TestClient};
-use model::Test;
 use std::sync::Arc;
+use testsys_model::clients::{CrdClient, TestClient};
+use testsys_model::Test;
 
 /// This is used by `kube-runtime` to pass any custom information we need when [`reconcile`] is
 /// called.

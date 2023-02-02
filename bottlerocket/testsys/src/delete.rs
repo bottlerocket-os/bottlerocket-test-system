@@ -1,15 +1,15 @@
 use crate::error::{self, Result};
 use http::StatusCode;
 use kube::{core::object::HasStatus, Client, ResourceExt};
-use model::{
-    clients::{AllowNotFound, CrdClient, HttpStatusCode, ResourceClient, TestClient},
-    TaskState,
-};
 use serde::Deserialize;
 use serde_plain::derive_fromstr_from_deserialize;
 use snafu::ResultExt;
 use std::{collections::HashSet, time::Duration};
 use structopt::StructOpt;
+use testsys_model::{
+    clients::{AllowNotFound, CrdClient, HttpStatusCode, ResourceClient, TestClient},
+    TaskState,
+};
 use topological_sort::TopologicalSort;
 
 /// Delete an object from a testsys cluster.

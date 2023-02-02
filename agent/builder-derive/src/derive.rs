@@ -55,7 +55,7 @@ pub(crate) fn build_struct(ast: &syn::DeriveInput) -> TokenStream {
         let ty = field.ty.clone();
         Some(quote! {
             #(#attrs)*
-            #field_ident: model::ConfigValue<#ty>,
+            #field_ident: testsys_model::ConfigValue<#ty>,
         })
     });
     // Create the setters for each field, one for typed values and one for templated strings
@@ -79,7 +79,7 @@ pub(crate) fn build_struct(ast: &syn::DeriveInput) -> TokenStream {
             pub fn #field_ident<T>(&mut self, #field_ident: T) -> &mut Self
             where
             T: Into<#ty>{
-                self.#field_ident = model::ConfigValue::Value(#field_ident.into());
+                self.#field_ident = testsys_model::ConfigValue::Value(#field_ident.into());
                 self
             }
 
@@ -89,7 +89,7 @@ pub(crate) fn build_struct(ast: &syn::DeriveInput) -> TokenStream {
             S1: Into<String>,
             S2: Into<String>,
             {
-                self.#field_ident = model::ConfigValue::TemplatedString(format!("${{{}.{}}}", resource.into(), field.into()));
+                self.#field_ident = testsys_model::ConfigValue::TemplatedString(format!("${{{}.{}}}", resource.into(), field.into()));
                 self
             }
         })
@@ -117,7 +117,7 @@ pub(crate) fn build_struct(ast: &syn::DeriveInput) -> TokenStream {
                     #[serde(skip)]
                     image_pull_secret: Option<String>,
                     #[serde(skip)]
-                    secrets: std::collections::BTreeMap<String, model::SecretName>,
+                    secrets: std::collections::BTreeMap<String, testsys_model::SecretName>,
                     #[serde(skip)]
                     retries: Option<u32>,
                     #[serde(skip)]
@@ -196,14 +196,14 @@ pub(crate) fn build_struct(ast: &syn::DeriveInput) -> TokenStream {
                         self
                     }
 
-                    pub fn secrets<S1, S2>(&mut self, key: S1, value: model::SecretName) -> &mut Self
+                    pub fn secrets<S1, S2>(&mut self, key: S1, value: testsys_model::SecretName) -> &mut Self
                     where
                     S1: Into<String>{
                         self.secrets.insert(key.into(), value.into());
                         self
                     }
 
-                    pub fn set_secrets(&mut self, secrets: Option<std::collections::BTreeMap<String,model::SecretName>>) -> &mut Self {
+                    pub fn set_secrets(&mut self, secrets: Option<std::collections::BTreeMap<String,testsys_model::SecretName>>) -> &mut Self {
                         self.secrets = secrets.unwrap_or_default();
                         self
                     }
@@ -250,7 +250,7 @@ pub(crate) fn build_struct(ast: &syn::DeriveInput) -> TokenStream {
                         self
                     }
 
-                    pub fn build<S1>(&self, name: S1) -> Result<model::Test, Box<dyn std::error::Error + Sync + Send>>
+                    pub fn build<S1>(&self, name: S1) -> Result<testsys_model::Test, Box<dyn std::error::Error + Sync + Send>>
                     where
                     S1: Into<String>,
                     {
@@ -260,11 +260,11 @@ pub(crate) fn build_struct(ast: &syn::DeriveInput) -> TokenStream {
                             _ => return Err("Configuration must be a map".into()),
                         };
 
-                        Ok(model::create_test_crd(name, Some(&self.labels), model::TestSpec {
+                        Ok(testsys_model::create_test_crd(name, Some(&self.labels), testsys_model::TestSpec {
                                 resources: self.resources.clone(),
                                 depends_on: Some(self.depends_on.clone()),
                                 retries: Some(self.retries.as_ref().cloned().unwrap_or(5)),
-                                agent: model::Agent {
+                                agent: testsys_model::Agent {
                                     name: "agent".to_string(),
                                     image: self.image.as_ref().cloned().ok_or_else(|| "Image is required to build a test".to_string())?,
                                     pull_secret: self.image_pull_secret.as_ref().cloned(),
@@ -299,13 +299,13 @@ pub(crate) fn build_struct(ast: &syn::DeriveInput) -> TokenStream {
                     #[serde(skip)]
                     image_pull_secret: Option<String>,
                     #[serde(skip)]
-                    secrets: std::collections::BTreeMap<String, model::SecretName>,
+                    secrets: std::collections::BTreeMap<String, testsys_model::SecretName>,
                     #[serde(skip)]
                     keep_running: Option<bool>,
                     #[serde(skip)]
                     capabilities: Vec<String>,
                     #[serde(skip)]
-                    destruction_policy: Option<model::DestructionPolicy>,
+                    destruction_policy: Option<testsys_model::DestructionPolicy>,
                     #[serde(skip)]
                     privileged: Option<bool>,
                 }
@@ -378,14 +378,14 @@ pub(crate) fn build_struct(ast: &syn::DeriveInput) -> TokenStream {
                         self
                     }
 
-                    pub fn secrets<S1, S2>(&mut self, key: S1, value: model::SecretName) -> &mut Self
+                    pub fn secrets<S1, S2>(&mut self, key: S1, value: testsys_model::SecretName) -> &mut Self
                     where
                     S1: Into<String>{
                         self.secrets.insert(key.into(), value.into());
                         self
                     }
 
-                    pub fn set_secrets(&mut self, secrets: Option<std::collections::BTreeMap<String,model::SecretName>>) -> &mut Self {
+                    pub fn set_secrets(&mut self, secrets: Option<std::collections::BTreeMap<String,testsys_model::SecretName>>) -> &mut Self {
                         self.secrets = secrets.unwrap_or_default();
                         self
                     }
@@ -412,12 +412,12 @@ pub(crate) fn build_struct(ast: &syn::DeriveInput) -> TokenStream {
                         self
                     }
 
-                    pub fn destruction_policy(&mut self, destruction_policy: model::DestructionPolicy) -> &mut Self {
+                    pub fn destruction_policy(&mut self, destruction_policy: testsys_model::DestructionPolicy) -> &mut Self {
                         self.destruction_policy = Some(destruction_policy);
                         self
                     }
 
-                    pub fn set_destruction_policy(&mut self, destruction_policy: Option<model::DestructionPolicy>) -> &mut Self {
+                    pub fn set_destruction_policy(&mut self, destruction_policy: Option<testsys_model::DestructionPolicy>) -> &mut Self {
                         self.destruction_policy = destruction_policy;
                         self
                     }
@@ -432,7 +432,7 @@ pub(crate) fn build_struct(ast: &syn::DeriveInput) -> TokenStream {
                         self
                     }
 
-                    pub fn build<S1>(&self, name: S1) -> Result<model::Resource, Box<dyn std::error::Error + Sync + Send>>
+                    pub fn build<S1>(&self, name: S1) -> Result<testsys_model::Resource, Box<dyn std::error::Error + Sync + Send>>
                     where
                     S1: Into<String>,
                     {
@@ -442,10 +442,10 @@ pub(crate) fn build_struct(ast: &syn::DeriveInput) -> TokenStream {
                             _ => return Err("Configuration must be a map".to_string().into()),
                         };
 
-                        Ok(model::create_resource_crd(name, Some(&self.labels), model::ResourceSpec {
+                        Ok(testsys_model::create_resource_crd(name, Some(&self.labels), testsys_model::ResourceSpec {
                             conflicts_with: Some(self.conflicts_with.clone()),
                             depends_on: Some(self.depends_on.clone()),
-                            agent: model::Agent {
+                            agent: testsys_model::Agent {
                                 name: "agent".to_string(),
                                 image: self.image.as_ref().cloned().ok_or_else(|| "Image is required to build a test".to_string())?,
                                 pull_secret: self.image_pull_secret.as_ref().cloned(),

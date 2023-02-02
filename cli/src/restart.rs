@@ -1,7 +1,7 @@
 use crate::restart_test;
 use anyhow::Result;
 use clap::Parser;
-use model::test_manager::TestManager;
+use testsys_model::test_manager::TestManager;
 
 /// Restart testsys tests.
 #[derive(Debug, Parser)]

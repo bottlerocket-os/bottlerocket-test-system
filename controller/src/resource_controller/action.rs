@@ -5,9 +5,9 @@ use crate::utils::parse_duration;
 use kube::core::object::HasSpec;
 use kube::ResourceExt;
 use log::{debug, trace};
-use model::clients::{AllowNotFound, CrdClient, TestClient};
-use model::constants::{FINALIZER_CREATION_JOB, FINALIZER_MAIN, FINALIZER_RESOURCE};
-use model::{CrdExt, DestructionPolicy, ResourceAction, TaskState, TestUserState};
+use testsys_model::clients::{AllowNotFound, CrdClient, TestClient};
+use testsys_model::constants::{FINALIZER_CREATION_JOB, FINALIZER_MAIN, FINALIZER_RESOURCE};
+use testsys_model::{CrdExt, DestructionPolicy, ResourceAction, TaskState, TestUserState};
 
 /// The action that the controller needs to take in order to reconcile the [`Resource`].
 #[derive(Debug, Clone, Eq, PartialEq)]

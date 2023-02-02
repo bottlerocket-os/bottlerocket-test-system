@@ -3,11 +3,11 @@ use crate::job::{delete_job, get_job_state, JobBuilder, JobState, JobType};
 use anyhow::Context as AnyhowContext;
 use kube::Api;
 use log::debug;
-use model::clients::{CrdClient, ResourceClient};
-use model::constants::{ENV_RESOURCE_ACTION, ENV_RESOURCE_NAME};
-use model::test_manager::ResourceState;
-use model::{CrdExt, Resource, ResourceAction};
 use std::sync::Arc;
+use testsys_model::clients::{CrdClient, ResourceClient};
+use testsys_model::constants::{ENV_RESOURCE_ACTION, ENV_RESOURCE_NAME};
+use testsys_model::test_manager::ResourceState;
+use testsys_model::{CrdExt, Resource, ResourceAction};
 
 /// This is used by `kube-runtime` to pass any custom information we need when [`reconcile`] is
 /// called.

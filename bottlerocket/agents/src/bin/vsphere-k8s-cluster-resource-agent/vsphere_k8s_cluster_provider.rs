@@ -11,7 +11,6 @@ use kube::api::ListParams;
 use kube::config::{KubeConfigOptions, Kubeconfig};
 use kube::{Api, Config};
 use log::{debug, info};
-use model::{Configuration, SecretName};
 use resource_agent::clients::InfoClient;
 use resource_agent::provider::{
     Create, Destroy, IntoProviderError, ProviderError, ProviderResult, Resources, Spec,
@@ -24,6 +23,7 @@ use std::fs::File;
 use std::path::Path;
 use std::process::{Command, Stdio};
 use std::{env, fs};
+use testsys_model::{Configuration, SecretName};
 
 const WORKING_DIR: &str = "/local/eksa-work";
 

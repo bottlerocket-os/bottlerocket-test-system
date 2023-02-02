@@ -67,7 +67,7 @@ fn init_logger() {
             // RUST_LOG does not exist; use default log level for this crate only.
             Builder::new()
                 .filter(Some(env!("CARGO_CRATE_NAME")), DEFAULT_LEVEL_FILTER)
-                .filter(Some("model"), DEFAULT_LEVEL_FILTER)
+                .filter(Some("testsys_model"), DEFAULT_LEVEL_FILTER)
                 .init();
         }
     }

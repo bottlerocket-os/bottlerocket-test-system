@@ -1,13 +1,13 @@
 use crate::error::{self, Result};
 use kube::Client;
-use model::{
-    clients::{CrdClient, ResourceClient, TestClient},
-    Resource, Test,
-};
 use serde::{Deserialize, Serialize};
 use snafu::ResultExt;
 use std::path::PathBuf;
 use structopt::StructOpt;
+use testsys_model::{
+    clients::{CrdClient, ResourceClient, TestClient},
+    Resource, Test,
+};
 
 /// Run a test stored in a YAML file at `path`.
 #[derive(Debug, StructOpt)]

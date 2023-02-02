@@ -1,7 +1,7 @@
 use agent_common::secrets::SecretData;
-use model::{Configuration, SecretName};
 use resource_agent::clients::{ClientResult, InfoClient};
 use resource_agent::BootstrapData;
+use testsys_model::{Configuration, SecretName};
 
 /// Create an [`InfoClient`] that does nothing so that we can test without Kubernetes.
 pub(crate) struct MockInfoClient {}
