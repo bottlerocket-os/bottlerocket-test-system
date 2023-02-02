@@ -61,8 +61,8 @@ pub(crate) async fn create_or_update_ssm_document(
         Ok(doc) => doc.document().and_then(|d| d.hash().map(|s| s.to_string())),
         Err(sdk_err) => {
             return match sdk_err {
-                SdkError::ServiceError { err, .. } => {
-                    match err.kind {
+                SdkError::ServiceError(service_error) => {
+                    match service_error.err().kind {
                         DescribeDocumentErrorKind::InvalidDocument(_) => {
                             // Document does not exist, we need to create it.
                             let file_doc_data =
@@ -79,7 +79,7 @@ pub(crate) async fn create_or_update_ssm_document(
                             Ok(())
                         }
                         _ => error::SsmDescribeDocumentSnafu {
-                            message: err.to_string(),
+                            message: service_error.err().to_string(),
                         }
                         .fail(),
                     }

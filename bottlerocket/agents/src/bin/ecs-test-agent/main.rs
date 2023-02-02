@@ -265,9 +265,9 @@ async fn latest_task_revision(ecs_client: &aws_sdk_ecs::Client) -> Result<String
 fn exists(
     result: Result<DescribeTaskDefinitionOutput, SdkError<DescribeTaskDefinitionError>>,
 ) -> bool {
-    if let Err(SdkError::ServiceError { err, raw: _ }) = result {
+    if let Err(SdkError::ServiceError(service_error)) = result {
         if matches!(
-            &err.kind,
+            &service_error.err().kind,
             DescribeTaskDefinitionErrorKind::ClientException(_)
         ) {
             return false;
