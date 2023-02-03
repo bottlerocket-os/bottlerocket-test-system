@@ -807,7 +807,7 @@ mod test {
     fn vmware_migration_test() {
         let s = read_eks_file("vmware-migration-test.yaml");
         let s = s
-            .replace("\\${${CLUSTER_NAME}-vms.ids}", r#"["a", "b", "c"]"#)
+            .replace("\\${${CLUSTER_NAME}-vms.instanceIds}", r#"["a", "b", "c"]"#)
             .replace("\\${${CLUSTER_NAME}.publicSubnetIds}", r#"["a", "b", "c"]"#)
             .replace("\\${${CLUSTER_NAME}.securityGroups}", r#"["a", "b", "c"]"#)
             .replace("${K8S_VERSION}", "v1.24")
@@ -870,7 +870,7 @@ mod test {
     fn vmware_sonobuoy_test() {
         let s = read_eks_file("vmware-sonobuoy-test.yaml");
         let s = s
-            .replace("\\${${CLUSTER_NAME}-vms.ids}", r#"["a", "b", "c"]"#)
+            .replace("\\${${CLUSTER_NAME}-vms.instanceIds}", r#"["a", "b", "c"]"#)
             .replace("\\${${CLUSTER_NAME}.publicSubnetIds}", r#"["a", "b", "c"]"#)
             .replace("\\${${CLUSTER_NAME}.securityGroups}", r#"["a", "b", "c"]"#)
             .replace("${K8S_VERSION}", "v1.24")
@@ -1003,7 +1003,7 @@ mod test {
     fn vmware_sonobuoy_test_kind() {
         let s = read_kind_file("vmware-sonobuoy-test.yaml");
         let s = s
-            .replace("\\${${CLUSTER_NAME}-vms.ids}", r#"["a", "b", "c"]"#)
+            .replace("\\${${CLUSTER_NAME}-vms.instanceIds}", r#"["a", "b", "c"]"#)
             .replace("\\${${CLUSTER_NAME}.publicSubnetIds}", r#"["a", "b", "c"]"#)
             .replace(
                 "\\\\${${CLUSTER_NAME}.securityGroups}",

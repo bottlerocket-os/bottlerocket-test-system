@@ -28,6 +28,7 @@ spec:
     name: agent
     image: ${VSPHERE_K8S_CLUSTER_RESOURCE_AGENT_IMAGE_URI}
     keepRunning: true
+    privileged: true
     configuration:
       controlPlaneEndpointIp: ${CONTROL_PLANE_ENDPOINT_IP}
       creationPolicy: ifNotExists
@@ -38,12 +39,12 @@ spec:
         metadataUrl: ${METADATA_URL}
         targetsUrl: ${TARGETS_URL}
       version: ${K8S_VERSION}
-      vcenterDatacenter: ${VCENTER_DATACENTER}
-      vcenterDatastore: ${VCENTER_DATASTORE}
-      vcenterHostUrl: ${VCENTER_HOST_URL}
-      vcenterNetwork: ${VCENTER_NETWORK}
-      vcenterResourcePool: ${VCENTER_RESOURCE_POOL}
-      vcenterWorkloadFolder: ${VCENTER_WORKLOAD_FOLDER}
+      vcenterDatacenter: ${GOVC_DATACENTER}
+      vcenterDatastore: ${GOVC_DATASTORE}
+      vcenterHostUrl: ${GOVC_URL}
+      vcenterNetwork: ${GOVC_NETWORK}
+      vcenterResourcePool: ${GOVC_RESOURCE_POOL}
+      vcenterWorkloadFolder: ${GOVC_FOLDER}
     secrets:
       vsphereCredentials: vsphere-creds
   dependsOn: []
@@ -69,12 +70,12 @@ spec:
       tufRepo:
         metadataUrl: ${METADATA_URL}
         targetsUrl: ${TARGETS_URL}
-      vcenterDatacenter: ${VCENTER_DATACENTER}
-      vcenterDatastore: ${VCENTER_DATASTORE}
-      vcenterHostUrl: ${VCENTER_HOST_URL}
-      vcenterNetwork: ${VCENTER_NETWORK}
-      vcenterResourcePool: ${VCENTER_RESOURCE_POOL}
-      vcenterWorkloadFolder: ${VCENTER_WORKLOAD_FOLDER}
+      vcenterDatacenter: ${GOVC_DATACENTER}
+      vcenterDatastore: ${GOVC_DATASTORE}
+      vcenterHostUrl: ${GOVC_URL}
+      vcenterNetwork: ${GOVC_NETWORK}
+      vcenterResourcePool: ${GOVC_RESOURCE_POOL}
+      vcenterWorkloadFolder: ${GOVC_FOLDER}
       vmCount: 2
     secrets:
       vsphereCredentials: vsphere-creds
