@@ -65,7 +65,15 @@ CONTROLLER_IMAGE_URI = { value = "${AGENT_IMAGE_REGISTRY}/controller:v${AGENT_IM
 METADATA_URL = { script=["echo ${METADATA_BASE_URL}/${VARIANT}/${ARCH}"], condition = { env_not_set = ["METADATA_URL"] } }
 
 [tasks.cluster-name.env]
-CLUSTER_NAME = { script=["echo $(echo ${ARCH} | tr '_' '-')-$(echo ${VARIANT} | tr -d '.')"], condition = { env_not_set = ["CLUSTER_NAME"] } }
+CLUSTER_NAME = { script=['''
+    BASE_NAME=$(echo ${ARCH} | tr '_' '-')-$(echo ${VARIANT} | tr -d '.')
+    if echo ${TEST_TYPE} | grep 'migration' > /dev/null; then
+        BASE_NAME=$(echo ${BASE_NAME}-migration)
+    elif echo ${TEST_TYPE} | grep 'workload' > /dev/null; then
+        BASE_NAME=$(echo ${BASE_NAME}-workload)
+    fi
+    echo "${BASE_NAME}-test-cluster"
+'''], condition = { env_not_set = ["CLUSTER_NAME"] } }
 
 [tasks.ova-name.env]
 OVA_NAME = { script=["echo bottlerocket-${VARIANT}-x86_64-${STARTING_VERSION}.ova"], condition = { env_not_set = ["OVA_NAME"] } }
