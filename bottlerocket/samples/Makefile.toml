@@ -3,7 +3,6 @@ skip_core_tasks = true
 
 [env]
 AGENT_IMAGE_REGISTRY = { value = "public.ecr.aws/bottlerocket-test-system", condition = { env_not_set = ["AGENT_IMAGE_REGISTRY"] } }
-AGENTS = ["eks-resource-agent"]
 METADATA_BASE_URL = { value = "https://updates.bottlerocket.aws/2020-07-07", condition = { env_not_set = ["METADATA_BASE_URL"] } }
 ARCH = { value = "x86_64", condition = { env_not_set = ["ARCH"] } }
 CLUSTER_TYPE = { value = "eks", condition = { env_not_set = ["CLUSTER_TYPE"] } }
@@ -13,7 +12,7 @@ UPGRADE_VERSION = { value = "v1.11.1", condition = { env_not_set = ["UPGRADE_VER
 STARTING_VERSION = { value = "v1.11.0", condition = { env_not_set = ["STARTING_VERSION"] } }
 SONOBUOY_MODE = { value = "quick", condition = { env_not_set = ["SONOBUOY_MODE"] } }
 TARGETS_URL = { value = "https://updates.bottlerocket.aws/targets", condition = { env_not_set = ["TARGETS_URL"] } }
-K8S_VERSION = { value = "1.24", condition = { env_not_set = ["K8S_VERSION"] } }
+K8S_VERSION = { value = "v1.24", condition = { env_not_set = ["K8S_VERSION"] } }
 
 # The following variables need values only if a workload test file is being created. `WORKLOAD_TEST_NAME` is an identifier for the workload test. `WORKLOAD_TEST_IMAGE_URI` is the URI to the workload test image.
 
@@ -62,7 +61,7 @@ VSPHERE_VM_RESOURCE_AGENT_IMAGE_URI = { value = "${AGENT_IMAGE_REGISTRY}/vsphere
 CONTROLLER_IMAGE_URI = { value = "${AGENT_IMAGE_REGISTRY}/controller:v${AGENT_IMAGE_VERSION}", condition = { env_not_set = ["CONTROLLER_IMAGE_URI"] } }
 
 [tasks.metadata-url.env]
-METADATA_URL = { script=["echo ${METADATA_BASE_URL}/${VARIANT}/${ARCH}"], condition = { env_not_set = ["METADATA_URL"] } }
+METADATA_URL = { script=["echo ${METADATA_BASE_URL}/${VARIANT}/${ARCH}/"], condition = { env_not_set = ["METADATA_URL"] } }
 
 [tasks.cluster-name.env]
 CLUSTER_NAME = { script=['''
@@ -106,7 +105,7 @@ fi
 [tasks.mgmt-cluster-kubeconfig-base64.env]
 MGMT_CLUSTER_KUBECONFIG_BASE64 = {script=['''
 if [ -n "${MGMT_CLUSTER_KUBECONFIG_PATH}" ]; then
-    cat ${MGMT_CLUSTER_KUBECONFIG_PATH} | base64
+    cat ${MGMT_CLUSTER_KUBECONFIG_PATH} | base64 -w 0
 fi
 ''']}
 
@@ -177,7 +176,7 @@ script = '''
 [tasks.workload-preconditions]
 condition = { env_contains = { "TEST_TYPE" = "workload" } }
 script = '''
-if [ -z ${WORKLOAD_TEST_NAME} ] || [ -z ${WORKLOAD_TEST_IMAGE} ]; then
+if [ -z ${WORKLOAD_TEST_NAME} ] || [ -z ${WORKLOAD_TEST_IMAGE_URI} ]; then
     echo "WORKLOAD_TEST_NAME or WORKLOAD_TEST_IMAGE_URI not set"
     exit 1
 fi
@@ -207,15 +206,7 @@ echo "${OUTPUT_FILE}"
 '''
 
 [tasks.create-inner.env]
-OUTPUT_FILE = {script=['''
-if echo ${TEST_TYPE} | grep 'migration' > /dev/null; then
-    echo "output/${CLUSTER_NAME}-migration.yaml"
-elif echo ${TEST_TYPE} | grep 'workload' > /dev/null; then
-    echo "output/${CLUSTER_NAME}-workload.yaml"
-else
-    echo "output/${CLUSTER_NAME}.yaml"
-fi
-''']}
+OUTPUT_FILE = { script = [ "echo 'output/${CLUSTER_NAME}.yaml'" ] }
 
 [tasks.create]
 script = '''
