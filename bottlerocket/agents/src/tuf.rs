@@ -12,7 +12,11 @@ pub fn tuf_repo_urls(
     tuf_repo: &TufRepoConfig,
     resources: &Resources,
 ) -> ProviderResult<(Url, Url)> {
-    let metadata_url = Url::parse(&tuf_repo.metadata_url).context(
+    let mut tuf_repo_metadata_url = tuf_repo.metadata_url.clone();
+    if !tuf_repo_metadata_url.ends_with('/') {
+        tuf_repo_metadata_url.push('/');
+    }
+    let metadata_url = Url::parse(&tuf_repo_metadata_url).context(
         resources,
         format!(
             "Failed to parse TUF repo's metadata URL '{}'",
@@ -96,4 +100,30 @@ where
         .context(Resources::Clear, "Failed to copy root.json to file")?;
 
     Ok(path)
+}
+
+#[test]
+fn metadata_url_no_slash_join() {
+    let tuf_repo = TufRepoConfig {
+        metadata_url: String::from("https://foo.bar/baz"),
+        targets_url: String::from("https://foo.bar/targets"),
+    };
+    let (metadata_url, _) = tuf_repo_urls(&tuf_repo, &Resources::Clear).unwrap();
+    assert_eq!(
+        metadata_url.join("metadata").unwrap().as_str(),
+        "https://foo.bar/baz/metadata"
+    )
+}
+
+#[test]
+fn metadata_url_slash_join() {
+    let tuf_repo = TufRepoConfig {
+        metadata_url: String::from("https://foo.bar/baz/"),
+        targets_url: String::from("https://foo.bar/targets"),
+    };
+    let (metadata_url, _) = tuf_repo_urls(&tuf_repo, &Resources::Clear).unwrap();
+    assert_eq!(
+        metadata_url.join("metadata").unwrap().as_str(),
+        "https://foo.bar/baz/metadata"
+    )
 }
