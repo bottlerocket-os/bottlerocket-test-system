@@ -18,11 +18,8 @@ dependencies = [
  "agent-common",
  "aws-config",
  "aws-credential-types",
-<<<<<<< HEAD
  "aws-sdk-iam",
  "aws-sdk-ssm",
-=======
->>>>>>> 8ec8d75 (updated: Update `aws_config` -> 0.54)
  "aws-sdk-sts",
  "aws-smithy-types",
  "aws-types",
@@ -427,11 +424,7 @@ dependencies = [
  "percent-encoding",
  "regex",
  "sha2",
-<<<<<<< HEAD
  "time",
-=======
- "time 0.3.15",
->>>>>>> 8ec8d75 (updated: Update `aws_config` -> 0.54)
  "tracing",
 ]
 
@@ -589,15 +582,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0ea22880d78093b0cbe17c89f64a7d457941e65759157ec6cb31a31d652b05e5"
 
 [[package]]
-<<<<<<< HEAD
 name = "base64"
 version = "0.21.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a4a4ddaa51a5bc52a6948f74c06d20aaaddb71924eab79b8c97a8c556e942d6a"
 
 [[package]]
-=======
->>>>>>> 8ec8d75 (updated: Update `aws_config` -> 0.54)
 name = "base64-simd"
 version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -949,7 +939,6 @@ dependencies = [
  "block-buffer",
  "crypto-common",
  "subtle",
-<<<<<<< HEAD
 ]
 
 [[package]]
@@ -959,8 +948,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ca3aa72a6f96ea37bbc5aa912f6788242832f75369bdfdadcb0e38423f100059"
 dependencies = [
  "dirs-sys",
-=======
->>>>>>> 8ec8d75 (updated: Update `aws_config` -> 0.54)
 ]
 
 [[package]]
@@ -2889,7 +2876,6 @@ dependencies = [
 ]
 
 [[package]]
-<<<<<<< HEAD
 name = "tokio-pipe"
 version = "0.2.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2900,8 +2886,6 @@ dependencies = [
 ]
 
 [[package]]
-=======
->>>>>>> 8ec8d75 (updated: Update `aws_config` -> 0.54)
 name = "tokio-rustls"
 version = "0.23.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
