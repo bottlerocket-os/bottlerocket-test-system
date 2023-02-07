@@ -249,9 +249,9 @@ async fn create_iam_instance_profile(iam_client: &aws_sdk_iam::Client) -> Provid
 }
 
 fn exists(result: Result<GetInstanceProfileOutput, SdkError<GetInstanceProfileError>>) -> bool {
-    if let Err(SdkError::ServiceError { err, raw: _ }) = result {
+    if let Err(SdkError::ServiceError(service_error)) = result {
         if matches!(
-            &err.kind,
+            &service_error.err().kind,
             GetInstanceProfileErrorKind::NoSuchEntityException(_)
         ) {
             return false;

@@ -933,9 +933,9 @@ async fn does_cluster_exist(name: &str, aws_clients: &AwsClients) -> ProviderRes
 fn not_found(
     result: &std::result::Result<DescribeClusterOutput, SdkError<DescribeClusterError>>,
 ) -> bool {
-    if let Err(SdkError::ServiceError { err, raw: _ }) = result {
+    if let Err(SdkError::ServiceError(service_error)) = result {
         if matches!(
-            &err.kind,
+            &service_error.err().kind,
             DescribeClusterErrorKind::ResourceNotFoundException(_)
         ) {
             return true;

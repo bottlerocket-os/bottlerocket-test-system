@@ -316,11 +316,11 @@ async fn wait_for_successful_run_instances(
 ) -> Result<RunInstancesOutput, SdkError<RunInstancesError>> {
     loop {
         let run_instance_result = run_instances.clone().send().await;
-        if let Err(SdkError::ServiceError { err, raw: _ }) = &run_instance_result {
-            if matches!(&err.code(), Some("InvalidParameterValue")) {
+        if let Err(SdkError::ServiceError(service_error)) = &run_instance_result {
+            if matches!(&service_error.err().code(), Some("InvalidParameterValue")) {
                 warn!(
                     "An error occured while trying to run instances '{}'. Retrying in 10s.",
-                    err
+                    service_error.err()
                 );
                 tokio::time::sleep(Duration::from_secs(10)).await;
                 info!("Rerunning run instances");

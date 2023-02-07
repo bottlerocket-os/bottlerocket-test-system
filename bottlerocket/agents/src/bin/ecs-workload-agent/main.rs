@@ -336,12 +336,12 @@ async fn create_or_find_task_definition(
         .send()
         .await;
 
-    if let Err(SdkError::ServiceError { err, raw: _ }) = &task_info {
+    if let Err(SdkError::ServiceError(service_error)) = &task_info {
         // If we get an error and it's a ClientException, that means the call worked
         // but the identifier was not found. Anything else and it will be handled
         // below with lookup calls.
         if matches!(
-            &err.kind,
+            &service_error.err().kind,
             DescribeTaskDefinitionErrorKind::ClientException(_)
         ) {
             return create_task_definition(ecs_client, &task_def_name, test_def).await;
@@ -410,10 +410,7 @@ fn is_matching_definition(test_def: &WorkloadTest, task_def: &TaskDefinition) ->
                     // If the test needs GPU support, then it needs to be one of the resource requirements.
                     let mut gpu_set = false;
                     for requirement in reqs {
-                        if requirement
-                            .r#type()
-                            .unwrap_or(&ResourceType::Unknown("".to_string()))
-                            == &ResourceType::Gpu
+                        if matches!(requirement.r#type(), Some(&ResourceType::Gpu))
                             && requirement.value().unwrap_or_default() == "1"
                         {
                             gpu_set = true;
