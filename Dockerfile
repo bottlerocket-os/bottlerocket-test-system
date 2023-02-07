@@ -32,11 +32,8 @@ RUN mkdir -p /usr/share/licenses/testsys && \
     chown -R builder:builder /usr/share/licenses/testsys
 
 ARG ARCH
-# We need these environment variables set for building the `openssl-sys` crate
-ENV PKG_CONFIG_PATH=/${ARCH}-bottlerocket-linux-musl/sys-root/usr/lib/pkgconfig
-ENV PKG_CONFIG_ALLOW_CROSS=1
+
 ENV CARGO_HOME=/src/.cargo
-ENV OPENSSL_STATIC=true
 
 # Build bottlerocket agents
 WORKDIR /src/bottlerocket/agents/

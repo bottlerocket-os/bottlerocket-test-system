@@ -4,12 +4,9 @@ FROM ${BUILDER_IMAGE} as build
 
 ARG ARCH
 USER root
-# We need these environment variables set for building the `openssl-sys` crate
-ENV PKG_CONFIG_PATH=/${ARCH}-bottlerocket-linux-musl/sys-root/usr/lib/pkgconfig
-ENV PKG_CONFIG_ALLOW_CROSS=1
+
 ENV CARGO_HOME=/src/.cargo
-ENV OPENSSL_STATIC=true
-ENV CARGO_HOME=/src/.cargo
+
 ADD ./ /src/
 WORKDIR /src/agent/test-agent-cli
 RUN --mount=type=cache,mode=0777,target=/src/target \
