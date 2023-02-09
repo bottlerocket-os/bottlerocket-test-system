@@ -50,6 +50,9 @@ pub enum Error {
     #[snafu(display("Unable to find {}", what))]
     NotFound { what: String },
 
+    #[snafu(display("Some resources are still in the cluster"))]
+    ResourceExisting,
+
     #[snafu(display("Unable to send event: {}", source))]
     Sender {
         source: futures::channel::mpsc::SendError,
