@@ -2,7 +2,7 @@ use super::{
     error, CrdState, CrdType, DeleteEvent, DockerConfigJson, ImageConfig, ResourceState, Result,
     SelectionParams, StatusSnapshot,
 };
-use crate::clients::{CrdClient, ResourceClient, TestClient};
+use crate::clients::{AllowNotFound, CrdClient, ResourceClient, TestClient};
 use crate::constants::{LABEL_COMPONENT, TESTSYS_RESULTS_FILE};
 use crate::system::AgentType;
 use crate::{Crd, CrdName, Resource, SecretName, TaskState, Test, TestUserState};
@@ -152,6 +152,19 @@ impl TestManager {
 
     /// Uninstall testsys from a cluster.
     pub async fn uninstall(&self) -> Result<()> {
+        if !self
+            .resource_client()
+            .get_all()
+            .await
+            .allow_not_found(|_| ())
+            .context(error::ClientSnafu {
+                action: "get all resources",
+            })?
+            .unwrap_or_default()
+            .is_empty()
+        {
+            return Err(error::Error::ResourceExisting);
+        }
         self.uninstall_testsys().await?;
         self.wait_for_namespace_deletion().await
     }

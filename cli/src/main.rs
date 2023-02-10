@@ -68,7 +68,7 @@ async fn main() {
     let args = Args::parse();
     init_logger(args.log_level);
     if let Err(e) = run(args).await {
-        eprintln!("{}", e);
+        eprintln!("{:?}", e);
         std::process::exit(1);
     }
 }
