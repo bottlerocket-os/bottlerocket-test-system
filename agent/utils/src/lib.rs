@@ -19,6 +19,7 @@ use std::{env, fs};
 pub mod aws;
 pub mod constants;
 mod error;
+pub mod ssm;
 
 /// Decode base64 blob and write to a file at the specified path
 pub async fn base64_decode_write_file(

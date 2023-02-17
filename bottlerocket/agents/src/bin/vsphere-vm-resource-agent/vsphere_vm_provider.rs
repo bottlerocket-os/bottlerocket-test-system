@@ -1,6 +1,6 @@
-use crate::aws::{create_ssm_activation, ensure_ssm_service_role, wait_for_ssm_ready};
 use agent_utils::aws::aws_config;
 use agent_utils::base64_decode_write_file;
+use agent_utils::ssm::{create_ssm_activation, ensure_ssm_service_role, wait_for_ssm_ready};
 use bottlerocket_agents::constants::TEST_CLUSTER_KUBECONFIG_PATH;
 use bottlerocket_agents::tuf::{download_target, tuf_repo_urls};
 use bottlerocket_agents::userdata::{decode_to_string, merge_values};
@@ -139,7 +139,9 @@ impl Create for VMCreator {
             .context(resources, "Error sending cluster creation message")?;
 
         // Ensure we have a SSM service role we can attach to the VMs
-        ensure_ssm_service_role(&iam_client).await?;
+        ensure_ssm_service_role(&iam_client)
+            .await
+            .context(Resources::Clear, "Unable to check for SSM service role")?;
 
         info!("Getting vSphere secret");
         memo.current_status = "Getting vSphere secret".to_string();
@@ -343,8 +345,9 @@ impl Create for VMCreator {
 
         let vm_count = spec.configuration.vm_count.unwrap_or(DEFAULT_VM_COUNT);
         // Generate SSM activation codes and IDs
-        let activation =
-            create_ssm_activation(resources, &vsphere_cluster.name, vm_count, &ssm_client).await?;
+        let activation = create_ssm_activation(&vsphere_cluster.name, vm_count, &ssm_client)
+            .await
+            .context(resources, "Unable to create SSM activation")?;
         memo.ssm_activation_id = activation.0.to_owned();
         let control_host_ctr_userdata = json!({"ssm":{"activation-id": activation.0.to_string(), "activation-code":activation.1.to_string(),"region":"us-west-2"}});
         debug!(
@@ -461,13 +464,14 @@ impl Create for VMCreator {
 
             let instance_info = tokio::time::timeout(
                 Duration::from_secs(60),
-                wait_for_ssm_ready(resources, &ssm_client, &memo.ssm_activation_id, ip),
+                wait_for_ssm_ready(&ssm_client, &memo.ssm_activation_id, ip),
             )
             .await
             .context(
                 resources,
                 format!("Timed out waiting for SSM agent to be ready on VM '{}'", ip),
-            )??;
+            )?
+            .context(resources, "Unable to determine if SSM activation is ready")?;
 
             memo.vms.push(VSphereVM {
                 name: node_name,

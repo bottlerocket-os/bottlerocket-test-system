@@ -4,7 +4,6 @@ Provides Bottlerocket VMWare vSphere VMs to serve as Kubernetes nodes via `govc`
 
 !*/
 
-mod aws;
 mod vsphere_vm_provider;
 
 use crate::vsphere_vm_provider::{VMCreator, VMDestroyer};

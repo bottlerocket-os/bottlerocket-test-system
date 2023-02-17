@@ -18,6 +18,8 @@ dependencies = [
  "agent-common",
  "aws-config",
  "aws-credential-types",
+ "aws-sdk-iam",
+ "aws-sdk-ssm",
  "aws-sdk-sts",
  "aws-smithy-types",
  "aws-types",
