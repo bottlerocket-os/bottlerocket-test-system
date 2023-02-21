@@ -13,6 +13,12 @@ STARTING_VERSION = { value = "v1.11.0", condition = { env_not_set = ["STARTING_V
 SONOBUOY_MODE = { value = "quick", condition = { env_not_set = ["SONOBUOY_MODE"] } }
 TARGETS_URL = { value = "https://updates.bottlerocket.aws/targets", condition = { env_not_set = ["TARGETS_URL"] } }
 K8S_VERSION = { value = "v1.24", condition = { env_not_set = ["K8S_VERSION"] } }
+SINGLE_IMAGE_REPO = { value = "false", condition = { env_not_set = ["SINGLE_IMAGE_REPO"] } }
+
+# The following variable needs a value only if `SINGLE_IMAGE_REPO` is "true". This value should be the name of the repository containing all agent images.
+
+# AGENT_IMAGE_REPO = 
+
 
 # The following variables need values only if a workload test file is being created. `WORKLOAD_TEST_NAME` is an identifier for the workload test. `WORKLOAD_TEST_IMAGE_URI` is the URI to the workload test image.
 
@@ -46,6 +52,7 @@ AGENT_IMAGE_VERSION = { script=["echo $(cli --version | awk '{print $2}')"], con
 
 [tasks.set-agent-images]
 dependencies = ["set-agent-version"]
+condition = { env_false = ["SINGLE_IMAGE_REPO"] }
 
 [tasks.set-agent-images.env]
 ECS_TEST_AGENT_IMAGE_URI = { value = "${AGENT_IMAGE_REGISTRY}/ecs-test-agent:v${AGENT_IMAGE_VERSION}", condition = { env_not_set = ["ECS_TEST_AGENT_IMAGE_URI"] } }
@@ -59,6 +66,23 @@ EKS_RESOURCE_AGENT_IMAGE_URI = { value = "${AGENT_IMAGE_REGISTRY}/eks-resource-a
 VSPHERE_K8S_CLUSTER_RESOURCE_AGENT_IMAGE_URI = { value = "${AGENT_IMAGE_REGISTRY}/vsphere-k8s-cluster-resource-agent:v${AGENT_IMAGE_VERSION}", condition = { env_not_set = ["VSPHERE_K8S_CLUSTER_RESOURCE_AGENT_IMAGE_URI"] } }
 VSPHERE_VM_RESOURCE_AGENT_IMAGE_URI = { value = "${AGENT_IMAGE_REGISTRY}/vsphere-vm-resource-agent:v${AGENT_IMAGE_VERSION}", condition = { env_not_set = ["VSPHERE_VM_RESOURCE_AGENT_IMAGE_URI"] } }
 CONTROLLER_IMAGE_URI = { value = "${AGENT_IMAGE_REGISTRY}/controller:v${AGENT_IMAGE_VERSION}", condition = { env_not_set = ["CONTROLLER_IMAGE_URI"] } }
+
+[tasks.set-agent-images-single-repo]
+dependencies = ["set-agent-version"]
+condition = { env_true = ["SINGLE_IMAGE_REPO"] }
+
+[tasks.set-agent-images-single-repo.env]
+ECS_TEST_AGENT_IMAGE_URI = { value = "${AGENT_IMAGE_REGISTRY}/${AGENT_IMAGE_REPO}:ecs-test-agent-v${AGENT_IMAGE_VERSION}", condition = { env_not_set = ["ECS_TEST_AGENT_IMAGE_URI"] } }
+MIGRATION_TEST_AGENT_IMAGE_URI = { value = "${AGENT_IMAGE_REGISTRY}/${AGENT_IMAGE_REPO}:migration-test-agent-v${AGENT_IMAGE_VERSION}", condition = { env_not_set = ["MIGRATION_TEST_AGENT_IMAGE_URI"] } }
+ECS_RESOURCE_AGENT_IMAGE_URI = { value = "${AGENT_IMAGE_REGISTRY}/${AGENT_IMAGE_REPO}:ecs-resource-agent-v${AGENT_IMAGE_VERSION}", condition = { env_not_set = ["ECS_RESOURCE_AGENT_IMAGE_URI"] } }
+EC2_RESOURCE_AGENT_IMAGE_URI = { value = "${AGENT_IMAGE_REGISTRY}/${AGENT_IMAGE_REPO}:ec2-resource-agent-v${AGENT_IMAGE_VERSION}", condition = { env_not_set = ["EC2_RESOURCE_AGENT_IMAGE_URI"] } }
+ECS_WORKLOAD_AGENT_IMAGE_URI = { value = "${AGENT_IMAGE_REGISTRY}/${AGENT_IMAGE_REPO}:ecs-workload-agent-v${AGENT_IMAGE_VERSION}", condition = { env_not_set = ["ECS_WORKLOAD_AGENT_IMAGE_URI"] } }
+K8S_WORKLOAD_AGENT_IMAGE_URI = { value = "${AGENT_IMAGE_REGISTRY}/${AGENT_IMAGE_REPO}:k8s-workload-agent-v${AGENT_IMAGE_VERSION}", condition = { env_not_set = ["K8S_WORKLOAD_AGENT_IMAGE_URI"] } }
+SONOBUOY_TEST_AGENT_IMAGE_URI = { value = "${AGENT_IMAGE_REGISTRY}/${AGENT_IMAGE_REPO}:sonobuoy-test-agent-v${AGENT_IMAGE_VERSION}", condition = { env_not_set = ["SONOBUOY_TEST_AGENT_IMAGE_URI"] } }
+EKS_RESOURCE_AGENT_IMAGE_URI = { value = "${AGENT_IMAGE_REGISTRY}/${AGENT_IMAGE_REPO}:eks-resource-agent-v${AGENT_IMAGE_VERSION}", condition = { env_not_set = ["EKS_RESOURCE_AGENT_IMAGE_URI"] } }
+VSPHERE_K8S_CLUSTER_RESOURCE_AGENT_IMAGE_URI = { value = "${AGENT_IMAGE_REGISTRY}/${AGENT_IMAGE_REPO}:vsphere-k8s-cluster-resource-agent-v${AGENT_IMAGE_VERSION}", condition = { env_not_set = ["VSPHERE_K8S_CLUSTER_RESOURCE_AGENT_IMAGE_URI"] } }
+VSPHERE_VM_RESOURCE_AGENT_IMAGE_URI = { value = "${AGENT_IMAGE_REGISTRY}/${AGENT_IMAGE_REPO}:vsphere-vm-resource-agent-v${AGENT_IMAGE_VERSION}", condition = { env_not_set = ["VSPHERE_VM_RESOURCE_AGENT_IMAGE_URI"] } }
+CONTROLLER_IMAGE_URI = { value = "${AGENT_IMAGE_REGISTRY}/${AGENT_IMAGE_REPO}:controller-v${AGENT_IMAGE_VERSION}", condition = { env_not_set = ["CONTROLLER_IMAGE_URI"] } }
 
 [tasks.metadata-url.env]
 METADATA_URL = { script=["echo ${METADATA_BASE_URL}/${VARIANT}/${ARCH}/"], condition = { env_not_set = ["METADATA_URL"] } }
@@ -134,10 +158,10 @@ fi
 ''']}
 
 [tasks.set-env]
-dependencies = ["set-agent-images", "cluster-name", "gpu", "metadata-url", "ova-name", "bottlerocket-ami-id", "mgmt-cluster-kubeconfig-base64", "instance-types"]
+dependencies = ["set-agent-images", "set-agent-images-single-repo", "cluster-name", "gpu", "metadata-url", "ova-name", "bottlerocket-ami-id", "mgmt-cluster-kubeconfig-base64", "instance-types"]
 
 [tasks.install-controller]
-dependencies = ["set-agent-images"]
+dependencies = ["set-agent-images", "set-agent-images-single-repo"]
 script = "cli install --controller-uri ${CONTROLLER_IMAGE_URI}"
 
 [tasks.add-aws-secret]
