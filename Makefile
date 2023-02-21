@@ -179,16 +179,24 @@ tag-images: $(TAG_IMAGES)  ## tag all images
 
 # This defines the TAG_IMAGE variable, extracting the image name from the target name
 $(TAG_IMAGES): TAG_IMAGE = $(@:tag-%=%)
-$(TAG_IMAGES): check-publish-version
+$(TAG_IMAGES): check-publish-version check-single-publish-repository
+ifeq ($(SINGLE_IMAGE_REPO), true)
+	docker tag $(TAG_IMAGE) $(if $(PUBLISH_IMAGES_REGISTRY), $(PUBLISH_IMAGES_REGISTRY)/)$(PUBLISH_IMAGES_REPO):$(TAG_IMAGE)-$(PUBLISH_IMAGES_VERSION)
+else
 	docker tag $(TAG_IMAGE) $(if $(PUBLISH_IMAGES_REGISTRY), $(PUBLISH_IMAGES_REGISTRY)/)$(TAG_IMAGE):$(PUBLISH_IMAGES_VERSION)
+endif
 
 # Define a target to publish all images
 publish-images: $(PUSH_IMAGES)  ## publish all images
 
 # This defines the TAG_IMAGE variable, extracting the image name from the target name
 $(PUSH_IMAGES): TAG_IMAGE = $(@:push-%=%)
-$(PUSH_IMAGES): check-publish-version check-publish-registry
+$(PUSH_IMAGES): check-publish-version check-publish-registry check-single-publish-repository
+ifeq ($(SINGLE_IMAGE_REPO), true)
+	docker push $(if $(PUBLISH_IMAGES_REGISTRY), $(PUBLISH_IMAGES_REGISTRY)/)$(PUBLISH_IMAGES_REPO):$(TAG_IMAGE)-$(PUBLISH_IMAGES_VERSION)
+else
 	docker push $(if $(PUBLISH_IMAGES_REGISTRY), $(PUBLISH_IMAGES_REGISTRY)/)$(TAG_IMAGE):$(PUBLISH_IMAGES_VERSION)
+endif
 
 check-publish-version:
 ifndef PUBLISH_IMAGES_VERSION
@@ -198,6 +206,12 @@ endif
 check-publish-registry:
 ifndef PUBLISH_IMAGES_REGISTRY
 	$(error PUBLISH_IMAGES_REGISTRY is undefined)
+endif
+
+check-single-publish-repository:
+ifdef PUBLISH_IMAGES_REPO
+else ifeq ($(SINGLE_IMAGE_REPO), true)
+	$(error PUBLISH_IMAGES_REPO is undefined)
 endif
 
 mdlint:
