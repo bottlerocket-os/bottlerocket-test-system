@@ -80,7 +80,7 @@ pub async fn create_ssm_activation(
         .registration_limit(num_registration)
         .tags(
             Tag::builder()
-                .key("TESTSYS_VSPHERE_VMS")
+                .key("TESTSYS_MANAGED_INSTANCE")
                 .value(cluster_name)
                 .build(),
         )

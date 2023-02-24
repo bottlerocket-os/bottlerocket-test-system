@@ -182,6 +182,27 @@ pub struct VSphereK8sClusterConfig {
     pub mgmt_cluster_kubeconfig_base64: String,
 }
 
+/// The configuration information for a eks instance provider.
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, Default, Configuration, Builder)]
+#[serde(rename_all = "camelCase")]
+#[crd("Resource")]
+pub struct MetalK8sClusterConfig {
+    // Base64-encoded Kubeconfig for the CAPI management cluster
+    pub mgmt_cluster_kubeconfig_base64: String,
+
+    /// The role that should be assumed when activating SSM for the machines.
+    pub assume_role: Option<String>,
+
+    /// The base64-encoded EKS Anywhere config for this cluster.
+    pub cluster_config_base64: String,
+
+    /// The base64-encoded hardware csv that will be used for cluster creation.
+    pub hardware_csv_base64: String,
+
+    /// Custom TOML data that should be inserted into user-data settings.
+    pub custom_user_data: Option<CustomUserData>,
+}
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub enum CreationPolicy {
