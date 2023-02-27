@@ -1,0 +1,28 @@
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Effect": "Allow",
+            "Action": [
+                "ecs:DescribeTaskDefinition",
+                "ecs:ListTaskDefinitions"
+            ],
+            "Resource": "*"
+        },
+        {
+            "Effect": "Allow",
+            "Action": "ecs:DescribeClusters",
+            "Resource": "arn:aws:ecs:${Region}:${Account}:cluster/${ClusterName}"
+        },
+        {
+            "Effect": "Allow",
+            "Action": "ecs:RunTask",
+            "Resource": "arn:aws:ecs:${Region}:${Account}:task-definition/${TaskDefinitionFamilyName}:${TaskDefinitionRevisionNumber}"
+        },
+        {
+            "Effect": "Allow",
+            "Action": "ecs:DescribeTasks",
+            "Resource": "arn:aws:ecs:${Region}:${Account}:task/${ClusterName}/${TaskId}"
+        }
+    ]
+}

@@ -1,0 +1,21 @@
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Effect": "Allow",
+            "Action": [
+                "ssm:DescribeInstanceInformation",
+                "ssm:ListCommandInvocations"
+            ],
+            "Resource": "*"
+        },
+        {
+            "Effect": "Allow",
+            "Action": [
+                "ssm:DescribeDocument",
+                "ssm:SendCommand"
+            ],
+            "Resource": "arn:aws:ssm:${Region}:${Account}:document/${DocumentName}"
+        }
+    ]
+}
