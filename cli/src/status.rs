@@ -1,9 +1,7 @@
 use anyhow::{Context, Result};
 use clap::Parser;
 use terminal_size::{Height, Width};
-use testsys_model::test_manager::{
-    CrdState, CrdType, SelectionParams, StatusProgress, TestManager,
-};
+use testsys_model::test_manager::{CrdState, CrdType, SelectionParams, StatusColumn, TestManager};
 
 /// Check the status of a TestSys object.
 #[derive(Debug, Parser)]
@@ -12,17 +10,9 @@ pub(crate) struct Status {
     #[clap(long = "json")]
     json: bool,
 
-    /// Check the status of the testsys controller
-    #[clap(long, short = 'c')]
-    controller: bool,
-
     /// Include the status of resources when reporting status
     #[clap(long, short = 'p')]
     progress: bool,
-
-    /// Include the `Test` status, too. Requires `--progress`
-    #[clap(long, requires("progress"))]
-    with_test: bool,
 
     /// Include the time the CRD was last updated
     #[clap(long, short = 'u')]
@@ -64,18 +54,23 @@ impl Status {
             state: self.state,
         };
         let mut status = client
-            .status(&selection_params, self.controller)
+            .status(&selection_params)
             .await
             .context("Unable to get status")?;
 
-        if self.with_test {
-            status.with_progress(StatusProgress::WithTests);
-        } else if self.progress {
-            status.with_progress(StatusProgress::Resources);
+        status.add_column(StatusColumn::name());
+        status.add_column(StatusColumn::crd_type());
+        status.add_column(StatusColumn::state());
+        status.add_column(StatusColumn::passed());
+        status.add_column(StatusColumn::failed());
+        status.add_column(StatusColumn::skipped());
+
+        if self.progress {
+            status.add_column(StatusColumn::progress());
         }
 
         if self.with_time {
-            status.with_time();
+            status.add_column(StatusColumn::last_update());
         }
 
         if self.json {

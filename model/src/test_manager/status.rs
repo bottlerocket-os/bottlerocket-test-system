@@ -1,13 +1,60 @@
-use super::StatusProgress;
 use crate::{Crd, TaskState};
-use k8s_openapi::api::core::v1::PodStatus;
 use kube::{core::object::HasStatus, ResourceExt};
 use serde::Serialize;
-use tabled::object::Segment;
+use std::cmp::max;
+use std::fmt::Display;
+use tabled::builder::Builder;
+use tabled::locator::ByColumnName;
+use tabled::object::Rows;
 use tabled::width::MinWidth;
-use tabled::{
-    Alignment, Concat, Extract, Modify, Panel, Style, Table, TableIteratorExt, Tabled, Width,
-};
+use tabled::{Alignment, Disable, Modify, Style, Table, Width};
+
+#[derive(Clone)]
+pub struct StatusColumn {
+    header: String,
+    //  If the Vec contains more than 1 value, each value will occupy a single box stacked
+    //  vertically. If no value should be printed an empty Vec should be returned.
+    values: fn(&Crd) -> Vec<String>,
+    alignment: TextAlignment,
+    width: Option<usize>,
+}
+
+impl std::fmt::Debug for StatusColumn {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("AdditionalColumn")
+            .field("header", &self.header)
+            .field("alignment", &self.alignment)
+            .field("width", &self.width)
+            .finish()
+    }
+}
+
+impl Default for StatusColumn {
+    fn default() -> Self {
+        Self {
+            values: |_| Default::default(),
+            header: Default::default(),
+            alignment: Default::default(),
+            width: Default::default(),
+        }
+    }
+}
+
+#[derive(Default, Clone, Debug)]
+pub enum TextAlignment {
+    #[default]
+    Left,
+    Right,
+}
+
+impl TextAlignment {
+    fn horizontal(&self) -> Alignment {
+        match self {
+            TextAlignment::Left => Alignment::left(),
+            TextAlignment::Right => Alignment::right(),
+        }
+    }
+}
 
 /// `StatusSnapshot` represents the status of a set of testsys objects (including the controller).
 /// `StatusSnapshot::to_string()` is used to create a table representation of the status.
@@ -20,18 +67,13 @@ pub struct StatusSnapshot {
     finished: bool,
     passed: bool,
     failed_tests: Vec<String>,
-    controller_status: Option<PodStatus>,
     crds: Vec<Crd>,
     #[serde(skip)]
-    additional_columns: Vec<AdditionalColumn>,
-    #[serde(skip)]
-    with_progress: Option<StatusProgress>,
-    #[serde(skip)]
-    with_time: bool,
+    columns: Vec<StatusColumn>,
 }
 
 impl StatusSnapshot {
-    pub(super) fn new(controller_status: Option<PodStatus>, crds: Vec<Crd>) -> Self {
+    pub(super) fn new(crds: Vec<Crd>) -> Self {
         let mut passed = true;
         let mut finished = true;
         let mut failed_tests = Vec::new();
@@ -71,130 +113,97 @@ impl StatusSnapshot {
             passed,
             finished,
             failed_tests,
-            controller_status,
             crds,
-            additional_columns: Default::default(),
-            with_progress: None,
-            with_time: false,
+            columns: Default::default(),
         }
     }
 
-    pub fn new_column<S1>(&mut self, header: S1, f: fn(&Crd) -> Option<String>) -> &mut Self
+    pub fn new_column<S1>(&mut self, header: S1, f: fn(&Crd) -> Vec<String>) -> &mut Self
     where
         S1: Into<String>,
     {
-        self.additional_columns.push(AdditionalColumn {
+        self.columns.push(StatusColumn {
             header: header.into(),
-            value: f,
+            values: f,
+            ..Default::default()
         });
         self
     }
 
-    pub fn with_progress(&mut self, status_progress: StatusProgress) -> &mut Self {
-        self.with_progress = Some(status_progress);
+    pub fn add_column(&mut self, col: StatusColumn) -> &mut Self {
+        self.columns.push(col);
         self
     }
 
-    pub fn with_time(&mut self) -> &mut Self {
-        self.with_time = true;
+    pub fn set_columns(&mut self, columns: Vec<StatusColumn>) -> &mut Self {
+        self.columns = columns;
         self
-    }
-
-    fn progress_column(&self) -> Option<Table> {
-        let mut crds = self.crds.clone();
-        crds.sort_by_key(|crd| crd.name());
-        self.with_progress.as_ref().map(|with_progress| {
-            let controller_line = self.controller_status.as_ref().map(|_| "".to_string());
-            controller_line
-                .into_iter()
-                .chain(
-                    // Convert the CRDs to an iterator
-                    crds.iter()
-                        // For each CRD create a `Vec` containing the status for that CRD
-                        // It needs to be a `Vec` because each `TestResults` is displayed in it's own
-                        // row. `flat_map` will automatically flatten the `Iterator<Vec>` to
-                        // `Iterator<Option<String>>`
-                        .flat_map(|crd| match crd {
-                            Crd::Test(test) => {
-                                if test.agent_status().results.is_empty()
-                                    && test.agent_status().current_test.is_none()
-                                {
-                                    // If there are no test results, a line will still be there
-                                    vec![Some("No Test Results".to_string())]
-                                } else {
-                                    test.agent_status()
-                                        .results
-                                        .iter()
-                                        // For each `TestResults`, if the test progress should be included, add
-                                        // it to the `Vec`, if not just add `None`
-                                        .map(|result| {
-                                            if matches!(with_progress, StatusProgress::WithTests) {
-                                                result.other_info.to_owned()
-                                            } else {
-                                                None
-                                            }
-                                        })
-                                        .chain(
-                                            // Show the current test's status because it should be well
-                                            // formatted
-                                            test.agent_status()
-                                                .current_test
-                                                .as_ref()
-                                                .map(|result| result.other_info.to_owned())
-                                                .into_iter(),
-                                        )
-                                        .collect()
-                                }
-                            }
-                            // Get the status of each resource and wrap it in a `Vec` to match types
-                            // with the `Test` branch.
-                            Crd::Resource(resource) => vec![resource.status().and_then(|status| {
-                                status.agent_info.as_ref().and_then(|agent_info| {
-                                    agent_info
-                                        .get("currentStatus")
-                                        .and_then(|info| info.as_str().map(|info| info.to_string()))
-                                })
-                            })],
-                        })
-                        // Convert the `Option<String>` to `String`
-                        .map(Option::unwrap_or_default),
-                )
-                .table()
-                .with(Width::wrap(50))
-                .with(Extract::segment(1.., 0..))
-                .with(Panel::header("STATUS"))
-                .to_owned()
-        })
-    }
-
-    fn time_column(&self) -> Option<Table> {
-        let mut crds = self.crds.clone();
-        crds.sort_by_key(|crd| crd.name());
-        self.with_time.then(|| {
-            let controller_line = self.controller_status.as_ref().map(|_| "".to_string());
-            controller_line
-                .into_iter()
-                .chain(
-                    // Convert the CRDs to an iterator
-                    crds.iter()
-                        // For each CRD create a `Vec` containing the status for that CRD
-                        // It needs to be a `Vec` because each `TestResults` is displayed in it's own
-                        // row. `flat_map` will automatically flatten the `Iterator<Vec>` to
-                        // `Iterator<Option<String>>`
-                        .flat_map(|crd| vec![crd_time(crd); crd_rows(crd)])
-                        // Convert the `Option<String>` to `String`
-                        .map(Option::unwrap_or_default),
-                )
-                .table()
-                .with(MinWidth::new(20))
-                .with(Extract::segment(1.., 0..))
-                .with(Panel::header("LAST UPDATE"))
-                .to_owned()
-        })
     }
 }
 
-impl std::fmt::Display for StatusSnapshot {
+impl From<&StatusSnapshot> for Table {
+    fn from(snapshot: &StatusSnapshot) -> Self {
+        let headers: Vec<_> = snapshot
+            .columns
+            .iter()
+            .map(|column| vec![column.header.to_string()])
+            .collect();
+        let status_data = snapshot
+            .crds
+            .iter()
+            .map(|crd| snapshot.columns.iter().map(|column| (column.values)(crd)))
+            .fold(headers, |data, x| {
+                let mut row_count = 0;
+                // Determine how many rows this CRD will take in the status table.
+                for col in x.clone() {
+                    row_count = max(row_count, col.len());
+                }
+                data.into_iter()
+                    .zip(x)
+                    .map(|(mut data_col, mut crd_data)| {
+                        // Extend each Vec from this CRD to have the same number of rows.
+                        crd_data.resize(row_count, "".into());
+                        data_col.extend(crd_data);
+                        data_col
+                    })
+                    .collect()
+            });
+
+        let mut table = Builder::from_iter(status_data)
+            .index()
+            // index is needed to use `transpose` however, we don't want the index to show, so
+            // `hide_index` is used as well.
+            .hide_index()
+            .transpose()
+            .to_owned()
+            .build();
+
+        table
+            .with(Style::blank())
+            // Remove the headers that `tabled` adds.
+            .with(Disable::row(Rows::first()));
+
+        // Apply the custom formatting for each column
+        for column in &snapshot.columns {
+            if let Some(width) = column.width {
+                table.with(
+                    Modify::new(ByColumnName::new(&column.header))
+                        .with(column.alignment.horizontal())
+                        .with(Width::truncate(width)),
+                );
+            } else {
+                table.with(
+                    Modify::new(ByColumnName::new(&column.header))
+                        .with(column.alignment.horizontal()),
+                );
+            }
+        }
+
+        table
+    }
+}
+
+impl Display for StatusSnapshot {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let mut table: Table = self.into();
         if let Some(width) = f.width() {
@@ -213,208 +222,79 @@ impl std::fmt::Display for StatusSnapshot {
     }
 }
 
-impl From<&StatusSnapshot> for Table {
-    fn from(status: &StatusSnapshot) -> Self {
-        let mut crds = status.crds.clone();
-        crds.sort_by_key(|crd| crd.name());
-        let mut results = Vec::new();
-        if let Some(controller_status) = &status.controller_status {
-            results.push(ResultRow {
-                name: "controller".to_string(),
-                object_type: "Controller".to_string(),
-                state: controller_status.phase.clone().unwrap_or_default(),
-                passed: None,
-                skipped: None,
-                failed: None,
-            });
+// The following contains several common status columns for users.
+impl StatusColumn {
+    pub fn name() -> StatusColumn {
+        StatusColumn {
+            header: "NAME".to_string(),
+            values: |crd| crd.name().into_iter().collect(),
+            ..Default::default()
         }
-        for crd in &crds {
-            results.extend::<Vec<ResultRow>>(crd.into());
+    }
+
+    pub fn crd_type() -> StatusColumn {
+        StatusColumn {
+            header: "TYPE".to_string(),
+            values: crd_type,
+            ..Default::default()
         }
-
-        let progress_column = status.progress_column();
-
-        let time_column = status.time_column();
-
-        // An extra line for the controller if it's status is being reported.
-        let controller_line = if status.controller_status.is_some() {
-            Some("".to_string())
-        } else {
-            None
-        };
-
-        progress_column
-            .into_iter()
-            .chain(time_column.into_iter())
-            .chain(
-                status
-                    .additional_columns
-                    .iter()
-                    // Create a table for each additional column so they can all be merged into a single table.
-                    .map(|additional_column| {
-                        // Add the requested header and a blank string for the controller line in the status table.
-                        vec![additional_column.header.clone()]
-                            .into_iter()
-                            .chain(controller_line.clone())
-                            // Add a row for each crd based on the function provided.
-                            .chain(status.crds.iter().flat_map(|crd| {
-                                vec![
-                                    (additional_column.value)(crd).unwrap_or_default();
-                                    crd_rows(crd)
-                                ]
-                            }))
-                            // Convert the data for this column into a table.
-                            .table()
-                            .with(Extract::segment(1.., 0..))
-                            .to_owned()
-                    }),
-            )
-            // Add each additional column to the standard results table (`Table::new(results)`).
-            .fold(&mut Table::new(results), |table1, table2| {
-                table1.with(Concat::horizontal(table2.to_owned()))
-            })
-            .with(Style::blank())
-            .with(Modify::new(Segment::all()).with(Alignment::left()))
-            .to_owned()
     }
-}
 
-#[derive(Tabled, Default, Clone, Serialize)]
-struct ResultRow {
-    #[tabled(rename = "NAME")]
-    name: String,
-    #[tabled(rename = "TYPE")]
-    object_type: String,
-    #[tabled(rename = "STATE")]
-    state: String,
-    #[tabled(rename = "PASSED")]
-    #[tabled(display_with = "display_option")]
-    passed: Option<u64>,
-    #[tabled(rename = "SKIPPED")]
-    #[tabled(display_with = "display_option")]
-    skipped: Option<u64>,
-    #[tabled(rename = "FAILED")]
-    #[tabled(display_with = "display_option")]
-    failed: Option<u64>,
-}
-
-fn display_option(o: &Option<u64>) -> String {
-    match o {
-        Some(count) => format!("{}", count),
-        None => "".to_string(),
-    }
-}
-
-impl From<&Crd> for Vec<ResultRow> {
-    fn from(crd: &Crd) -> Self {
-        let mut results = Vec::new();
-        match crd {
-            Crd::Test(test) => {
-                let name = test.metadata.name.clone().unwrap_or_default();
-                let state = test.test_user_state().to_string();
-                let test_results = &test.agent_status().results;
-                let current_test = &test.agent_status().current_test;
-                let mut test_iter = test_results.iter().peekable();
-                if test_iter.peek().is_none() && current_test.is_none() {
-                    results.push(ResultRow {
-                        name,
-                        object_type: "Test".to_string(),
-                        state,
-                        passed: None,
-                        skipped: None,
-                        failed: None,
-                    })
-                } else {
-                    for (test_count, result) in test_iter.enumerate() {
-                        let retry_name = if test_count == 0 {
-                            name.clone()
-                        } else {
-                            format!("{}-retry-{}", name, test_count)
-                        };
-                        results.push(ResultRow {
-                            name: retry_name,
-                            object_type: "Test".to_string(),
-                            state: result.outcome.to_string(),
-                            passed: Some(result.num_passed),
-                            skipped: Some(result.num_skipped),
-                            failed: Some(result.num_failed),
-                        });
-                    }
-                    if let Some(result) = current_test {
-                        let retry_name = if test_results.is_empty() {
-                            name
-                        } else {
-                            format!("{}-retry-{}", name, test_results.len())
-                        };
-                        results.push(ResultRow {
-                            name: retry_name,
-                            object_type: "Test".to_string(),
-                            state,
-                            passed: Some(result.num_passed),
-                            skipped: Some(result.num_skipped),
-                            failed: Some(result.num_failed),
-                        });
-                    }
-                }
-            }
-            Crd::Resource(resource) => {
-                let name = resource.name_any();
-                let mut create_state = TaskState::Unknown;
-                let mut delete_state = TaskState::Unknown;
-                if let Some(status) = resource.status() {
-                    create_state = status.creation.task_state;
-                    delete_state = status.destruction.task_state;
-                }
-                let state = match delete_state {
-                    TaskState::Unknown => create_state,
-                    _ => delete_state,
-                };
-
-                results.push(ResultRow {
-                    name,
-                    object_type: "Resource".to_string(),
-                    state: state.to_string(),
-                    passed: None,
-                    skipped: None,
-                    failed: None,
-                });
-            }
-        };
-        results
-    }
-}
-
-struct AdditionalColumn {
-    header: String,
-    value: fn(&Crd) -> Option<String>,
-}
-
-impl std::fmt::Debug for AdditionalColumn {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("AdditionalColumn")
-            .field("header", &self.header)
-            .finish()
-    }
-}
-
-/// Determine the number of status rows that will be occupied by this CRD
-fn crd_rows(crd: &Crd) -> usize {
-    match crd {
-        Crd::Test(test) => {
-            let retry_count = test.agent_status().results.len()
-                + test.agent_status().current_test.as_ref().map_or(0, |_| 1);
-            if retry_count != 0 {
-                retry_count
-            } else {
-                1
-            }
+    pub fn state() -> StatusColumn {
+        StatusColumn {
+            header: "STATE".to_string(),
+            values: crd_state,
+            ..Default::default()
         }
-        Crd::Resource(_) => 1,
+    }
+
+    pub fn passed() -> StatusColumn {
+        StatusColumn {
+            header: "PASSED".to_string(),
+            values: |crd| crd_results(crd, ResultType::Passed),
+            alignment: TextAlignment::Right,
+            width: Some(6),
+        }
+    }
+
+    pub fn failed() -> StatusColumn {
+        StatusColumn {
+            header: "FAILED".to_string(),
+            values: |crd| crd_results(crd, ResultType::Failed),
+            alignment: TextAlignment::Right,
+            width: Some(6),
+        }
+    }
+
+    pub fn skipped() -> StatusColumn {
+        StatusColumn {
+            header: "SKIPPED".to_string(),
+            values: |crd| crd_results(crd, ResultType::Skipped),
+            alignment: TextAlignment::Right,
+            width: Some(7),
+        }
+    }
+
+    pub fn last_update() -> StatusColumn {
+        StatusColumn {
+            header: "LAST UPDATE".to_string(),
+            values: crd_time,
+            alignment: TextAlignment::Left,
+            width: Some(20),
+        }
+    }
+
+    pub fn progress() -> StatusColumn {
+        StatusColumn {
+            header: "PROGRESS".to_string(),
+            values: crd_progress,
+            ..Default::default()
+        }
     }
 }
 
 /// Determine the time of the last update to the CRD
-fn crd_time(crd: &Crd) -> Option<String> {
+fn crd_time(crd: &Crd) -> Vec<String> {
     match crd {
         Crd::Test(test) => test
             .status
@@ -423,5 +303,78 @@ fn crd_time(crd: &Crd) -> Option<String> {
         Crd::Resource(resource) => resource
             .status()
             .and_then(|status| status.last_update.to_owned()),
+    }
+    .into_iter()
+    .collect()
+}
+
+/// Determine the type of the CRD
+fn crd_type(crd: &Crd) -> Vec<String> {
+    match crd {
+        Crd::Test(_) => vec!["Test".to_string()],
+        Crd::Resource(_) => vec!["Resource".to_string()],
+    }
+}
+
+/// Determine the state of the CRD
+fn crd_state(crd: &Crd) -> Vec<String> {
+    match crd {
+        Crd::Test(test) => vec![test.test_user_state().to_string()],
+        Crd::Resource(resource) => {
+            let mut create_state = TaskState::Unknown;
+            let mut delete_state = TaskState::Unknown;
+            if let Some(status) = resource.status() {
+                create_state = status.creation.task_state;
+                delete_state = status.destruction.task_state;
+            }
+            let state = match delete_state {
+                TaskState::Unknown => create_state,
+                _ => delete_state,
+            };
+            vec![state.to_string()]
+        }
+    }
+}
+
+enum ResultType {
+    Passed,
+    Failed,
+    Skipped,
+}
+
+/// Collect the
+fn crd_results(crd: &Crd, res_type: ResultType) -> Vec<String> {
+    match crd {
+        Crd::Resource(_) => Default::default(),
+        Crd::Test(test) => {
+            let mut results = Vec::new();
+            let test_results = &test.agent_status().results;
+            let current_test = &test.agent_status().current_test;
+            let test_iter = test_results.iter().peekable();
+            for result in test_iter.chain(current_test) {
+                results.push(
+                    match res_type {
+                        ResultType::Passed => result.num_passed,
+                        ResultType::Failed => result.num_skipped,
+                        ResultType::Skipped => result.num_failed,
+                    }
+                    .to_string(),
+                );
+            }
+            results
+        }
+    }
+}
+
+fn crd_progress(crd: &Crd) -> Vec<String> {
+    match crd {
+        Crd::Resource(_) => Default::default(),
+        Crd::Test(test) => test
+            .agent_status()
+            .current_test
+            .as_ref()
+            .and_then(|res| res.other_info.to_owned())
+            .into_iter()
+            .collect(),
     }
 }

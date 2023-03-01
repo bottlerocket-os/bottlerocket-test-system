@@ -3,7 +3,7 @@ pub use error::{Error, Result};
 pub use manager::{read_manifest, TestManager};
 use serde::{Deserialize, Serialize};
 use serde_plain::derive_fromstr_from_deserialize;
-pub use status::StatusSnapshot;
+pub use status::{StatusColumn, StatusSnapshot};
 use std::collections::HashMap;
 
 mod delete;
@@ -85,10 +85,3 @@ pub enum ResourceState {
 }
 
 derive_fromstr_from_deserialize!(ResourceState);
-
-/// `StatusProgress` represents whether a `Test`'s `other_info` should be included or not.
-#[derive(Debug)]
-pub enum StatusProgress {
-    WithTests,
-    Resources,
-}
