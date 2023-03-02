@@ -6,6 +6,17 @@ The format is inspired by [Keep a Changelog](https://keepachangelog.com/en/1.0.0
 Since this project is only a vessel for packaging a few binary tools, its adherence to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html) is loose at best.
 
+## [0.4.0] - 2023-03-03
+
+Update eksctl, eksctl-anywhere
+
+### Contents
+
+- eksctl 0.132.0
+- kubeadm v1.23.13
+- sonobuoy v0.56.4
+- eksctl-anywhere 0.14.3-30
+
 ## [0.3.0] - 2022-12-15
 
 Update eksctl, eksctl-anywhere
