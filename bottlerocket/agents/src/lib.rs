@@ -9,6 +9,7 @@ This `lib.rs` provides code that is used by multiple agent binaries or used by t
 use bottlerocket_types::agent_config::CreationPolicy;
 use resource_agent::provider::{ProviderError, ProviderResult, Resources};
 
+pub mod clusters;
 pub mod constants;
 pub mod error;
 pub mod sonobuoy;

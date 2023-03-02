@@ -10,6 +10,8 @@ agent-common = { version = "0.0.5", path = "../../agent/agent-common" }
 aws-config = "0.54"
 aws-credential-types = "0.54"
 aws-types = "0.54"
+aws-sdk-iam = "0.24"
+aws-sdk-ssm = "0.24"
 aws-sdk-sts = "0.24"
 aws-smithy-types = "0.54"
 base64 = "0.20"

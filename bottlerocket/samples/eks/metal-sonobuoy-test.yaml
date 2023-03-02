@@ -1,0 +1,36 @@
+apiVersion: testsys.system/v1
+kind: Test
+metadata:
+  name: ${CLUSTER_NAME}-test
+  namespace: testsys
+spec:
+  agent:
+    name: sonobuoy-test-agent
+    image: ${SONOBUOY_TEST_AGENT_IMAGE_URI}
+    keepRunning: true
+    configuration:
+      assumeRole: ${ASSUME_ROLE}
+      kubeconfigBase64: \${${CLUSTER_NAME}.encodedKubeconfig}
+      plugin: "e2e"
+      mode: ${SONOBUOY_MODE}
+  dependsOn: []
+  resources: [${CLUSTER_NAME}]
+---
+apiVersion: testsys.system/v1
+kind: Resource
+metadata:
+  name: ${CLUSTER_NAME}
+  namespace: testsys
+spec:
+  agent:
+    name: agent
+    image: ${METAL_K8S_CLUSTER_RESOURCE_AGENT_IMAGE_URI}
+    keepRunning: true
+    privileged: true
+    configuration:
+      mgmtClusterKubeconfigBase64: ${MGMT_CLUSTER_KUBECONFIG_BASE64}
+      hardwareCsvBase64: ${HARDWARE_CSV_BASE64}
+      assumeRole: ${ASSUME_ROLE}
+      clusterConfigBase64: ${CLUSTER_CONFIG_BASE64}
+  dependsOn: []
+  destructionPolicy: onDeletion

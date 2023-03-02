@@ -1,4 +1,7 @@
 use agent_utils::base64_decode_write_file;
+use bottlerocket_agents::clusters::{
+    retrieve_workload_cluster_kubeconfig, write_validate_mgmt_kubeconfig,
+};
 use bottlerocket_agents::constants::TEST_CLUSTER_KUBECONFIG_PATH;
 use bottlerocket_agents::is_cluster_creation_required;
 use bottlerocket_agents::tuf::{download_target, tuf_repo_urls};
@@ -6,7 +9,7 @@ use bottlerocket_agents::vsphere::vsphere_credentials;
 use bottlerocket_types::agent_config::{
     CreationPolicy, VSphereK8sClusterConfig, VSPHERE_CREDENTIALS_SECRET_NAME,
 };
-use k8s_openapi::api::core::v1::{Node, Secret};
+use k8s_openapi::api::core::v1::Node;
 use kube::api::ListParams;
 use kube::config::{KubeConfigOptions, Kubeconfig};
 use kube::{Api, Config};
@@ -152,7 +155,7 @@ impl Create for VSphereK8sClusterCreator {
                 .await
                 .context(resources, "Error sending cluster creation message")?;
             let mgmt_k8s_client = write_validate_mgmt_kubeconfig(
-                &spec.configuration,
+                &spec.configuration.mgmt_cluster_kubeconfig_base64,
                 &mgmt_kubeconfig_path,
                 &resources,
             )
@@ -192,29 +195,6 @@ impl Create for VSphereK8sClusterCreator {
             encoded_kubeconfig,
         })
     }
-}
-
-/// Write out and check CAPI management cluster is accessible and valid
-async fn write_validate_mgmt_kubeconfig(
-    config: &VSphereK8sClusterConfig,
-    mgmt_kubeconfig_path: &str,
-    resources: &Resources,
-) -> ProviderResult<kube::client::Client> {
-    debug!("Decoding and writing out kubeconfig for the CAPI management cluster");
-    base64_decode_write_file(&config.mgmt_cluster_kubeconfig_base64, mgmt_kubeconfig_path)
-        .await
-        .context(
-            resources,
-            "Failed to write out kubeconfig for the CAPI management cluster",
-        )?;
-    let mgmt_kubeconfig = Kubeconfig::read_from(mgmt_kubeconfig_path)
-        .context(resources, "Unable to read kubeconfig")?;
-    let mgmt_config =
-        Config::from_custom_kubeconfig(mgmt_kubeconfig.to_owned(), &KubeConfigOptions::default())
-            .await
-            .context(resources, "Unable load kubeconfig")?;
-    kube::client::Client::try_from(mgmt_config)
-        .context(resources, "Unable create K8s client from kubeconfig")
 }
 
 async fn is_vsphere_k8s_cluster_creation_required(
@@ -576,38 +556,6 @@ spec:
             clusterspec_path
         ),
     )
-}
-
-/// Retrieve the kubeconfig for the vSphere K8s workload cluster from the CAPI mgmt cluster
-async fn retrieve_workload_cluster_kubeconfig(
-    mgmt_k8s_client: kube::client::Client,
-    cluster_name: &str,
-    resources: &Resources,
-) -> ProviderResult<String> {
-    let k8s_secrets: Api<Secret> = Api::namespaced(mgmt_k8s_client, "eksa-system");
-    let kubeconfig_secret = k8s_secrets
-        .get(&format!("{}-kubeconfig", cluster_name))
-        .await
-        .context(
-            resources,
-            format!(
-                "vSphere K8s cluster '{}' does not exist in CAPI mgmt cluster",
-                cluster_name
-            ),
-        )?;
-    let encoded_kubeconfig = kubeconfig_secret
-        .data
-        .context(resources, "Missing kubeconfig secret")?
-        .get("value")
-        .context(resources, "Missing base64-encoded kubeconfig secret value")?
-        .to_owned();
-    Ok(serde_json::to_string(&encoded_kubeconfig)
-        .context(
-            resources,
-            "Unable to serialize kubeconfig secret ByteString to String",
-        )?
-        .trim_matches('"')
-        .to_string())
 }
 
 /// This is the object that will destroy vSphere K8s clusters.

@@ -39,6 +39,12 @@ SINGLE_IMAGE_REPO = { value = "false", condition = { env_not_set = ["SINGLE_IMAG
 # GOVC_RESOURCE_POOL = 
 # GOVC_FOLDER = 
 
+# The following variables need values only if a metal test file is being created.
+
+# MGMT_CLUSTER_KUBECONFIG_PATH = 
+# HARDWARE_CSV_PATH = 
+# CLUSTER_CONFIG_PATH = 
+
 [tasks.install-cli]
 script=['''
 cargo install --path "${CARGO_MAKE_WORKING_DIRECTORY}/../../cli"
@@ -65,6 +71,7 @@ SONOBUOY_TEST_AGENT_IMAGE_URI = { value = "${AGENT_IMAGE_REGISTRY}/sonobuoy-test
 EKS_RESOURCE_AGENT_IMAGE_URI = { value = "${AGENT_IMAGE_REGISTRY}/eks-resource-agent:v${AGENT_IMAGE_VERSION}", condition = { env_not_set = ["EKS_RESOURCE_AGENT_IMAGE_URI"] } }
 VSPHERE_K8S_CLUSTER_RESOURCE_AGENT_IMAGE_URI = { value = "${AGENT_IMAGE_REGISTRY}/vsphere-k8s-cluster-resource-agent:v${AGENT_IMAGE_VERSION}", condition = { env_not_set = ["VSPHERE_K8S_CLUSTER_RESOURCE_AGENT_IMAGE_URI"] } }
 VSPHERE_VM_RESOURCE_AGENT_IMAGE_URI = { value = "${AGENT_IMAGE_REGISTRY}/vsphere-vm-resource-agent:v${AGENT_IMAGE_VERSION}", condition = { env_not_set = ["VSPHERE_VM_RESOURCE_AGENT_IMAGE_URI"] } }
+METAL_K8S_CLUSTER_RESOURCE_AGENT_IMAGE_URI = { value = "${AGENT_IMAGE_REGISTRY}/metal-k8s-cluster-resource-agent:v${AGENT_IMAGE_VERSION}", condition = { env_not_set = ["METAL_K8S_CLUSTER_RESOURCE_AGENT_IMAGE_URI"] } }
 CONTROLLER_IMAGE_URI = { value = "${AGENT_IMAGE_REGISTRY}/controller:v${AGENT_IMAGE_VERSION}", condition = { env_not_set = ["CONTROLLER_IMAGE_URI"] } }
 
 [tasks.set-agent-images-single-repo]
@@ -82,6 +89,7 @@ SONOBUOY_TEST_AGENT_IMAGE_URI = { value = "${AGENT_IMAGE_REGISTRY}/${AGENT_IMAGE
 EKS_RESOURCE_AGENT_IMAGE_URI = { value = "${AGENT_IMAGE_REGISTRY}/${AGENT_IMAGE_REPO}:eks-resource-agent-v${AGENT_IMAGE_VERSION}", condition = { env_not_set = ["EKS_RESOURCE_AGENT_IMAGE_URI"] } }
 VSPHERE_K8S_CLUSTER_RESOURCE_AGENT_IMAGE_URI = { value = "${AGENT_IMAGE_REGISTRY}/${AGENT_IMAGE_REPO}:vsphere-k8s-cluster-resource-agent-v${AGENT_IMAGE_VERSION}", condition = { env_not_set = ["VSPHERE_K8S_CLUSTER_RESOURCE_AGENT_IMAGE_URI"] } }
 VSPHERE_VM_RESOURCE_AGENT_IMAGE_URI = { value = "${AGENT_IMAGE_REGISTRY}/${AGENT_IMAGE_REPO}:vsphere-vm-resource-agent-v${AGENT_IMAGE_VERSION}", condition = { env_not_set = ["VSPHERE_VM_RESOURCE_AGENT_IMAGE_URI"] } }
+METAL_K8S_CLUSTER_RESOURCE_AGENT_IMAGE_URI = { value = "${AGENT_IMAGE_REGISTRY}/${AGENT_IMAGE_REPO}:metal-k8s-cluster-resource-agent-v${AGENT_IMAGE_VERSION}", condition = { env_not_set = ["VSPHERE_K8S_CLUSTER_RESOURCE_AGENT_IMAGE_URI"] } }
 CONTROLLER_IMAGE_URI = { value = "${AGENT_IMAGE_REGISTRY}/${AGENT_IMAGE_REPO}:controller-v${AGENT_IMAGE_VERSION}", condition = { env_not_set = ["CONTROLLER_IMAGE_URI"] } }
 
 [tasks.metadata-url.env]
@@ -102,7 +110,7 @@ CLUSTER_NAME = { script=['''
 OVA_NAME = { script=["echo bottlerocket-${VARIANT}-x86_64-${STARTING_VERSION}.ova"], condition = { env_not_set = ["OVA_NAME"] } }
 
 [tasks.bottlerocket-ami-id]
-condition = { env_not_set = ["BOTTLEROCKET_AMI_ID"], env_contains = { "VARIANT" = "aws" } }
+condition = { env_not_set = ["BOTTLEROCKET_AMI_ID"], env_contains = { VARIANT = "aws" } }
 
 [tasks.bottlerocket-ami-id.env]
 BOTTLEROCKET_AMI_ID = { script=['''
@@ -129,7 +137,33 @@ fi
 [tasks.mgmt-cluster-kubeconfig-base64.env]
 MGMT_CLUSTER_KUBECONFIG_BASE64 = {script=['''
 if [ -n "${MGMT_CLUSTER_KUBECONFIG_PATH}" ]; then
-    cat ${MGMT_CLUSTER_KUBECONFIG_PATH} | base64 -w 0
+    if echo "" | base64 -w0 >/dev/null 2>&1 ; then
+        cat ${MGMT_CLUSTER_KUBECONFIG_PATH} | base64 -w0
+    else
+        cat ${MGMT_CLUSTER_KUBECONFIG_PATH} | base64
+    fi
+fi
+''']}
+
+[tasks.hardware-csv-base64.env]
+HARDWARE_CSV_BASE64 = {script=['''
+if [ -n "${HARDWARE_CSV_PATH}" ]; then
+    if echo "" | base64 -w0 >/dev/null 2>&1 ; then
+        cat ${HARDWARE_CSV_PATH} | base64 -w0
+    else
+        cat ${HARDWARE_CSV_PATH} | base64
+    fi
+fi
+''']}
+
+[tasks.cluster-config-base64.env]
+CLUSTER_CONFIG_BASE64 = {script=['''
+if [ -n "${CLUSTER_CONFIG_PATH}" ]; then
+    if echo "" | base64 -w0 >/dev/null 2>&1 ; then
+        cat ${CLUSTER_CONFIG_PATH} | base64 -w0
+    else
+        cat ${CLUSTER_CONFIG_PATH} | base64
+    fi
 fi
 ''']}
 
@@ -158,7 +192,7 @@ fi
 ''']}
 
 [tasks.set-env]
-dependencies = ["set-agent-images", "set-agent-images-single-repo", "cluster-name", "gpu", "metadata-url", "ova-name", "bottlerocket-ami-id", "mgmt-cluster-kubeconfig-base64", "instance-types"]
+dependencies = ["set-agent-images", "set-agent-images-single-repo", "cluster-name", "gpu", "metadata-url", "ova-name", "bottlerocket-ami-id", "mgmt-cluster-kubeconfig-base64", "hardware-csv-base64", "cluster-config-base64", "instance-types"]
 
 [tasks.install-controller]
 dependencies = ["set-agent-images", "set-agent-images-single-repo"]
@@ -166,7 +200,7 @@ script = "cli install --controller-uri ${CONTROLLER_IMAGE_URI}"
 
 [tasks.add-aws-secret]
 dependencies = ["install-controller"]
-condition = { env_contains = { "CLUSTER_TYPE" = "kind" } }
+condition = { env_contains = { CLUSTER_TYPE = "kind" } }
 script = '''
 ACCESS_KEY_ID=$(aws configure get aws_access_key_id)
 SECRET_ACCESS_KEY=$(aws configure get aws_secret_access_key)
@@ -178,7 +212,7 @@ cli add-secret map  \
 
 [tasks.add-vsphere-secret]
 dependencies = ["install-controller"]
-condition = { env_contains = { "VARIANT" = "vmware" } }
+condition = { env_contains = { VARIANT = "vmware" } }
 script = '''
 cli add-secret map  \
  --name "vsphere-creds" \
@@ -198,7 +232,7 @@ script = '''
 '''
 
 [tasks.workload-preconditions]
-condition = { env_contains = { "TEST_TYPE" = "workload" } }
+condition = { env_contains = { TEST_TYPE = "workload" } }
 script = '''
 if [ -z ${WORKLOAD_TEST_NAME} ] || [ -z ${WORKLOAD_TEST_IMAGE_URI} ]; then
     echo "WORKLOAD_TEST_NAME or WORKLOAD_TEST_IMAGE_URI not set"
@@ -207,7 +241,7 @@ fi
 '''
 
 [tasks.vmware-preconditions]
-condition = { env_contains = { "TEST_TYPE" = "vmware" } }
+condition = { env_contains = { TEST_TYPE = "vmware" } }
 script = '''
 if [ -z ${CONTROL_PLANE_ENDPOINT_IP} ] || [ -z ${MGMT_CLUSTER_KUBECONFIG_PATH} ] || [ -z ${GOVC_USERNAME} ] || [ -z ${GOVC_PASSWORD} ] \
     || [ -z ${GOVC_DATACENTER} ] || [ -z ${GOVC_DATASTORE} ] || [ -z ${GOVC_URL} ] || [ -z ${GOVC_NETWORK} ] \
@@ -304,3 +338,6 @@ VARIANT = { value = "vmware-k8s-1.24", condition = { env_not_set = ["VARIANT"] }
 
 [tasks.vmware-sonobuoy-test.env]
 VARIANT = { value = "vmware-k8s-1.24", condition = { env_not_set = ["VARIANT"] } }
+
+[tasks.metal-sonobuoy-test.env]
+VARIANT = { value = "metal-k8s-1.24", condition = { env_not_set = ["VARIANT"] } }
