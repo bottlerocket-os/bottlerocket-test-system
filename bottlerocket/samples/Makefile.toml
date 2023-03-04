@@ -8,8 +8,8 @@ ARCH = { value = "x86_64", condition = { env_not_set = ["ARCH"] } }
 CLUSTER_TYPE = { value = "eks", condition = { env_not_set = ["CLUSTER_TYPE"] } }
 ASSUME_ROLE = { value = "~", condition = { env_not_set = ["ASSUME_ROLE"] } }
 AWS_REGION = { value = "us-west-2", condition = { env_not_set = ["AWS_REGION"] } }
-UPGRADE_VERSION = { value = "v1.11.1", condition = { env_not_set = ["UPGRADE_VERSION"] } }
-STARTING_VERSION = { value = "v1.11.0", condition = { env_not_set = ["STARTING_VERSION"] } }
+UPGRADE_VERSION = { script = "v1.11.1", condition = { env_not_set = ["UPGRADE_VERSION"] } }
+STARTING_VERSION = { value = "latest", condition = { env_not_set = ["STARTING_VERSION"] } }
 SONOBUOY_MODE = { value = "quick", condition = { env_not_set = ["SONOBUOY_MODE"] } }
 TARGETS_URL = { value = "https://updates.bottlerocket.aws/targets", condition = { env_not_set = ["TARGETS_URL"] } }
 K8S_VERSION = { value = "v1.24", condition = { env_not_set = ["K8S_VERSION"] } }
