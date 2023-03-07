@@ -4,7 +4,7 @@ version = 3
 
 [[package]]
 name = "agent-common"
-version = "0.0.5"
+version = "0.0.6"
 dependencies = [
  "snafu",
  "tempfile",
@@ -13,7 +13,7 @@ dependencies = [
 
 [[package]]
 name = "agent-utils"
-version = "0.0.5"
+version = "0.0.6"
 dependencies = [
  "agent-common",
  "aws-config",
@@ -607,7 +607,7 @@ dependencies = [
 
 [[package]]
 name = "bottlerocket-agents"
-version = "0.0.5"
+version = "0.0.6"
 dependencies = [
  "agent-common",
  "agent-utils",
@@ -649,7 +649,7 @@ dependencies = [
 
 [[package]]
 name = "bottlerocket-types"
-version = "0.0.5"
+version = "0.0.6"
 dependencies = [
  "builder-derive",
  "configuration-derive",
@@ -673,7 +673,7 @@ dependencies = [
 
 [[package]]
 name = "builder-derive"
-version = "0.0.5"
+version = "0.0.6"
 dependencies = [
  "configuration-derive",
  "proc-macro2",
@@ -782,7 +782,7 @@ dependencies = [
 
 [[package]]
 name = "cli"
-version = "0.0.5"
+version = "0.0.6"
 dependencies = [
  "anyhow",
  "assert_cmd",
@@ -801,7 +801,7 @@ dependencies = [
 
 [[package]]
 name = "configuration-derive"
-version = "0.0.5"
+version = "0.0.6"
 dependencies = [
  "quote",
  "syn",
@@ -809,7 +809,7 @@ dependencies = [
 
 [[package]]
 name = "controller"
-version = "0.0.5"
+version = "0.0.6"
 dependencies = [
  "anyhow",
  "env_logger",
@@ -2195,7 +2195,7 @@ dependencies = [
 
 [[package]]
 name = "resource-agent"
-version = "0.0.5"
+version = "0.0.6"
 dependencies = [
  "agent-common",
  "async-trait",
@@ -2380,7 +2380,7 @@ dependencies = [
 
 [[package]]
 name = "selftest"
-version = "0.0.5"
+version = "0.0.6"
 dependencies = [
  "anyhow",
  "envy",
@@ -2703,7 +2703,7 @@ checksum = "507e9898683b6c43a9aa55b64259b721b52ba226e0f3779137e50ad114a4c90b"
 
 [[package]]
 name = "test-agent"
-version = "0.0.5"
+version = "0.0.6"
 dependencies = [
  "agent-common",
  "async-trait",
@@ -2719,7 +2719,7 @@ dependencies = [
 
 [[package]]
 name = "test-agent-cli"
-version = "0.0.5"
+version = "0.0.6"
 dependencies = [
  "agent-common",
  "argh",
@@ -2744,7 +2744,7 @@ dependencies = [
 
 [[package]]
 name = "testsys-model"
-version = "0.0.5"
+version = "0.0.6"
 dependencies = [
  "async-recursion",
  "async-trait",

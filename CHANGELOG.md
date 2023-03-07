@@ -6,6 +6,59 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+## [0.0.6] - 2023-03-03
+
+### Fixed
+
+- Add category field to allow getting all testsys objects ([#726])
+- TestManager: Simplify code for `cargo make test` ([#742])
+- TestManager: Block on uninstall for namespace ([#745])
+- Added check to make sure that `metadata_url` ends with `/` ([#765])
+- TestManager: Ensure no resources for uninstall ([#770])
+- Agents: Fix snake case for EksctlConfig ([#744])
+
+### Added
+
+- ECS workload testing agent ([#725])
+- Sample test config files ([#740], [#750], [#756], [#760])
+- Sample Makefile.toml ([#751], [#761], [#771], [#772])
+- Support for `assume_role` in workload agents ([#752])
+- Metal k8s resource provider ([#773])
+
+### Changed
+
+- `run-instances` now uses IMDSv2 ([#753])
+- Renamed the `model` crate to `testsys-model` ([#755])
+
+### Removed
+
+- `bottlerocket/testsys` ([#754], [#759])
+
+[#726]: https://github.com/bottlerocket-os/bottlerocket-test-system/pull/726
+[#725]: https://github.com/bottlerocket-os/bottlerocket-test-system/pull/725
+[#742]: https://github.com/bottlerocket-os/bottlerocket-test-system/pull/742
+[#740]: https://github.com/bottlerocket-os/bottlerocket-test-system/pull/740
+[#744]: https://github.com/bottlerocket-os/bottlerocket-test-system/pull/744
+[#745]: https://github.com/bottlerocket-os/bottlerocket-test-system/pull/745
+[#750]: https://github.com/bottlerocket-os/bottlerocket-test-system/pull/750
+[#751]: https://github.com/bottlerocket-os/bottlerocket-test-system/pull/751
+[#752]: https://github.com/bottlerocket-os/bottlerocket-test-system/pull/752
+[#753]: https://github.com/bottlerocket-os/bottlerocket-test-system/pull/753
+[#754]: https://github.com/bottlerocket-os/bottlerocket-test-system/pull/754
+[#755]: https://github.com/bottlerocket-os/bottlerocket-test-system/pull/755
+[#756]: https://github.com/bottlerocket-os/bottlerocket-test-system/pull/756
+[#759]: https://github.com/bottlerocket-os/bottlerocket-test-system/pull/759
+[#760]: https://github.com/bottlerocket-os/bottlerocket-test-system/pull/760
+[#761]: https://github.com/bottlerocket-os/bottlerocket-test-system/pull/761
+[#765]: https://github.com/bottlerocket-os/bottlerocket-test-system/pull/765
+[#770]: https://github.com/bottlerocket-os/bottlerocket-test-system/pull/770
+[#771]: https://github.com/bottlerocket-os/bottlerocket-test-system/pull/771
+[#772]: https://github.com/bottlerocket-os/bottlerocket-test-system/pull/772
+[#773]: https://github.com/bottlerocket-os/bottlerocket-test-system/pull/773
+
+[0.0.6]: https://github.com/bottlerocket-os/bottlerocket-test-system/tree/v0.0.6
+[Unreleased]: https://github.com/bottlerocket-os/bottlerocket-test-system/compare/v0.0.6...develop
+
 ## [0.0.5] - 2022-12-20
 
 ### Fixed
@@ -20,7 +73,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 [#720]: https://github.com/bottlerocket-os/bottlerocket-test-system/pull/720
 
 [0.0.5]: https://github.com/bottlerocket-os/bottlerocket-test-system/tree/v0.0.5
-[Unreleased]: https://github.com/bottlerocket-os/bottlerocket-test-system/compare/v0.0.5...develop
 
 ## [0.0.4] - 2022-12-15
 

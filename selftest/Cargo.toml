@@ -1,6 +1,6 @@
 [package]
 name = "selftest"
-version = "0.0.5"
+version = "0.0.6"
 edition = "2021"
 publish = false
 license = "MIT OR Apache-2.0"
@@ -13,7 +13,7 @@ futures = "0.3"
 k8s-openapi = { version = "0.17", default-features = false, features = ["v1_24"] }
 kube = { version = "0.78", default-features = true }
 lazy_static = "1"
-testsys-model = { version = "0.0.5", path = "../model"}
+testsys-model = { version = "0.0.6", path = "../model"}
 serde = "1"
 tempfile = "3"
 tokio = { version = "1", features = ["time"] }

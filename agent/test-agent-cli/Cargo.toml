@@ -1,19 +1,19 @@
 [package]
 name = "test-agent-cli"
-version = "0.0.5"
+version = "0.0.6"
 edition = "2021"
 publish = false
 license = "MIT OR Apache-2.0"
 
 [dependencies]
 argh = "0.1"
-agent-common = { version = "0.0.5", path = "../agent-common" }
+agent-common = { version = "0.0.6", path = "../agent-common" }
 copy_dir = "0.1"
-test-agent = { version = "0.0.5", path = "../test-agent" }
+test-agent = { version = "0.0.6", path = "../test-agent" }
 tokio = { version = "1", features = ["macros", "rt-multi-thread", "fs"] }
 tokio-util = "0.7"
 log = "0.4"
-testsys-model = { version = "0.0.5", path = "../../model" }
+testsys-model = { version = "0.0.6", path = "../../model" }
 snafu = "0.7"
 async-trait = "0.1"
 tempfile = "3"
@@ -26,4 +26,4 @@ tar = "0.4"
 
 [dev-dependencies]
 assert_cmd = "2"
-selftest = { version = "0.0.5", path = "../../selftest" }
+selftest = { version = "0.0.6", path = "../../selftest" }
