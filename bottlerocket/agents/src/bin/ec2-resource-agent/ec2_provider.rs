@@ -245,7 +245,11 @@ where
                 .min_count(instance_count)
                 .max_count(instance_count)
                 .subnet_id(subnet_id)
-                .set_security_group_ids(Some(spec.configuration.security_groups.clone()))
+                .set_security_group_ids(if spec.configuration.security_groups.is_empty() {
+                    None
+                } else {
+                    Some(spec.configuration.security_groups.clone())
+                })
                 .image_id(&spec.configuration.node_ami)
                 .instance_type(InstanceType::from(instance_type.as_str()))
                 .tag_specifications(tag_specifications(
@@ -298,7 +302,7 @@ where
                 }
                 Err(err) => {
                     warn!(
-                    "An error occurred while trying to create instances of type {} using subnet {}: {}",
+                    "An error occurred while trying to create instances of type {} using subnet {}: {:?}",
                     instance_type, subnet_id, err
                 );
                 }
