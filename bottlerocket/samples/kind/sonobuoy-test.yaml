@@ -35,6 +35,7 @@ spec:
       clusterName: ${CLUSTER_NAME}
       region: ${AWS_REGION}
       assumeRole: ${ASSUME_ROLE}
+      version: ${K8S_VERSION}
     secrets:
       awsCredentials: aws-creds
   dependsOn: []

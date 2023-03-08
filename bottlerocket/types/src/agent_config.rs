@@ -703,6 +703,7 @@ mod test {
             .replace("\\${${CLUSTER_NAME}-instances.ids}", r#"["a", "b", "c"]"#)
             .replace("\\${${CLUSTER_NAME}.publicSubnetIds}", r#"["a", "b", "c"]"#)
             .replace("\\${${CLUSTER_NAME}.securityGroups}", r#"["a", "b", "c"]"#)
+            .replace("${K8S_VERSION}", "v1.24")
             .replace("${", "<")
             .replace("}", ">");
 
@@ -764,6 +765,7 @@ mod test {
             .replace("\\${${CLUSTER_NAME}.publicSubnetIds}", r#"["a", "b", "c"]"#)
             .replace("\\${${CLUSTER_NAME}.securityGroups}", r#"["a", "b", "c"]"#)
             .replace("${SONOBUOY_MODE}", "quick")
+            .replace("${K8S_VERSION}", "v1.24")
             .replace("${", "<")
             .replace("}", ">");
 
@@ -797,6 +799,7 @@ mod test {
             .replace("\\${${CLUSTER_NAME}.publicSubnetIds}", r#"["a", "b", "c"]"#)
             .replace("\\${${CLUSTER_NAME}.securityGroups}", r#"["a", "b", "c"]"#)
             .replace("${GPU}", "true")
+            .replace("${K8S_VERSION}", "v1.24")
             .replace("${INSTANCE_TYPES}", r#"["a", "b", "c"]"#)
             .replace("${", "<")
             .replace("}", ">");
@@ -994,6 +997,7 @@ mod test {
             .replace("\\${${CLUSTER_NAME}.publicSubnetIds}", r#"["a", "b", "c"]"#)
             .replace("\\${${CLUSTER_NAME}.securityGroups}", r#"["a", "b", "c"]"#)
             .replace("${SONOBUOY_MODE}", "quick")
+            .replace("${K8S_VERSION}", "v1.24")
             .replace("${", "<")
             .replace("}", ">");
 
