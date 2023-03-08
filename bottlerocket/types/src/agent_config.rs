@@ -549,8 +549,8 @@ mod test {
     use testsys_model::{Resource, Test};
 
     use super::{
-        EcsWorkloadTestConfig, EksClusterConfig, SonobuoyConfig, VSphereK8sClusterConfig,
-        VSphereVmConfig, WorkloadConfig,
+        EcsWorkloadTestConfig, EksClusterConfig, MetalK8sClusterConfig, SonobuoyConfig,
+        VSphereK8sClusterConfig, VSphereVmConfig, WorkloadConfig,
     };
 
     fn samples_dir() -> PathBuf {
@@ -922,6 +922,31 @@ mod test {
         let ec2_resource: Resource = serde_yaml::from_str(yaml).unwrap();
         let _: VSphereVmConfig = serde_json::from_value(JsonValue::Object(
             ec2_resource.spec.agent.configuration.unwrap(),
+        ))
+        .unwrap();
+    }
+
+    #[test]
+    fn metal_sonobuoy_test() {
+        let s = read_eks_file("metal-sonobuoy-test.yaml");
+        let s = s
+            .replace("${SONOBUOY_MODE}", "quick")
+            .replace("${", "<")
+            .replace("}", ">")
+            .replace("\\", "");
+
+        let docs: Vec<&str> = s.split("---").collect();
+        let &yaml = docs.get(0).unwrap();
+        let test_1_initial: Test = serde_yaml::from_str(yaml).unwrap();
+        let _: SonobuoyConfig = serde_json::from_value(JsonValue::Object(
+            test_1_initial.spec.agent.configuration.unwrap(),
+        ))
+        .unwrap();
+
+        let &yaml = docs.get(1).unwrap();
+        let cluster_resource: Resource = serde_yaml::from_str(yaml).unwrap();
+        let _: MetalK8sClusterConfig = serde_json::from_value(JsonValue::Object(
+            cluster_resource.spec.agent.configuration.unwrap(),
         ))
         .unwrap();
     }
