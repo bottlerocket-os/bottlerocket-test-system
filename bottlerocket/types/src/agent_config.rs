@@ -549,8 +549,8 @@ mod test {
     use testsys_model::{Resource, Test};
 
     use super::{
-        EcsWorkloadTestConfig, EksClusterConfig, SonobuoyConfig, VSphereK8sClusterConfig,
-        VSphereVmConfig, WorkloadConfig,
+        EcsWorkloadTestConfig, EksClusterConfig, MetalK8sClusterConfig, SonobuoyConfig,
+        VSphereK8sClusterConfig, VSphereVmConfig, WorkloadConfig,
     };
 
     fn samples_dir() -> PathBuf {
@@ -703,6 +703,7 @@ mod test {
             .replace("\\${${CLUSTER_NAME}-instances.ids}", r#"["a", "b", "c"]"#)
             .replace("\\${${CLUSTER_NAME}.publicSubnetIds}", r#"["a", "b", "c"]"#)
             .replace("\\${${CLUSTER_NAME}.securityGroups}", r#"["a", "b", "c"]"#)
+            .replace("${K8S_VERSION}", "v1.24")
             .replace("${", "<")
             .replace("}", ">");
 
@@ -764,6 +765,7 @@ mod test {
             .replace("\\${${CLUSTER_NAME}.publicSubnetIds}", r#"["a", "b", "c"]"#)
             .replace("\\${${CLUSTER_NAME}.securityGroups}", r#"["a", "b", "c"]"#)
             .replace("${SONOBUOY_MODE}", "quick")
+            .replace("${K8S_VERSION}", "v1.24")
             .replace("${", "<")
             .replace("}", ">");
 
@@ -797,6 +799,7 @@ mod test {
             .replace("\\${${CLUSTER_NAME}.publicSubnetIds}", r#"["a", "b", "c"]"#)
             .replace("\\${${CLUSTER_NAME}.securityGroups}", r#"["a", "b", "c"]"#)
             .replace("${GPU}", "true")
+            .replace("${K8S_VERSION}", "v1.24")
             .replace("${INSTANCE_TYPES}", r#"["a", "b", "c"]"#)
             .replace("${", "<")
             .replace("}", ">");
@@ -924,6 +927,31 @@ mod test {
     }
 
     #[test]
+    fn metal_sonobuoy_test() {
+        let s = read_eks_file("metal-sonobuoy-test.yaml");
+        let s = s
+            .replace("${SONOBUOY_MODE}", "quick")
+            .replace("${", "<")
+            .replace("}", ">")
+            .replace("\\", "");
+
+        let docs: Vec<&str> = s.split("---").collect();
+        let &yaml = docs.get(0).unwrap();
+        let test_1_initial: Test = serde_yaml::from_str(yaml).unwrap();
+        let _: SonobuoyConfig = serde_json::from_value(JsonValue::Object(
+            test_1_initial.spec.agent.configuration.unwrap(),
+        ))
+        .unwrap();
+
+        let &yaml = docs.get(1).unwrap();
+        let cluster_resource: Resource = serde_yaml::from_str(yaml).unwrap();
+        let _: MetalK8sClusterConfig = serde_json::from_value(JsonValue::Object(
+            cluster_resource.spec.agent.configuration.unwrap(),
+        ))
+        .unwrap();
+    }
+
+    #[test]
     fn ecs_test_kind() {
         let s = read_kind_file("ecs-test.yaml");
         let s = s
@@ -994,6 +1022,7 @@ mod test {
             .replace("\\${${CLUSTER_NAME}.publicSubnetIds}", r#"["a", "b", "c"]"#)
             .replace("\\${${CLUSTER_NAME}.securityGroups}", r#"["a", "b", "c"]"#)
             .replace("${SONOBUOY_MODE}", "quick")
+            .replace("${K8S_VERSION}", "v1.24")
             .replace("${", "<")
             .replace("}", ">");
 

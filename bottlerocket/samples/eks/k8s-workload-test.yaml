@@ -10,6 +10,7 @@ spec:
     keepRunning: true
     configuration:
       kubeconfigBase64: \${${CLUSTER_NAME}.encodedKubeconfig}
+      assumeRole: ${ASSUME_ROLE}
       tests:
       - name: ${WORKLOAD_TEST_NAME}
         image: ${WORKLOAD_TEST_IMAGE_URI}
@@ -32,6 +33,7 @@ spec:
       clusterName: ${CLUSTER_NAME}
       region: ${AWS_REGION}
       assumeRole: ${ASSUME_ROLE}
+      version: ${K8S_VERSION}
   dependsOn: []
   destructionPolicy: onDeletion
 ---

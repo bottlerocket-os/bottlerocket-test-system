@@ -26,7 +26,7 @@ use testsys_model::{Configuration, SecretName};
 /// The default region for the cluster.
 const DEFAULT_REGION: &str = "us-west-2";
 /// The default cluster version.
-const DEFAULT_VERSION: &str = "1.21";
+const DEFAULT_VERSION: &str = "1.24";
 const TEST_CLUSTER_CONFIG_PATH: &str = "/local/eksctl_config.yaml";
 
 #[derive(Clone, Debug, Default, Eq, PartialEq, Serialize, Deserialize)]
