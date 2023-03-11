@@ -3,7 +3,7 @@ use super::{
     SelectionParams, StatusSnapshot,
 };
 use crate::clients::{AllowNotFound, CrdClient, ResourceClient, TestClient};
-use crate::constants::{LABEL_COMPONENT, TESTSYS_RESULTS_FILE};
+use crate::constants::TESTSYS_RESULTS_FILE;
 use crate::system::AgentType;
 use crate::{Crd, CrdName, Resource, SecretName, TaskState, Test, TestUserState};
 use bytes::Bytes;
@@ -296,34 +296,10 @@ impl TestManager {
     /// returned can be used to print a table containing each objects status (including rerun tests)
     /// or to print a json representation containing all included objects as well as the controller
     /// status.
-    pub async fn status(
-        &self,
-        selection_params: &SelectionParams,
-        include_controller: bool,
-    ) -> Result<StatusSnapshot> {
-        let controller_status = if include_controller {
-            let pod_api: Api<Pod> = self.namespaced_api();
-            let pods = pod_api
-                .list(&ListParams {
-                    label_selector: Some(format!("{}={}", LABEL_COMPONENT, "controller")),
-                    ..Default::default()
-                })
-                .await
-                .context(error::KubeSnafu {
-                    action: "get controller pod",
-                })?
-                .items;
-            if let Some(pod) = pods.first() {
-                pod.status.clone()
-            } else {
-                None
-            }
-        } else {
-            None
-        };
+    pub async fn status(&self, selection_params: &SelectionParams) -> Result<StatusSnapshot> {
         let crds = self.list(selection_params).await?;
 
-        Ok(StatusSnapshot::new(controller_status, crds))
+        Ok(StatusSnapshot::new(crds))
     }
 
     /// Retrieve the logs of a test.
