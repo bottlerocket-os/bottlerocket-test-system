@@ -1,9 +1,8 @@
-use crate::error::{
-    ClientSnafu, ConfMissingSnafu, ConversionSnafu, Result, SecretKeyFetchSnafu, SecretMissingSnafu,
-};
+use crate::error::{ClientSnafu, Result, SecretKeyFetchSnafu, SecretMissingSnafu};
 use crate::init::TestConfig;
 use agent_common::secrets::SecretsReader;
 use argh::FromArgs;
+use serde_json::{Map, Value};
 use snafu::{OptionExt, ResultExt};
 use test_agent::{Client, DefaultClient, Spec};
 
@@ -29,21 +28,15 @@ impl GetSecret {
             })?;
 
         let secrets_reader = SecretsReader::new();
-        let secret_data = secrets_reader
+        let secret_data: Map<_, _> = secrets_reader
             .get_secret(secret_name)
-            .context(SecretMissingSnafu)?;
+            .context(SecretMissingSnafu)?
+            .into_iter()
+            .map(|(key, value)| (key, String::from_utf8_lossy(&value).to_string()))
+            .map(|(k, v)| (k, Value::String(v)))
+            .collect();
 
-        let secret = String::from_utf8(
-            secret_data
-                .get(secret_name.as_str())
-                .context(ConfMissingSnafu)?
-                .to_owned(),
-        )
-        .context(ConversionSnafu {
-            what: "secret_name",
-        })?;
-
-        println!("{:#?}", secret);
+        println!("{}", Value::Object(secret_data));
         Ok(())
     }
 }
