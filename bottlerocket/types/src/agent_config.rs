@@ -72,6 +72,7 @@ pub struct SonobuoyConfig {
     /// leave this as `None` and let the sonobuoy binary choose the right value.
     pub kubernetes_version: Option<K8sVersion>,
     pub kube_conformance_image: Option<String>,
+    pub sonobuoy_image: Option<String>,
     pub assume_role: Option<String>,
 }
 
