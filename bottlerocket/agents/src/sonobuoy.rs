@@ -58,6 +58,14 @@ where
             vec![]
         }
     };
+    let sonobuoy_image_arg = match &sonobuoy_config.sonobuoy_image {
+        Some(sonobuoy_image_arg) => {
+            vec!["--sonobuoy-image", sonobuoy_image_arg]
+        }
+        None => {
+            vec![]
+        }
+    };
     info!("Running sonobuoy");
     let status = Command::new("/usr/bin/sonobuoy")
         .args(kubeconfig_arg.to_owned())
@@ -68,6 +76,7 @@ where
         .arg(&sonobuoy_config.mode.to_string())
         .args(k8s_image_arg)
         .args(e2e_repo_arg)
+        .args(sonobuoy_image_arg)
         .status()
         .context(error::SonobuoyProcessSnafu)?;
 
@@ -99,6 +108,7 @@ where
 pub async fn rerun_failed_sonobuoy<I>(
     kubeconfig_path: &str,
     e2e_repo_config_path: Option<&str>,
+    sonobuoy_image: Option<String>,
     results_dir: &Path,
     info_client: &I,
 ) -> Result<TestResults, error::Error>
@@ -115,11 +125,20 @@ where
             vec![]
         }
     };
+    let sonobuoy_image_arg = match &sonobuoy_image {
+        Some(sonobuoy_image_arg) => {
+            vec!["--sonobuoy-image", sonobuoy_image_arg]
+        }
+        None => {
+            vec![]
+        }
+    };
     info!("Rerunning sonobuoy");
     let status = Command::new("/usr/bin/sonobuoy")
         .args(kubeconfig_arg.to_owned())
         .arg("run")
         .args(e2e_repo_arg)
+        .args(sonobuoy_image_arg)
         .arg("--rerun-failed")
         .arg(results_filepath.as_os_str())
         .status()
