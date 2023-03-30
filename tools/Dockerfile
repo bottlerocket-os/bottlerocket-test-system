@@ -188,6 +188,48 @@ RUN curl -OL "${SONOBUOY_BINARY_URL}" && \
     chmod 0755 sonobuoy && \
     rm "sonobuoy_${SONOBUOY_VERSION}_${GOOS}_${GOARCH}.tar.gz"
 
+# # =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^=
+FROM build-go as helm-build
+
+USER root
+RUN mkdir -p /usr/share/licenses/helm && \
+    chown -R builder:builder /usr/share/licenses/helm
+
+ARG HELM_VERSION=3.8.2
+ARG HELM_SOURCE_URL="https://github.com/helm/helm/archive/refs/tags/v${HELM_VERSION}.tar.gz"
+
+# ARG HELM_BINARY_URL="https://github.com/helm/helm/releases/download/v${HELM_VERSION}/helm-v${HELM_VERSION}-${GOOS}-${GOARCH}.tar.gz.asc"
+ARG HELM_BINARY_URL="https://get.helm.sh/helm-v${HELM_VERSION}-${GOOS}-${GOARCH}.tar.gz"
+
+
+USER builder
+WORKDIR /home/builder/
+RUN mkdir helm && \
+    curl -L "${HELM_SOURCE_URL}" \
+      -o "helm_${HELM_VERSION}.tar.gz" && \
+    grep "helm_${HELM_VERSION}.tar.gz" \
+      /hashes/helm | sha512sum --check - && \
+    tar -xf "helm_${HELM_VERSION}.tar.gz" \
+      --strip-components 1 -C helm && \
+    rm "helm_${HELM_VERSION}.tar.gz"
+
+WORKDIR /home/builder/helm/
+RUN go mod vendor
+RUN cp -p LICENSE /usr/share/licenses/helm && \
+    /usr/libexec/tools/bottlerocket-license-scan \
+      --clarify /clarify.toml \
+      --spdx-data /usr/libexec/tools/spdx-data \
+      --out-dir /usr/share/licenses/helm/vendor \
+      go-vendor ./vendor
+RUN curl -L "${HELM_BINARY_URL}" \
+      -o "helm_${HELM_VERSION}_${GOOS}_${GOARCH}.tar.gz" && \
+    grep "helm_${HELM_VERSION}_${GOOS}_${GOARCH}.tar.gz" \
+      /hashes/helm | sha512sum --check - && \
+    tar -xf "helm_${HELM_VERSION}_${GOOS}_${GOARCH}.tar.gz" && \
+    mv  linux-amd64/helm helm && \
+    chmod 0755 helm && \
+    rm "helm_${HELM_VERSION}_${GOOS}_${GOARCH}.tar.gz"
+
 # =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^=
 FROM build-go as aws-iam-authenticator-build
 
@@ -247,3 +289,7 @@ COPY --from=kubernetes-build \
 # sonobuoy
 COPY --from=sonobuoy-build /home/builder/sonobuoy/sonobuoy /sonobuoy
 COPY --from=sonobuoy-build /usr/share/licenses/sonobuoy /licenses/sonobuoy
+
+# helm
+COPY --from=helm-build /home/builder/helm/helm /helm
+COPY --from=helm-build /usr/share/licenses/helm /licenses/helm

@@ -644,6 +644,7 @@ dependencies = [
  "serde_yaml 0.8.26",
  "sha2",
  "snafu",
+ "tempfile",
  "test-agent",
  "testsys-model",
  "tokio",

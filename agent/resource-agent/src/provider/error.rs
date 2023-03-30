@@ -139,7 +139,7 @@ impl Display for ProviderError {
             write!(f, ", {}", context)?;
         }
         if let Some(inner) = self.inner() {
-            write!(f, ": {}", inner)?;
+            write!(f, ": {:?}", inner)?;
         }
         Ok(())
     }

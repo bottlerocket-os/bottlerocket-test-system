@@ -63,6 +63,38 @@ COPY --from=build-src /usr/share/licenses/testsys /licenses/testsys
 ENTRYPOINT ["./ec2-resource-agent"]
 
 # =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^=
+# Builds the EC2 karpenter resource agent image
+FROM public.ecr.aws/amazonlinux/amazonlinux:2 as ec2-karpenter-resource-agent
+
+RUN yum install -y tar && yum -y clean all && rm -fr /var/cache
+
+# Copy eksctl
+COPY --from=tools /eksctl /usr/bin/eksctl
+COPY --from=tools /licenses/eksctl /licenses/eksctl
+
+# Copy CA certificates store
+COPY --from=build /etc/ssl /etc/ssl
+COPY --from=build /etc/pki /etc/pki
+
+# Copy aws-iam-authenticator
+COPY --from=tools /aws-iam-authenticator /usr/bin/aws-iam-authenticator
+COPY --from=tools /licenses/aws-iam-authenticator /licenses/aws-iam-authenticator
+
+# Copy kubectl
+COPY --from=tools /kubectl /usr/local/bin/kubectl
+COPY --from=tools /licenses/kubernetes /licenses/kubernetes
+
+# Copy helm
+COPY --from=tools /helm /usr/local/bin/helm
+COPY --from=tools /licenses/helm /licenses/helm
+
+# Copy ec2-karpenter-resource-agent
+COPY --from=build-src /src/bottlerocket/agents/bin/ec2-karpenter-resource-agent ./
+COPY --from=build-src /usr/share/licenses/testsys /licenses/testsys
+
+ENTRYPOINT ["./ec2-karpenter-resource-agent"]
+
+# =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^=
 # Builds the vSphere VM resource agent image
 FROM public.ecr.aws/amazonlinux/amazonlinux:2 as vsphere-vm-resource-agent
 

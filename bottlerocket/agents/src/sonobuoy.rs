@@ -77,6 +77,7 @@ where
         .args(k8s_image_arg)
         .args(e2e_repo_arg)
         .args(sonobuoy_image_arg)
+        .arg("--plugin-env=e2e.E2E_EXTRA_ARGS=--non-blocking-taints=sonobuoy")
         .status()
         .context(error::SonobuoyProcessSnafu)?;
 
