@@ -9,10 +9,9 @@ use crate::resource_controller::action::{
 use crate::resource_controller::context::{new_context, Context, ResourceInterface};
 use anyhow::Context as AnyhowContext;
 use futures::StreamExt;
-use kube::api::ListParams;
 use kube::{Api, Client};
 use kube_runtime::controller::Action as RequeueAction;
-use kube_runtime::{controller, Controller};
+use kube_runtime::{controller, watcher, Controller};
 use log::{debug, error, trace, warn};
 use std::ops::Deref;
 use std::sync::Arc;
@@ -26,7 +25,7 @@ pub(crate) async fn run_resource_controller(client: Client) {
     let context = new_context(client.clone());
     Controller::new(
         Api::<Resource>::namespaced(client, NAMESPACE),
-        ListParams::default(),
+        watcher::Config::default(),
     )
     .run(reconcile, handle_reconciliation_error, context)
     .for_each(|reconciliation_result| async move {
