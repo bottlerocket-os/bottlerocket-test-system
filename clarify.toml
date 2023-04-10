@@ -70,6 +70,13 @@ license-files = [
     { path = "third-party/chromium/LICENSE", hash = 0x9b209a1a },
 ]
 
+[clarify.rustls-webpki]
+expression = "ISC"
+license-files = [
+    { path = "LICENSE", hash = 0x001c7e6c },
+    { path = "third-party/chromium/LICENSE", hash = 0x9b209a1a },
+]
+
 [clarify.unicode-ident]
 expression = "(MIT OR Apache-2.0) AND Unicode-DFS-2016"
 license-files = [

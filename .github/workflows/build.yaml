@@ -48,9 +48,5 @@ jobs:
     if: ${{ github.event_name == 'pull_request' }}
     steps:
       - uses: actions/checkout@v3
-<<<<<<< HEAD
       - run: rustup default 1.67.1
-=======
-      - run: rustup default 1.62.1
->>>>>>> ba886f0 (Increase runners rust version to 1.62.1)
       - run: make cargo-deny
