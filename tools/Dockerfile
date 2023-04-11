@@ -27,7 +27,7 @@ USER root
 RUN mkdir -p /usr/share/licenses/eksctl && \
     chown -R builder:builder /usr/share/licenses/eksctl
 
-ARG EKSCTL_VERSION=0.132.0
+ARG EKSCTL_VERSION=0.136.0
 ARG EKSCTL_SOURCE_URL="https://github.com/weaveworks/eksctl/archive/refs/tags/v${EKSCTL_VERSION}.tar.gz"
 
 ARG EKSCTL_BINARY_URL="https://github.com/weaveworks/eksctl/releases/download/v${EKSCTL_VERSION}/eksctl_Linux_${GOARCH}.tar.gz"
@@ -71,10 +71,10 @@ USER root
 RUN mkdir -p /usr/share/licenses/eksctl-anywhere && \
     chown -R builder:builder /usr/share/licenses/eksctl-anywhere
 
-ARG EKSA_VERSION=0.14.3
+ARG EKSA_VERSION=0.15.1
 ARG EKSA_SOURCE_URL="https://github.com/aws/eks-anywhere/archive/refs/tags/v${EKSA_VERSION}.tar.gz"
 
-ARG EKSA_RELEASE_NUMBER=30
+ARG EKSA_RELEASE_NUMBER=35
 # TODO EKS-A currently does not provide an ARM64 binary, add the hash for it when they do
 ARG EKSA_BINARY_URL="https://anywhere-assets.eks.amazonaws.com/releases/eks-a/${EKSA_RELEASE_NUMBER}/artifacts/eks-a/v${EKSA_VERSION}/${GOOS}/amd64/eksctl-anywhere-v${EKSA_VERSION}-${GOOS}-amd64.tar.gz"
 
@@ -113,7 +113,7 @@ USER root
 RUN mkdir -p /usr/share/licenses/kubernetes && \
     chown -R builder:builder /usr/share/licenses/kubernetes
 
-ARG K8S_VERSION=1.23.13
+ARG K8S_VERSION=1.26.3
 ARG K8S_SOURCE_URL="https://github.com/kubernetes/kubernetes/archive/refs/tags/v${K8S_VERSION}.tar.gz"
 
 ARG KUBEADM_BINARY_URL="https://dl.k8s.io/release/v${K8S_VERSION}/bin/linux/${GOARCH}/kubeadm"
