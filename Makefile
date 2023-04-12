@@ -31,7 +31,7 @@ TAG_IMAGES = $(addprefix tag-, $(IMAGES))
 # Store targets to push images
 PUSH_IMAGES = $(addprefix push-, $(IMAGES))
 
-.PHONY: build sdk-openssl example-test-agent example-test-agent-cli example-resource-agent \
+.PHONY: build example-test-agent example-test-agent-cli example-resource-agent \
 	images fetch integ-test show-variables cargo-deny tools $(IMAGES) \
 	tag-images $(TAG_IMAGES) push-images $(PUSH_IMAGES) print-image-names \
 	help
