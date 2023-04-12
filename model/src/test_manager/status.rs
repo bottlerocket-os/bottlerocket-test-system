@@ -355,8 +355,8 @@ fn crd_results(crd: &Crd, res_type: ResultType) -> Vec<String> {
                 results.push(
                     match res_type {
                         ResultType::Passed => result.num_passed,
-                        ResultType::Failed => result.num_skipped,
-                        ResultType::Skipped => result.num_failed,
+                        ResultType::Failed => result.num_failed,
+                        ResultType::Skipped => result.num_skipped,
                     }
                     .to_string(),
                 );
