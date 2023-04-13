@@ -19,11 +19,15 @@ TESTSYS_BUILD_HOST_PLATFORM=$(shell uname | tr '[:upper:]' '[:lower:]')
 # On some hosts we get an x509 certificate error and need to set GOPROXY to "direct"
 TESTSYS_BUILD_GOPROXY ?= direct
 
-# The set of bottlerocket images to create. Add new artifacts here when added
-# to the project.
-IMAGES = controller sonobuoy-test-agent ec2-resource-agent eks-resource-agent ecs-resource-agent \
-	migration-test-agent vsphere-vm-resource-agent vsphere-k8s-cluster-resource-agent ecs-test-agent \
-	k8s-workload-agent ecs-workload-agent metal-k8s-cluster-resource-agent
+# The set of agent images. Add new agent artifacts here when added to the
+# project
+AGENT_IMAGES = sonobuoy-test-agent ec2-resource-agent eks-resource-agent ecs-resource-agent \
+               migration-test-agent vsphere-vm-resource-agent vsphere-k8s-cluster-resource-agent \
+               ecs-test-agent k8s-workload-agent ecs-workload-agent metal-k8s-cluster-resource-agent
+
+# The set of container images. Add additional artifacts here when added
+# to the project
+IMAGES = controller $(AGENT_IMAGES)
 
 # Store targets for tagging images
 TAG_IMAGES = $(addprefix tag-, $(IMAGES))
@@ -139,7 +143,7 @@ tools:
 		./tools
 
 # Build the container image for a testsys agent
-eks-resource-agent ec2-resource-agent ecs-resource-agent vsphere-vm-resource-agent vsphere-k8s-cluster-resource-agent sonobuoy-test-agent migration-test-agent ecs-test-agent k8s-workload-agent ecs-workload-agent metal-k8s-cluster-resource-agent: show-variables fetch
+$(AGENT_IMAGES): show-variables fetch
 	docker build $(DOCKER_BUILD_FLAGS) \
 		--build-arg ARCH="$(TESTSYS_BUILD_HOST_UNAME_ARCH)" \
 		--build-arg BUILDER_IMAGE="$(BUILDER_IMAGE)" \
