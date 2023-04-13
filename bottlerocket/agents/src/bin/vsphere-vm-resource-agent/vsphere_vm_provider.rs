@@ -8,8 +8,8 @@ use bottlerocket_agents::vsphere::vsphere_credentials;
 use bottlerocket_types::agent_config::{
     CustomUserData, VSphereVmConfig, AWS_CREDENTIALS_SECRET_NAME, VSPHERE_CREDENTIALS_SECRET_NAME,
 };
-use k8s_openapi::api::core::v1::Service;
-use kube::api::ListParams;
+use k8s_openapi::api::core::v1::{Node, Service};
+use kube::api::{DeleteParams, ListParams};
 use kube::config::{KubeConfigOptions, Kubeconfig};
 use kube::{Api, Config};
 use log::{debug, info};
@@ -613,6 +613,27 @@ impl Destroy for VMDestroyer {
         .context(Resources::Clear, "Error creating config")?;
         let ssm_client = aws_sdk_ssm::Client::new(&shared_config);
 
+        let vsphere_cluster = spec.configuration.cluster.clone();
+        debug!("Decoding and writing out kubeconfig for vSphere cluster");
+        base64_decode_write_file(
+            &vsphere_cluster.kubeconfig_base64,
+            TEST_CLUSTER_KUBECONFIG_PATH,
+        )
+        .await
+        .context(
+            Resources::Clear,
+            "Failed to write out kubeconfig for vSphere cluster",
+        )?;
+        let kubeconfig = Kubeconfig::read_from(TEST_CLUSTER_KUBECONFIG_PATH)
+            .context(resources, "Unable to read kubeconfig")?;
+        let config =
+            Config::from_custom_kubeconfig(kubeconfig.to_owned(), &KubeConfigOptions::default())
+                .await
+                .context(resources, "Unable load kubeconfig")?;
+        info!("Creating K8s client");
+        let k8s_client = kube::client::Client::try_from(config)
+            .context(resources, "Unable create K8s client from kubeconfig")?;
+
         // Get vSphere credentials to authenticate to vCenter via govmomi
         let secret_name = spec
             .secrets
@@ -625,6 +646,15 @@ impl Destroy for VMDestroyer {
 
         // Get the list of VMs to destroy
         for vm in &memo.vms {
+            info!("Deregistering node '{}' from cluster", &vm.name);
+            Api::<Node>::all(k8s_client.to_owned())
+                .delete(&vm.ip_address, &DeleteParams::default())
+                .await
+                .context(
+                    resources,
+                    format!("Unable delete node '{}' from cluster", &vm.name),
+                )?;
+
             info!("Destroying VM '{}'...", &vm.name);
             let vm_destroy_output = Command::new("govc")
                 .arg("vm.destroy")
