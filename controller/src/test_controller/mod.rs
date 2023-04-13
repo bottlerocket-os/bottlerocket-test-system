@@ -3,9 +3,8 @@ use crate::error::ReconciliationError;
 use crate::test_controller::context::{new_context, Context};
 use crate::test_controller::reconcile::reconcile;
 use futures::StreamExt;
-use kube::api::ListParams;
 use kube_runtime::controller::Action as RequeueAction;
-use kube_runtime::{controller, Controller};
+use kube_runtime::{controller, watcher, Controller};
 use log::{debug, error};
 use std::sync::Arc;
 use testsys_model::Test;
@@ -16,7 +15,7 @@ mod reconcile;
 
 pub(super) async fn run_test_controller(client: kube::Client) {
     let context = new_context(client);
-    Controller::new(context.api().clone(), ListParams::default())
+    Controller::new(context.api().clone(), watcher::Config::default())
         .run(reconcile, handle_reconciliation_error, context)
         .for_each(|reconciliation_result| async move {
             if let Err(reconciliation_err) = reconciliation_result {

@@ -22,8 +22,8 @@ aws-smithy-types = "0.54"
 base64 = "0.20"
 env_logger = "0.10"
 hex ="0.4"
-k8s-openapi = { version = "0.17", default-features = false, features = ["v1_24"] }
-kube = { version = "0.78", default-features = false, features = ["config", "derive", "client"] }
+k8s-openapi = { version = "0.18", default-features = false, features = ["v1_24"] }
+kube = { version = "0.82", default-features = false, features = ["config", "derive", "client"] }
 log = "0.4"
 maplit = "1"
 openssh = { version = "0.9", features = ["native-mux"] }
