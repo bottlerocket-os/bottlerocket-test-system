@@ -36,4 +36,4 @@ FROM nvidia/cuda:11.4.3-base-ubi8
 COPY ./run.sh /
 COPY --from=builder /samples/* /samples/
 RUN chmod +x ./run.sh
-ENTRYPOINT ["sh", "-c", "/run.sh"]
+ENTRYPOINT ["./run.sh"]
