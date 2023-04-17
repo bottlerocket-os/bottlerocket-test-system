@@ -5,7 +5,7 @@
 TOP := $(dir $(firstword $(MAKEFILE_LIST)))
 
 # Variables we update as newer versions are released
-BOTTLEROCKET_SDK_VERSION = v0.30.1
+BOTTLEROCKET_SDK_VERSION = v0.30.2
 BOTTLEROCKET_SDK_ARCH = $(TESTSYS_BUILD_HOST_UNAME_ARCH)
 BOTTLEROCKET_TOOLS_VERSION ?= v0.4.0
 
@@ -139,7 +139,7 @@ tools:
 		-f ./tools/Dockerfile \
 		-t bottlerocket-test-tools \
 		-t $(TOOLS_IMAGE) \
-		--progress=plain \
+		--progress=tty \
 		./tools
 
 # Build the container image for a testsys agent

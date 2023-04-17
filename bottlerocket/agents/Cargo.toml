@@ -36,6 +36,7 @@ serde_plain = "1"
 serde_yaml = "0.8"
 sha2 = "0.10"
 snafu = "0.7"
+tempfile = "3"
 test-agent = { version = "0.0.6", path = "../../agent/test-agent" }
 tokio = { version = "1", default-features = false, features = ["macros", "rt-multi-thread", "time"] }
 toml = "0.5"

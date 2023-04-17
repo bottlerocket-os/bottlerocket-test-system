@@ -72,6 +72,7 @@ ECS_TEST_AGENT_IMAGE_URI = { value = "${AGENT_IMAGE_REGISTRY}/ecs-test-agent:v${
 MIGRATION_TEST_AGENT_IMAGE_URI = { value = "${AGENT_IMAGE_REGISTRY}/migration-test-agent:v${AGENT_IMAGE_VERSION}", condition = { env_not_set = ["MIGRATION_TEST_AGENT_IMAGE_URI"] } }
 ECS_RESOURCE_AGENT_IMAGE_URI = { value = "${AGENT_IMAGE_REGISTRY}/ecs-resource-agent:v${AGENT_IMAGE_VERSION}", condition = { env_not_set = ["ECS_RESOURCE_AGENT_IMAGE_URI"] } }
 EC2_RESOURCE_AGENT_IMAGE_URI = { value = "${AGENT_IMAGE_REGISTRY}/ec2-resource-agent:v${AGENT_IMAGE_VERSION}", condition = { env_not_set = ["EC2_RESOURCE_AGENT_IMAGE_URI"] } }
+EC2_KARPENTER_RESOURCE_AGENT_IMAGE_URI = { value = "${AGENT_IMAGE_REGISTRY}/ec2-karpenter-resource-agent:v${AGENT_IMAGE_VERSION}", condition = { env_not_set = ["EC2_KARPENTER_RESOURCE_AGENT_IMAGE_URI"] } }
 ECS_WORKLOAD_AGENT_IMAGE_URI = { value = "${AGENT_IMAGE_REGISTRY}/ecs-workload-agent:v${AGENT_IMAGE_VERSION}", condition = { env_not_set = ["ECS_WORKLOAD_AGENT_IMAGE_URI"] } }
 K8S_WORKLOAD_AGENT_IMAGE_URI = { value = "${AGENT_IMAGE_REGISTRY}/k8s-workload-agent:v${AGENT_IMAGE_VERSION}", condition = { env_not_set = ["K8S_WORKLOAD_AGENT_IMAGE_URI"] } }
 SONOBUOY_TEST_AGENT_IMAGE_URI = { value = "${AGENT_IMAGE_REGISTRY}/sonobuoy-test-agent:v${AGENT_IMAGE_VERSION}", condition = { env_not_set = ["SONOBUOY_TEST_AGENT_IMAGE_URI"] } }
@@ -89,7 +90,7 @@ condition = { env_true = ["SINGLE_IMAGE_REPO"] }
 ECS_TEST_AGENT_IMAGE_URI = { value = "${AGENT_IMAGE_REGISTRY}/${AGENT_IMAGE_REPO}:ecs-test-agent-v${AGENT_IMAGE_VERSION}", condition = { env_not_set = ["ECS_TEST_AGENT_IMAGE_URI"] } }
 MIGRATION_TEST_AGENT_IMAGE_URI = { value = "${AGENT_IMAGE_REGISTRY}/${AGENT_IMAGE_REPO}:migration-test-agent-v${AGENT_IMAGE_VERSION}", condition = { env_not_set = ["MIGRATION_TEST_AGENT_IMAGE_URI"] } }
 ECS_RESOURCE_AGENT_IMAGE_URI = { value = "${AGENT_IMAGE_REGISTRY}/${AGENT_IMAGE_REPO}:ecs-resource-agent-v${AGENT_IMAGE_VERSION}", condition = { env_not_set = ["ECS_RESOURCE_AGENT_IMAGE_URI"] } }
-EC2_RESOURCE_AGENT_IMAGE_URI = { value = "${AGENT_IMAGE_REGISTRY}/${AGENT_IMAGE_REPO}:ec2-resource-agent-v${AGENT_IMAGE_VERSION}", condition = { env_not_set = ["EC2_RESOURCE_AGENT_IMAGE_URI"] } }
+EC2_KARPENTER_RESOURCE_AGENT_IMAGE_URI = { value = "${AGENT_IMAGE_REGISTRY}/${AGENT_IMAGE_REPO}:ec2-karpenter-resource-agent-v${AGENT_IMAGE_VERSION}", condition = { env_not_set = ["EC2_KARPENTER_RESOURCE_AGENT_IMAGE_URI"] } }
 ECS_WORKLOAD_AGENT_IMAGE_URI = { value = "${AGENT_IMAGE_REGISTRY}/${AGENT_IMAGE_REPO}:ecs-workload-agent-v${AGENT_IMAGE_VERSION}", condition = { env_not_set = ["ECS_WORKLOAD_AGENT_IMAGE_URI"] } }
 K8S_WORKLOAD_AGENT_IMAGE_URI = { value = "${AGENT_IMAGE_REGISTRY}/${AGENT_IMAGE_REPO}:k8s-workload-agent-v${AGENT_IMAGE_VERSION}", condition = { env_not_set = ["K8S_WORKLOAD_AGENT_IMAGE_URI"] } }
 SONOBUOY_TEST_AGENT_IMAGE_URI = { value = "${AGENT_IMAGE_REGISTRY}/${AGENT_IMAGE_REPO}:sonobuoy-test-agent-v${AGENT_IMAGE_VERSION}", condition = { env_not_set = ["SONOBUOY_TEST_AGENT_IMAGE_URI"] } }
@@ -336,6 +337,9 @@ VARIANT = { value = "aws-ecs-1-nvidia", condition = { env_not_set = ["VARIANT"] 
 VARIANT = { value = "aws-k8s-1.24", condition = { env_not_set = ["VARIANT"] } }
 
 [tasks.sonobuoy-test.env]
+VARIANT = { value = "aws-k8s-1.24", condition = { env_not_set = ["VARIANT"] } }
+
+[tasks.sonobuoy-test-karpenter.env]
 VARIANT = { value = "aws-k8s-1.24", condition = { env_not_set = ["VARIANT"] } }
 
 [tasks.k8s-workload-test.env]

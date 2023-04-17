@@ -15,7 +15,7 @@ This library provides the Kubernetes custom resource definitions and their API c
 )]
 
 pub use agent::{Agent, SecretName, SecretType, TaskState};
-pub use clients::{create_resource_crd, create_test_crd};
+pub use clients::{create_resource_crd, create_test_crd, AllowNotFound};
 pub use configuration::{ConfigValue, Configuration};
 pub use crd_ext::CrdExt;
 pub use error::{Error, Result};

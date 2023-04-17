@@ -84,6 +84,12 @@ license-files = [
     { path = "LICENSE", hash = 0x709001e3 },
 ]
 
+[clarify."github.com/DATA-DOG/go-sqlmock"]
+expression = "MIT AND BSD-3-Clause"
+license-files = [
+    { path = "LICENSE", hash = 0x399e7e6f },
+]
+
 [clarify."gopkg.in/yaml.v1"]
 expression = "MIT AND Apache-2.0"
 license-files = [

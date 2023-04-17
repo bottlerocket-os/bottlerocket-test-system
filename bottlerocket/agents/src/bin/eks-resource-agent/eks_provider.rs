@@ -87,7 +87,7 @@ pub struct CreatedCluster {
     /// The eksctl create iam instance profile.
     pub iam_instance_profile_arn: String,
 
-    // Base64 encoded kubeconfig
+    /// Base64 encoded kubeconfig
     pub encoded_kubeconfig: String,
 }
 

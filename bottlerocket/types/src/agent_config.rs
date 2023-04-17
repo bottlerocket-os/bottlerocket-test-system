@@ -277,6 +277,53 @@ pub struct Ec2Config {
     pub security_groups: Vec<String>,
 }
 
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct KarpenterDeviceMapping {
+    pub name: String,
+    pub volume_type: String,
+    pub volume_size: u8,
+    pub delete_on_termination: bool,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, Default, Configuration, Builder)]
+#[serde(rename_all = "camelCase")]
+#[crd("Resource")]
+pub struct Ec2KarpenterConfig {
+    /// The AMI ID of the AMI to use for the worker nodes.
+    pub node_ami: String,
+
+    /// The name of the cluster we are creating instances for.
+    pub cluster_name: String,
+
+    /// The region the cluster is located in.
+    pub region: String,
+
+    /// The subnets the instances should be launched using.
+    pub subnet_ids: Vec<String>,
+
+    /// The role that should be assumed when launching instances.
+    pub assume_role: Option<String>,
+
+    /// Custom TOML data that should be inserted into user-data settings.
+    pub custom_user_data: Option<CustomUserData>,
+
+    /// The eks server endpoint
+    pub endpoint: String,
+
+    /// The cluster security group
+    pub cluster_sg: Vec<String>,
+
+    /// The device mappings used for karpenter provisioning
+    #[serde(default)]
+    pub device_mappings: Vec<KarpenterDeviceMapping>,
+
+    /// The type of instance to spin up. m5.large is recommended for x86_64 and m6g.large is
+    /// recommended for arm64 on eks
+    #[serde(default)]
+    pub instance_types: Vec<String>,
+}
+
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub enum ClusterType {
