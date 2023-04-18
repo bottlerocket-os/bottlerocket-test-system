@@ -290,7 +290,7 @@ impl Create for Ec2KarpenterCreator {
                 "--cluster",
                 spec.configuration.cluster_name.as_str(),
                 "--arn",
-                "arn:aws:iam::{account_id}:role/KarpenterInstanceNodeRole",
+                &format!("arn:aws:iam::{account_id}:role/KarpenterInstanceNodeRole"),
                 "--username",
                 "system:node:{{{{EC2PrivateDNSName}}}}",
                 "--group",
@@ -372,7 +372,7 @@ impl Create for Ec2KarpenterCreator {
                 "--create-namespace", "karpenter", 
                 "oci://public.ecr.aws/karpenter/karpenter",
                 "--version", KARPENTER_VERSION,
-                "--set", "settings.aws.defaultInstanceProfile=KarpenterInstanceProfile",
+                "--set", "settings.aws.defaultInstanceProfile=KarpenterInstanceNodeRole",
                 "--set", &format!("settings.aws.clusterEndpoint={}", spec.configuration.endpoint),
                 "--set", &format!("settings.aws.clusterName={}", spec.configuration.cluster_name),
                 "--set", &format!(r#"serviceAccount.annotations.eks\.amazonaws\.com/role-arn=arn:aws:iam::{account_id}:role/KarpenterControllerRole-{}"#, spec.configuration.cluster_name),
@@ -699,12 +699,13 @@ async fn wait_for_nodegroup(
 async fn create_karpenter_instance_role(iam_client: &aws_sdk_iam::Client) -> ProviderResult<()> {
     if iam_client
         .get_instance_profile()
-        .instance_profile_name("KarpenterInstanceProfile")
+        .instance_profile_name("KarpenterInstanceNodeRole")
         .send()
         .await
-        .is_ok()
+        .map(|instance_profile| instance_profile.instance_profile().is_some())
+        .unwrap_or_default()
     {
-        info!("KarpenterInstanceProfile already exists");
+        info!("KarpenterInstanceNodeRole instance profile already exists");
         return Ok(());
     }
 
@@ -721,6 +722,20 @@ async fn create_karpenter_instance_role(iam_client: &aws_sdk_iam::Client) -> Pro
         iam_client
             .create_role()
             .role_name("KarpenterInstanceNodeRole")
+            .assume_role_policy_document(
+                r#"{
+        "Version": "2012-10-17",
+        "Statement": [
+            {
+            "Effect": "Allow",
+            "Principal": {
+                "Service": "ec2.amazonaws.com"
+            },
+            "Action": "sts:AssumeRole"
+            }
+        ]
+    }"#,
+            )
             .send()
             .await
             .context(
@@ -750,17 +765,17 @@ async fn create_karpenter_instance_role(iam_client: &aws_sdk_iam::Client) -> Pro
         }
     }
 
-    info!("Creating KarpenterInstanceProfile");
+    info!("Creating instance profile: 'KarpenterInstanceNodeRole'");
     iam_client
         .create_instance_profile()
-        .instance_profile_name("KarpenterInstanceProfile")
+        .instance_profile_name("KarpenterInstanceNodeRole")
         .send()
         .await
         .context(Resources::Clear, "Unable to create instance profile")?;
 
     iam_client
         .add_role_to_instance_profile()
-        .instance_profile_name("KarpenterInstanceProfile")
+        .instance_profile_name("KarpenterInstanceNodeRole")
         .role_name("KarpenterInstanceNodeRole")
         .send()
         .await
