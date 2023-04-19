@@ -6,6 +6,31 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+## [0.0.7] - 2023-03-03
+
+### Fixed
+
+- The `get-secrets` command of `test-agent-cli` now works as expected ([#812])
+
+### Added
+
+- Add support for karpenter testing ([#803])
+
+### Changed
+
+- `StatusSnapshot` supports custom columns for tables ([#777])
+- Support `--sonobuoy-image` flag in the sonobuoy agent ([#801])
+- Openssl dependency has been removed in favor of rustls ([#766])
+
+[#766]: https://github.com/bottlerocket-os/bottlerocket-test-system/pull/766
+[#777]: https://github.com/bottlerocket-os/bottlerocket-test-system/pull/777
+[#801]: https://github.com/bottlerocket-os/bottlerocket-test-system/pull/801
+[#803]: https://github.com/bottlerocket-os/bottlerocket-test-system/pull/803
+[#812]: https://github.com/bottlerocket-os/bottlerocket-test-system/pull/812
+
+[0.0.7]: https://github.com/bottlerocket-os/bottlerocket-test-system/tree/v0.0.7
+[Unreleased]: https://github.com/bottlerocket-os/bottlerocket-test-system/compare/v0.0.7...develop
+
 ## [0.0.6] - 2023-03-03
 
 ### Fixed
@@ -57,7 +82,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 [#773]: https://github.com/bottlerocket-os/bottlerocket-test-system/pull/773
 
 [0.0.6]: https://github.com/bottlerocket-os/bottlerocket-test-system/tree/v0.0.6
-[Unreleased]: https://github.com/bottlerocket-os/bottlerocket-test-system/compare/v0.0.6...develop
 
 ## [0.0.5] - 2022-12-20
 
