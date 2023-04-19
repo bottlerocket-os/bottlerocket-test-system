@@ -23,7 +23,8 @@ TESTSYS_BUILD_GOPROXY ?= direct
 # project
 AGENT_IMAGES = sonobuoy-test-agent ec2-resource-agent eks-resource-agent ecs-resource-agent \
                migration-test-agent vsphere-vm-resource-agent vsphere-k8s-cluster-resource-agent \
-               ecs-test-agent k8s-workload-agent ecs-workload-agent metal-k8s-cluster-resource-agent
+               ecs-test-agent k8s-workload-agent ecs-workload-agent metal-k8s-cluster-resource-agent \
+               ec2-karpenter-resource-agent
 
 # The set of container images. Add additional artifacts here when added
 # to the project
