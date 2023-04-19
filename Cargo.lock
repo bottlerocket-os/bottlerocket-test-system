@@ -65,6 +65,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "anstyle"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "41ed9a86bf92ae6580e0a31281f65a1b1d867c0cc68d5346e2ae128dddfa6a7d"
+
+[[package]]
 name = "anyhow"
 version = "1.0.70"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -101,11 +107,12 @@ checksum = "149f75bbec1827618262e0855a68f0f9a7f2edc13faebf33c4f16d6725edb6a9"
 
 [[package]]
 name = "assert_cmd"
-version = "2.0.5"
+version = "2.0.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d5c2ca00549910ec251e3bd15f87aeeb206c9456b9a77b43ff6c97c54042a472"
+checksum = "86d6b683edf8d1119fe420a94f8a7e389239666aa72e65495d91c00462510151"
 dependencies = [
- "bstr",
+ "anstyle",
+ "bstr 1.4.0",
  "doc-comment",
  "predicates",
  "predicates-core",
@@ -673,9 +680,19 @@ version = "0.2.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ba3569f383e8f1598449f1a423e72e99569137b47740b1da11ef19af3d5c3223"
 dependencies = [
- "lazy_static",
  "memchr",
+]
+
+[[package]]
+name = "bstr"
+version = "1.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c3d4260bcc2e8fc9df1eac4919a720effeb63a3f0952f5bf4944adfa18897f09"
+dependencies = [
+ "memchr",
+ "once_cell",
  "regex-automata",
+ "serde",
 ]
 
 [[package]]
@@ -1206,7 +1223,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0a1e17342619edbc21a964c2afbeb6c820c6a2560032872f397bb97ea127bd0a"
 dependencies = [
  "aho-corasick",
- "bstr",
+ "bstr 0.2.17",
  "fnv",
  "log",
  "regex",
@@ -1942,10 +1959,11 @@ checksum = "eb9f9e6e233e5c4a35559a617bf40a4ec447db2e84c20b55a6f83167b7e57872"
 
 [[package]]
 name = "predicates"
-version = "2.1.1"
+version = "3.0.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a5aab5be6e4732b473071984b3164dbbfb7a3674d30ea5ff44410b6bcd960c3c"
+checksum = "09963355b9f467184c04017ced4a2ba2d75cbcb4e7462690d388233253d4b1a9"
 dependencies = [
+ "anstyle",
  "difflib",
  "itertools",
  "predicates-core",
@@ -1953,9 +1971,9 @@ dependencies = [
 
 [[package]]
 name = "predicates-core"
-version = "1.0.3"
+version = "1.0.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "da1c2388b1513e1b605fcec39a95e0a9e8ef088f71443ef37099fa9ae6673fcb"
+checksum = "b794032607612e7abeb4db69adb4e33590fa6cf1149e95fd7cb00e634b92f174"
 
 [[package]]
 name = "predicates-tree"
