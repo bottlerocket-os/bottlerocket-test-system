@@ -292,7 +292,7 @@ impl Create for Ec2KarpenterCreator {
                 "--arn",
                 "arn:aws:iam::{account_id}:role/KarpenterInstanceNodeRole",
                 "--username",
-                "system:node:{{{{EC2PrivateDNSName}}}}",
+                "system:node:{{EC2PrivateDNSName}}",
                 "--group",
                 "system:bootstrappers",
                 "--group",
