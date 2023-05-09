@@ -10,6 +10,10 @@ use testsys_model::clients::{CrdClient, HttpStatusCode, StatusCode};
 use testsys_model::constants::{FINALIZER_MAIN, FINALIZER_TEST_JOB, NAMESPACE};
 use testsys_model::{CrdExt, Outcome, Resource, ResourceAction, TaskState};
 
+// These values configure how long to delay between tries.
+const MAX_RETRIES: u32 = 3;
+const BACKOFF_MS: u64 = 1000;
+
 /// The action that the controller needs to take in order to reconcile the `Test`.
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub(super) enum Action {
@@ -124,12 +128,25 @@ async fn resource_readiness(t: &TestInterface) -> Result<Resources> {
     let resources_names = &t.test().spec.resources;
     for resource_name in resources_names {
         let result = resource_client.get(resource_name).await;
-        if result.is_status_code(StatusCode::NOT_FOUND) {
-            return Ok(Resources::Error(format!(
-                "Resource '{}' not found",
-                resource_name
-            )));
+
+        let mut retry_attempt = 1;
+        while retry_attempt <= MAX_RETRIES {
+            // if run out of retry attempts, error out.
+            if retry_attempt == MAX_RETRIES {
+                return Ok(Resources::Error(format!(
+                    "Resource '{}' not found",
+                    resource_name
+                )));
+            }
+
+            if result.is_status_code(StatusCode::NOT_FOUND) {
+                retry_attempt += 1;
+                tokio::time::sleep(tokio::time::Duration::from_millis(BACKOFF_MS)).await;
+            } else {
+                break;
+            }
         }
+
         let resource =
             result.with_context(|| format!("Unable to get resource '{}'", resource_name))?;
         if let Some(error) = resource.creation_error() {
