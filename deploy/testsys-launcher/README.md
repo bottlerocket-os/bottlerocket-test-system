@@ -38,4 +38,5 @@ Bottlerocket nodes on the cluster consume the latest releases and stay up to dat
 
 ## Optional Parameters
 
-* `TestsysAssumerRole` name of the role that can assume the `testsys-admin` role to perform cluster operations _(string)_ - Default: "Administrator"
+* `TestsysAssumerRole`    name of the role that can assume the `testsys-admin` role to perform cluster operations _(string)_ - Default: "Administrator"
+* `TestsysNodegroupSize`  number of instances for the testsys node-group _(number)_ - Default: "3"
