@@ -25,6 +25,10 @@ aws eks update-kubeconfig \
     --role-arn arn:aws:iam::123456789:role/testsys-admin
 ```
 
+_Note:_ node instances themselves are not automatically given the "Name" tag.
+You may want to name them by hand or use the `hack/name-instances.sh` script
+to name all nodes launched by the testsys launcher "testsys-node".
+
 ## Run a sample test
 
 [Refer to `TESTING.md` in the main Bottlerocket repository](https://github.com/bottlerocket-os/bottlerocket/blob/develop/TESTING.md)
