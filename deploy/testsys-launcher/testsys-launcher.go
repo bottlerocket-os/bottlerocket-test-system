@@ -18,7 +18,7 @@ type TestsysLauncherStackProps struct {
 
 // NewTestsysCluster creates a new EKS 1.25 cluster with the default capacity
 // set to 0 and a custom managed nodegroup using bottlerocket AMIs
-func NewTestsysCluster(stack constructs.Construct) eks.Cluster {
+func NewTestsysCluster(stack constructs.Construct, size float64) eks.Cluster {
 	testsysClusterProps := eks.ClusterProps{
 		Version:     eks.KubernetesVersion_V1_25(),
 		ClusterName: jsii.String("testsys"),
@@ -41,7 +41,7 @@ func NewTestsysCluster(stack constructs.Construct) eks.Cluster {
 		InstanceTypes: &[]ec2.InstanceType{
 			ec2.NewInstanceType(jsii.String("m5.xlarge")),
 		},
-		MinSize:  jsii.Number(5),
+		MinSize:  jsii.Number(size),
 		AmiType:  eks.NodegroupAmiType_BOTTLEROCKET_X86_64,
 		NodeRole: nodeRole,
 	})
@@ -83,8 +83,14 @@ func NewTestsysLauncherStack(scope constructs.Construct, id string, props *Tests
 		Default:     jsii.String("Administrator"),
 	})
 
+	testsysNodegroupSize := awscdk.NewCfnParameter(stack, jsii.String("TestsysNodegroupSize"), &awscdk.CfnParameterProps{
+		Type:        jsii.String("Number"),
+		Description: jsii.String("The minimum size of the testsys nodegroup"),
+		Default:     jsii.Number(3),
+	})
+
 	// Start testsys deployments
-	testsysCluster := NewTestsysCluster(stack)
+	testsysCluster := NewTestsysCluster(stack, *testsysNodegroupSize.ValueAsNumber())
 	NewTestsysAdminUser(stack, testsysCluster, *testsysAdminAssumedBy.ValueAsString())
 
 	return stack
