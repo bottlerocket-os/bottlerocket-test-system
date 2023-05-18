@@ -1,0 +1,30 @@
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Effect": "Allow",
+            "Action": [
+                "ecs:DiscoverPollEndpoint",
+                "ssm:ListInstanceAssociations",
+                "ssm:UpdateInstanceInformation"
+            ],
+            "Resource": "*"
+        },
+        {
+            "Effect": "Allow",
+            "Action": [
+                "ecr:BatchGetImage",
+                "ecr:GetDownloadUrlForLayer"
+            ],
+            "Resource": "arn:aws:ecr:${Region}:${Account}:repository/${RepositoryName}"
+        },
+        {
+            "Effect": "Allow",
+            "Action": [
+                "ecs:RegisterContainerInstance",
+                "ecs:SubmitTaskStateChange"
+            ],
+            "Resource": "arn:aws:ecs:${Region}:${Account}:cluster/${ClusterName}"
+        }
+    ]
+}

@@ -1,0 +1,46 @@
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Effect": "Allow",
+            "Action": [
+                "ec2:CreateTags",
+                "ec2:DescribeInstances",
+                "ec2:DescribeNetworkInterfaces",
+                "ecr:GetAuthorizationToken",
+                "ssm:ListInstanceAssociations",
+                "ssm:UpdateInstanceInformation",
+                "sts:GetCallerIdentity"
+            ],
+            "Resource": "*"
+        },
+        {
+            "Effect": "Allow",
+            "Action": "ec2:AttachNetworkInterface",
+            "Resource": "arn:aws:ec2:${Region}:${Account}:instance/${InstanceId}"
+        },
+        {
+            "Effect": "Allow",
+            "Action": [
+                "ec2:AssignPrivateIpAddresses",
+                "ec2:AttachNetworkInterface",
+                "ec2:CreateNetworkInterface",
+                "ec2:ModifyNetworkInterfaceAttribute"
+            ],
+            "Resource": "arn:aws:ec2:${Region}:${Account}:network-interface/${NetworkInterfaceId}"
+        },
+        {
+            "Effect": "Allow",
+            "Action": "ec2:CreateNetworkInterface",
+            "Resource": "arn:aws:ec2:${Region}:${Account}:subnet/${SubnetId}"
+        },
+        {
+            "Effect": "Allow",
+            "Action": [
+                "ecr:BatchGetImage",
+                "ecr:GetDownloadUrlForLayer"
+            ],
+            "Resource": "arn:aws:ecr:${Region}:${Account}:repository/${RepositoryName}"
+        }
+    ]
+}

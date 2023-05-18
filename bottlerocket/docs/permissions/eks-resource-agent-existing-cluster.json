@@ -1,0 +1,27 @@
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Effect": "Allow",
+            "Action": [
+                "ec2:DescribeSecurityGroups",
+                "ec2:DescribeSubnets",
+                "sts:GetCallerIdentity"
+            ],
+            "Resource": "*"
+        },
+        {
+            "Effect": "Allow",
+            "Action": "eks:DescribeCluster",
+            "Resource": "arn:aws:eks:${Region}:${Account}:cluster/${ClusterName}"
+        },
+        {
+            "Effect": "Allow",
+            "Action": [
+                "iam:ListInstanceProfilesForRole",
+                "sts:AssumeRole"
+            ],
+            "Resource": "arn:aws:iam::${Account}:role/${RoleNameWithPath}"
+        }
+    ]
+}

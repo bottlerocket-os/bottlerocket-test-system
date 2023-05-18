@@ -1,0 +1,27 @@
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Effect": "Allow",
+            "Action": [
+                "ec2:DescribeSubnets",
+                "ec2:DescribeVpcs",
+                "ecs:CreateCluster"
+            ],
+            "Resource": "*"
+        },
+        {
+            "Effect": "Allow",
+            "Action": [
+                "ecs:DeleteCluster",
+                "ecs:ListContainerInstances"
+            ],
+            "Resource": "arn:aws:ecs:${Region}:${Account}:cluster/${ClusterName}"
+        },
+        {
+            "Effect": "Allow",
+            "Action": "iam:GetInstanceProfile",
+            "Resource": "arn:aws:iam::${Account}:instance-profile/${InstanceProfileNameWithPath}"
+        }
+    ]
+}
