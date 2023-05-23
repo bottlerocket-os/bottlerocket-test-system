@@ -1,6 +1,7 @@
 package main
 
 import (
+	"strings"
 	"testsys-launcher/pkg"
 
 	"github.com/aws/aws-cdk-go/awscdk/v2"
@@ -52,16 +53,20 @@ func NewTestsysCluster(stack constructs.Construct, size float64) eks.Cluster {
 // NewTestsysAdminUser creates a new "testsys-admin" role and adds it to the
 // "masters" list in the Kubernetes cluster aws-auth config map.
 // This role can be assumed by the "roleName" that gets passed in.
-func NewTestsysAdminUser(stack constructs.Construct, c eks.Cluster, roleName string) {
+func NewTestsysAdminUser(stack constructs.Construct, c eks.Cluster, roleNames []string) {
 	adminRoleOptions := &iam.FromRoleNameOptions{
 		AddGrantsToResources: jsii.Bool(false),
 		DefaultPolicyName:    jsii.String("defaultPolicyName"),
 		Mutable:              jsii.Bool(false),
 	}
+	var roles []iam.IPrincipal
+	for _, name := range roleNames {
+		roles = append(roles, iam.Role_FromRoleName(stack, jsii.String(name), jsii.String(name), adminRoleOptions))
+	}
 
 	adminRole := iam.NewRole(stack, jsii.String("testsys-admin"), &iam.RoleProps{
 		Description: jsii.String("The admin role for the testsys cluster"),
-		AssumedBy:   iam.Role_FromRoleName(stack, jsii.String("testsys-admin-assumed-by"), jsii.String(roleName), adminRoleOptions),
+		AssumedBy:   iam.NewCompositePrincipal(roles...),
 		RoleName:    jsii.String("testsys-admin"),
 	})
 
@@ -77,11 +82,8 @@ func NewTestsysLauncherStack(scope constructs.Construct, id string, props *Tests
 	stack := awscdk.NewStack(scope, &id, &sprops)
 
 	// Parameters
-	testsysAdminAssumedBy := awscdk.NewCfnParameter(stack, jsii.String("TestsysAssumerRole"), &awscdk.CfnParameterProps{
-		Type:        jsii.String("String"),
-		Description: jsii.String("The role that can assume the testsys-admin role"),
-		Default:     jsii.String("Administrator"),
-	})
+	var testsysAdminAssumedByContext string = stack.Node().TryGetContext(jsii.String("testsysAdminAssumedBy")).(string)
+	testsysAdminAssumedBy := strings.Split(testsysAdminAssumedByContext, ",")
 
 	testsysNodegroupSize := awscdk.NewCfnParameter(stack, jsii.String("TestsysNodegroupSize"), &awscdk.CfnParameterProps{
 		Type:        jsii.String("Number"),
@@ -91,7 +93,7 @@ func NewTestsysLauncherStack(scope constructs.Construct, id string, props *Tests
 
 	// Start testsys deployments
 	testsysCluster := NewTestsysCluster(stack, *testsysNodegroupSize.ValueAsNumber())
-	NewTestsysAdminUser(stack, testsysCluster, *testsysAdminAssumedBy.ValueAsString())
+	NewTestsysAdminUser(stack, testsysCluster, testsysAdminAssumedBy)
 
 	return stack
 }
