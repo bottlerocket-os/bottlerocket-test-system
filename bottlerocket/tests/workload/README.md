@@ -7,9 +7,14 @@ This directory contains the source files and artifacts for running TestSys workl
 New workload tests should be added under this subdirectory.
 The current list of tests are detailed below.
 
+**hello, testsys**
+
+This simple workload test verifies that the most basic of containers can run on the target host.
+See [hello-testsys.yaml](hello-testsys.yaml) for an example configuration.
+
 **NVIDIA smoketests**
 
-This workload tests executes various CUDA samples to verify GPU functionality for Bottlerocket hosts running on NVIDIA instances.
+This workload test executes various CUDA samples to verify GPU functionality for Bottlerocket hosts running on NVIDIA instances.
 See [nvidia-smoke.yaml](nvidia-smoke.yaml) for an example configuration.
 
 ---
