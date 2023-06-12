@@ -6,6 +6,16 @@ The format is inspired by [Keep a Changelog](https://keepachangelog.com/en/1.0.0
 Since this project is only a vessel for packaging a few binary tools, its adherence to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html) is loose at best.
 
+## [0.6.0] - 2023-06-12
+
+Update eksctl, eksctl-anywhere, and sonobuoy
+
+### Contents
+
+- eksctl 0.144.0
+- eksctl-anywhere 0.16.0
+- sonobuoy v0.56.15
+
 ## [0.5.0] - 2023-04-19
 
 Update eksctl, eksctl-anywhere, kubernetes, aws-iam-authenticator
