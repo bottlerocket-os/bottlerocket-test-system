@@ -128,7 +128,7 @@ pub trait Client: Sized {
     async fn send_test_update(&self, results: TestResults) -> Result<(), Self::E>;
 
     /// Add a TestResults object to the CRDs array of TestResults without signaling that the test
-    /// is complete. This is used to send TestResults when some failures have occured and we are
+    /// is complete. This is used to send TestResults when some failures have occurred and we are
     /// going to re-run the failed test cases.
     async fn send_test_results(&self, results: TestResults) -> Result<(), Self::E>;
 

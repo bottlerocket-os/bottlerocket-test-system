@@ -8,10 +8,10 @@ pub(crate) type Result<T> = std::result::Result<T, Error>;
 #[derive(Debug, Snafu)]
 #[snafu(visibility(pub(crate)))]
 pub(crate) enum Error {
-    #[snafu(display("An error occured while creating archive: {}", source))]
+    #[snafu(display("An error occurred while creating archive: {}", source))]
     Archive { source: std::io::Error },
 
-    #[snafu(display("Unable to communicate with Kuberenetes: {}", source))]
+    #[snafu(display("Unable to communicate with Kubernetes: {}", source))]
     Client { source: test_agent::ClientError },
 
     #[snafu(display("Configuration missing from the test secret data"))]

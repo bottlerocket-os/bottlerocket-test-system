@@ -242,7 +242,7 @@ where
     async fn keep_running(&self) -> bool {
         match self.client.keep_running().await {
             Err(e) => {
-                error!("Unable to communicate with Kuberenetes: '{}'", e);
+                error!("Unable to communicate with Kubernetes: '{}'", e);
                 // If we can't communicate Kubernetes, its safest to
                 // stay running in case some debugging is needed.
                 true

@@ -323,7 +323,7 @@ async fn wait_for_cluster_ready(
 
 /// Retrieves the task_definition and revision of a matching test task definition. If the
 /// task definition doesn't exist, it will be created. If the task definition exists but
-/// the container defintions doesn't match the current settings in the config, a new task
+/// the container definitions doesn't match the current settings in the config, a new task
 /// definition revision will be created.
 async fn create_or_find_task_definition(
     ecs_client: &aws_sdk_ecs::Client,
@@ -392,7 +392,7 @@ async fn find_task_rev(
     Err(Error::TaskDefinitionMissing)
 }
 
-/// Compares an indivdual task definition to see if its settings match the test settings.
+/// Compares an individual task definition to see if its settings match the test settings.
 fn is_matching_definition(test_def: &WorkloadTest, task_def: &TaskDefinition) -> bool {
     if let Some(containers) = task_def.container_definitions() {
         if containers.len() != 1 {

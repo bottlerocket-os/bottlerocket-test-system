@@ -323,7 +323,7 @@ async fn wait_for_successful_run_instances(
         if let Err(SdkError::ServiceError(service_error)) = &run_instance_result {
             if matches!(&service_error.err().code(), Some("InvalidParameterValue")) {
                 warn!(
-                    "An error occured while trying to run instances '{}'. Retrying in 10s.",
+                    "An error occurred while trying to run instances '{}'. Retrying in 10s.",
                     service_error.err()
                 );
                 tokio::time::sleep(Duration::from_secs(10)).await;
@@ -604,7 +604,7 @@ async fn deregister_ecs_container_instances(
     let mut container_instances = Vec::new();
     // Kick off ECS instance deregistration
     for instance_id in &memo.instance_ids {
-        // Find the containter instance ID associated with the EC2 instance ID
+        // Find the container instance ID associated with the EC2 instance ID
         if let Ok(list_output) = ecs_client
             .list_container_instances()
             .cluster(&memo.cluster_name)

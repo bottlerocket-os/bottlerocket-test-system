@@ -121,7 +121,7 @@ The architecture diagram shows a user using the `testsys` CLI to create three CR
 
 * Cluster Resource CRD represents an external Kubernetes cluster that needs to be created for testing.
 * Instances Resource CRD represents Bottlerocket instances that will run as nodes in the external cluster.
-* Sonobuoy Test CRD represents the desired test that will run agains the external cluster and nodes.
+* Sonobuoy Test CRD represents the desired test that will run against the external cluster and nodes.
 
 The controller sees these CRD instances and:
 

@@ -40,7 +40,7 @@ pub(crate) enum InnerError {
         source: testsys_model::clients::Error,
     },
 
-    #[snafu(display("An error occured while creating a `TempDir`: {}", source))]
+    #[snafu(display("An error occurred while creating a `TempDir`: {}", source))]
     TempDirCreate { source: std::io::Error },
 }
 
