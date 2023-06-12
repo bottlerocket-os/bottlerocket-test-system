@@ -41,6 +41,6 @@ spec:
 ## How to set up EKS Anywhere cluster for use as management cluster
 
 EKS Anywhere recommends using a separate management cluster for managing different vSphere clusters.
-EKS Anywhere's "Getting Started" instructions has a [section on setting up an inital management cluster](https://anywhere.eks.amazonaws.com/docs/getting-started/production-environment/vsphere-getstarted/#create-an-initial-cluster).
+EKS Anywhere's "Getting Started" instructions have a [section on setting up an initial management cluster](https://anywhere.eks.amazonaws.com/docs/getting-started/production-environment/vsphere-getstarted/#create-an-initial-cluster).
 
 Once the management cluster created, you can base64-encode the kubeconfig for the management cluster and plug the value in the `mgmtClusterKubeconfigBase64` field of the Resource agent configuration.

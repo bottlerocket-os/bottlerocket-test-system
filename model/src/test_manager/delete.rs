@@ -118,7 +118,7 @@ impl TestManager {
     }
 }
 
-/// Asyncronously delete all objects in `deletion_order` and send each `DeleteEvent` to `tx`.
+/// Asynchronously delete all objects in `deletion_order` and send each `DeleteEvent` to `tx`.
 async fn async_deletion(
     tx: &mut Sender<Result<DeleteEvent>>,
     deletion_order: &mut TopologicalSort<CrdName>,
@@ -159,7 +159,7 @@ async fn async_deletion(
                         })?;
                     if let Some(resource) = resource {
                         // If the resource errored during deletion alert the user that a problem
-                        // occured
+                        // occurred
                         if resource
                             .status()
                             .map(|status| status.destruction.task_state == TaskState::Error)

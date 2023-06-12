@@ -4,7 +4,7 @@ use crate::provider::ProviderError;
 use std::error::Error;
 use std::fmt::{Debug, Display, Formatter};
 
-/// This is the error type returned by an [`Agent`] object. When receiving this error tyoe you will
+/// This is the error type returned by an [`Agent`] object. When receiving this error type you will
 /// typically want to display it and exit your main function with a non-zero exit code.
 #[derive(Debug)]
 pub enum AgentError {

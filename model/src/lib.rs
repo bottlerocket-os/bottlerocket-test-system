@@ -42,7 +42,7 @@ pub mod system;
 mod test;
 pub mod test_manager;
 
-/// `CrdName` provides a way of determing which type of testsys object a name refers to.
+/// `CrdName` provides a way of determining which type of testsys object a name refers to.
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub enum CrdName {
     Test(String),

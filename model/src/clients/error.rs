@@ -16,7 +16,7 @@ pub(crate) enum InnerError {
     #[snafu(display("{}", source))]
     ConfigSerde { source: ModelError },
 
-    #[snafu(display("An error occured while resolving the config: {}", what))]
+    #[snafu(display("An error occurred while resolving the config: {}", what))]
     ConfigResolution { what: String },
 
     #[snafu(display("Error serializing object '{}': {}", what, source))]
@@ -52,7 +52,7 @@ pub(crate) enum InnerError {
     DuplicateFinalizer { finalizer: String },
 
     #[snafu(display(
-        "An attempt was made to delete the non-existant finalizer '{}'",
+        "An attempt was made to delete the non-existent finalizer '{}'",
         finalizer,
     ))]
     DeleteMissingFinalizer { finalizer: String },

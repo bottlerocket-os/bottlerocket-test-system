@@ -14,7 +14,7 @@ impl Delete {
         while let Some(delete) = stream
             .try_next()
             .await
-            .context("A deletion error occured")?
+            .context("A deletion error occurred")?
         {
             match delete {
                 DeleteEvent::Starting(crd) => println!("Starting delete for {}", crd.name()),

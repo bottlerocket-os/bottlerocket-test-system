@@ -247,7 +247,7 @@ where
                     .for_each(|e| error!("Unable to send test update: {}", e));
 
                 error!(
-                    "An error occured while serializing sonobuoy status: \n'{:?}'\n(This can happen if sonobuoy is not ready)\nWill try again in 30s",
+                    "An error occurred while serializing sonobuoy status: \n'{:?}'\n(This can happen if sonobuoy is not ready)\nWill try again in 30s",
                     err
                 );
                 retries += 1;
@@ -606,7 +606,7 @@ mod test_sonobuoy {
 
     #[test]
     fn test_process_results_multiple_timeout_and_failure() {
-        // Failure takes precendence over timeout.
+        // Failure takes precedence over timeout.
         let result =
             process_sonobuoy_test_results(
                 &json!({
