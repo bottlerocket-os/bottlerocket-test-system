@@ -1,12 +1,12 @@
 [package]
 name = "agent-common"
-version = "0.0.7"
+version = "0.0.8"
 edition = "2021"
 publish = false
 license = "MIT OR Apache-2.0"
 
 [dependencies]
-testsys-model = { version = "0.0.7", path = "../../model" }
+testsys-model = { version = "0.0.8", path = "../../model" }
 snafu = "0.7"
 
 [dev-dependencies]
