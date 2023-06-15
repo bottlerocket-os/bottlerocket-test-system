@@ -118,6 +118,10 @@ ENTRYPOINT ["./vsphere-vm-resource-agent"]
 # =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^=
 # Builds the EKS resource agent image
 FROM public.ecr.aws/amazonlinux/amazonlinux:2 as eks-resource-agent
+RUN yum install -y unzip
+RUN curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip" && \
+            unzip awscliv2.zip && \
+            ./aws/install
 
 # Copy eksctl
 COPY --from=tools /eksctl /usr/bin/eksctl

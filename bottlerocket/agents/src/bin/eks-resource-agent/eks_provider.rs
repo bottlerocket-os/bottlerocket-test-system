@@ -513,6 +513,30 @@ fn write_kubeconfig(cluster_name: &str, region: &str, kubeconfig_dir: &Path) -> 
         ));
     }
 
+    info!("Updating kubeconfig file");
+    let status = Command::new("aws")
+        .args([
+            "eks",
+            "update-kubeconfig",
+            "--region",
+            region,
+            &format!("--name={}", cluster_name),
+            "--kubeconfig",
+            kubeconfig_dir.to_str().context(
+                Resources::Remaining,
+                format!("Unable to convert '{:?}' to string path", kubeconfig_dir),
+            )?,
+        ])
+        .status()
+        .context(Resources::Remaining, "Failed update kubeconfig")?;
+
+    if !status.success() {
+        return Err(ProviderError::new_with_context(
+            Resources::Remaining,
+            format!("Failed update kubeconfig with status code {}", status),
+        ));
+    }
+
     Ok(())
 }
 
