@@ -6,6 +6,36 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+[Unreleased]: https://github.com/bottlerocket-os/bottlerocket-test-system/compare/v0.0.8...develop
+
+## [0.0.8] - 2023-06-12
+
+### Fixed
+
+- controller: Add retry logic to controller if it's unable to find resources ([#816])
+- karpenter: Remove extra { and } from ConfigMap username ([#818])
+- Fix various typos and spelling errors ([#835])
+
+### Changed
+
+- doc: Add documentation for minimal iam permissions ([#775])
+- Add Testsys-launcher ([#823], [#824], [#826], [#831])
+- sonobuoy-test-agent: Add non-blocking-taints for control plane nodes ([#832])
+- Add hello-testsys workload test definition ([#834])
+
+[#775]: https://github.com/bottlerocket-os/bottlerocket-test-system/pull/775
+[#816]: https://github.com/bottlerocket-os/bottlerocket-test-system/pull/816
+[#818]: https://github.com/bottlerocket-os/bottlerocket-test-system/pull/818
+[#823]: https://github.com/bottlerocket-os/bottlerocket-test-system/pull/823
+[#824]: https://github.com/bottlerocket-os/bottlerocket-test-system/pull/824
+[#826]: https://github.com/bottlerocket-os/bottlerocket-test-system/pull/826
+[#831]: https://github.com/bottlerocket-os/bottlerocket-test-system/pull/831
+[#832]: https://github.com/bottlerocket-os/bottlerocket-test-system/pull/832
+[#834]: https://github.com/bottlerocket-os/bottlerocket-test-system/pull/834
+[#835]: https://github.com/bottlerocket-os/bottlerocket-test-system/pull/835
+
+[0.0.8]: https://github.com/bottlerocket-os/bottlerocket-test-system/tree/v0.0.8
+
 ## [0.0.7] - 2023-03-03
 
 ### Fixed
@@ -29,7 +59,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 [#812]: https://github.com/bottlerocket-os/bottlerocket-test-system/pull/812
 
 [0.0.7]: https://github.com/bottlerocket-os/bottlerocket-test-system/tree/v0.0.7
-[Unreleased]: https://github.com/bottlerocket-os/bottlerocket-test-system/compare/v0.0.7...develop
 
 ## [0.0.6] - 2023-03-03
 
