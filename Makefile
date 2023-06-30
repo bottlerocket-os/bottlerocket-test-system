@@ -5,11 +5,11 @@
 TOP := $(dir $(firstword $(MAKEFILE_LIST)))
 
 # Variables we update as newer versions are released
-BOTTLEROCKET_SDK_VERSION = v0.30.2
+BOTTLEROCKET_SDK_VERSION ?= v0.33.0
 BOTTLEROCKET_SDK_ARCH = $(TESTSYS_BUILD_HOST_UNAME_ARCH)
 BOTTLEROCKET_TOOLS_VERSION ?= v0.6.0
 
-BUILDER_IMAGE = public.ecr.aws/bottlerocket/bottlerocket-sdk-$(BOTTLEROCKET_SDK_ARCH):$(BOTTLEROCKET_SDK_VERSION)
+BUILDER_IMAGE ?= public.ecr.aws/bottlerocket/bottlerocket-sdk-$(BOTTLEROCKET_SDK_ARCH):$(BOTTLEROCKET_SDK_VERSION)
 TOOLS_IMAGE ?= public.ecr.aws/bottlerocket-test-system/bottlerocket-test-tools:$(BOTTLEROCKET_TOOLS_VERSION)
 
 # Capture information about the build host
