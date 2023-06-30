@@ -76,7 +76,7 @@ ARG EKSA_SOURCE_URL="https://github.com/aws/eks-anywhere/archive/refs/tags/v${EK
 
 ARG EKSA_RELEASE_NUMBER=39
 # TODO EKS-A currently does not provide an ARM64 binary, add the hash for it when they do
-ARG EKSA_BINARY_URL="https://anywhere-assets.eks.amazonaws.com/releases/eks-a/${EKSA_RELEASE_NUMBER}/artifacts/eks-a/v${EKSA_VERSION}/${GOOS}/amd64/eksctl-anywhere-v${EKSA_VERSION}-${GOOS}-amd64.tar.gz"
+ARG EKSA_BINARY_URL="https://anywhere-assets.eks.amazonaws.com/releases/eks-a/${EKSA_RELEASE_NUMBER}/artifacts/eks-a/v${EKSA_VERSION}/${GOOS}/${GOARCH}/eksctl-anywhere-v${EKSA_VERSION}-${GOOS}-${GOARCH}.tar.gz"
 
 # TODO Try and build this; it's not straightforward with the tight coupling between EKS-A releases and its bundles
 USER builder
@@ -100,11 +100,11 @@ RUN cp -p LICENSE /usr/share/licenses/eksctl-anywhere && \
       --out-dir /usr/share/licenses/eksctl-anywhere/vendor \
       go-vendor ./vendor
 RUN curl -L "${EKSA_BINARY_URL}" \
-      -o "eksctl_anywhere_${EKSA_VERSION}_${EKSA_RELEASE_NUMBER}_${GOOS}_amd64.tar.gz" && \
-    grep "eksctl_anywhere_${EKSA_VERSION}_${EKSA_RELEASE_NUMBER}_${GOOS}_amd64.tar.gz" \
+      -o "eksctl_anywhere_${EKSA_VERSION}_${EKSA_RELEASE_NUMBER}_${GOOS}_${GOARCH}.tar.gz" && \
+    grep "eksctl_anywhere_${EKSA_VERSION}_${EKSA_RELEASE_NUMBER}_${GOOS}_${GOARCH}.tar.gz" \
       /hashes/eksctl-anywhere | sha512sum --check - && \
-    tar -xzf "eksctl_anywhere_${EKSA_VERSION}_${EKSA_RELEASE_NUMBER}_${GOOS}_amd64.tar.gz" && \
-    rm "eksctl_anywhere_${EKSA_VERSION}_${EKSA_RELEASE_NUMBER}_${GOOS}_amd64.tar.gz"
+    tar -xzf "eksctl_anywhere_${EKSA_VERSION}_${EKSA_RELEASE_NUMBER}_${GOOS}_${GOARCH}.tar.gz" && \
+    rm "eksctl_anywhere_${EKSA_VERSION}_${EKSA_RELEASE_NUMBER}_${GOOS}_${GOARCH}.tar.gz"
 
 # =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^=
 FROM build-go as kubernetes-build
@@ -226,7 +226,7 @@ RUN curl -L "${HELM_BINARY_URL}" \
     grep "helm_${HELM_VERSION}_${GOOS}_${GOARCH}.tar.gz" \
       /hashes/helm | sha512sum --check - && \
     tar -xf "helm_${HELM_VERSION}_${GOOS}_${GOARCH}.tar.gz" && \
-    mv  linux-amd64/helm helm && \
+    mv  linux-${GOARCH}/helm helm && \
     chmod 0755 helm && \
     rm "helm_${HELM_VERSION}_${GOOS}_${GOARCH}.tar.gz"
 
