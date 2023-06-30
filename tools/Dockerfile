@@ -44,12 +44,6 @@ RUN mkdir eksctl && \
     rm "eksctl_${EKSCTL_VERSION}.tar.gz"
 
 WORKDIR /home/builder/eksctl/
-# TODO - remove this workaround for a bad go.sum hash
-# caused by https://github.com/blizzy78/varnamelen/issues/13#issuecomment-1079040934
-# these sed statement replace a hash that has changed. -i.bak makes these compatible with BSD/macOS sed.
-RUN \
-  sed -i 's,github.com/blizzy78/varnamelen v0.6.1 h1:kttPCLzXFa+0nt++Cw9fb7GrSSM4KkyIAoX/vXsbuqA=,github.com/blizzy78/varnamelen v0.6.1 h1:iYAU/3A6cpfRm2ZI0P/lece4jsc7GEbzsxTu+vBCChQ=,' go.sum ; \
-  sed -i 's,github.com/blizzy78/varnamelen v0.6.1/go.mod h1:zy2Eic4qWqjrxa60jG34cfL0VXcSwzUrIx68eJPb4Q8=,github.com/blizzy78/varnamelen v0.6.1/go.mod h1:mGBHm+Uo4e8JnZEKHRoZgVEOQdSBdQfY/x+k4NAXBWA=,' go.sum
 RUN go mod vendor
 RUN cp -p LICENSE /usr/share/licenses/eksctl && \
     /usr/libexec/tools/bottlerocket-license-scan \
