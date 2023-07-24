@@ -11,16 +11,12 @@ agent-common = { version = "0.0.9", path = "../agent-common" }
 copy_dir = "0.1"
 test-agent = { version = "0.0.9", path = "../test-agent" }
 tokio = { version = "1", features = ["macros", "rt-multi-thread", "fs"] }
-tokio-util = "0.7"
 log = "0.4"
 testsys-model = { version = "0.0.9", path = "../../model" }
 snafu = "0.7"
-async-trait = "0.1"
-tempfile = "3"
 serde_json = "1"
 env_logger = "0.10"
 serde_plain = "1"
-serde_derive = "1"
 serde = "1"
 tar = "0.4"
 

@@ -2914,22 +2914,18 @@ dependencies = [
  "agent-common",
  "argh",
  "assert_cmd",
- "async-trait",
  "copy_dir",
  "env_logger",
  "log",
  "selftest",
  "serde",
- "serde_derive",
  "serde_json",
  "serde_plain",
  "snafu",
  "tar",
- "tempfile",
  "test-agent",
  "testsys-model",
  "tokio",
- "tokio-util",
 ]
 
 [[package]]
