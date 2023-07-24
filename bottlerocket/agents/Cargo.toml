@@ -10,7 +10,6 @@ agent-common = { version = "0.0.9", path = "../../agent/agent-common" }
 agent-utils = { version = "0.0.9", path = "../../agent/utils" }
 bottlerocket-types = { version = "0.0.9", path = "../types" }
 async-trait = "0.1"
-aws-config = "0.54"
 aws-types = "0.54"
 aws-sdk-ec2 = "0.24"
 aws-sdk-ecs = "0.24"
@@ -19,9 +18,7 @@ aws-sdk-iam = "0.24"
 aws-sdk-ssm = "0.24"
 aws-sdk-sts = "0.24"
 aws-sdk-cloudformation = "0.24"
-aws-smithy-types = "0.54"
 base64 = "0.20"
-env_logger = "0.10"
 flate2 = "1.0"
 hex ="0.4"
 k8s-openapi = { version = "0.18", default-features = false, features = ["v1_24"] }
@@ -34,12 +31,10 @@ reqwest = { version = "0.11", default-features = false, features = ["rustls-tls"
 resource-agent = { version = "0.0.9", path = "../../agent/resource-agent" }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-serde_plain = "1"
 serde_yaml = "0.8"
 sha2 = "0.10"
 snafu = "0.7"
 tar = "0.4"
-tempfile = "3"
 test-agent = { version = "0.0.9", path = "../../agent/test-agent" }
 tokio = { version = "1", default-features = false, features = ["macros", "rt-multi-thread", "time"] }
 toml = "0.5"
