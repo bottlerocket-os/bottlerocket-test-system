@@ -2547,7 +2547,6 @@ version = "0.0.9"
 dependencies = [
  "anyhow",
  "envy",
- "futures",
  "k8s-openapi",
  "kube",
  "lazy_static",
