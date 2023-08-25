@@ -228,7 +228,6 @@ impl Create for MetalK8sClusterCreator {
             .args(["--kubeconfig", &mgmt_kubeconfig_path])
             .args(["-f", &eksa_config_path])
             .args(["--hardware-csv", &hardware_csv_path])
-            .arg("--force-cleanup")
             .arg("--skip-ip-check")
             .args(["-v", "4"])
             .stdout(Stdio::inherit())
