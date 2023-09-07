@@ -32,8 +32,8 @@ async fn main() {
 
 async fn run(data: BootstrapData) -> AgentResult<()> {
     let types = Types {
-        info_client: PhantomData::<DefaultInfoClient>::default(),
-        agent_client: PhantomData::<DefaultAgentClient>::default(),
+        info_client: PhantomData::<DefaultInfoClient>,
+        agent_client: PhantomData::<DefaultAgentClient>,
     };
 
     let agent = Agent::new(types, data, EcsCreator {}, EcsDestroyer {}).await?;

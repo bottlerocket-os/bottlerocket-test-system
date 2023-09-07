@@ -44,7 +44,7 @@ pub fn controller_cluster_role() -> ClusterRole {
             PolicyRule {
                 api_groups: Some(vec![TESTSYS.to_string()]),
                 resources: Some(vec!["tests".to_string(), "tests/status".to_string()]),
-                verbs: vec![
+                verbs: [
                     "create",
                     "delete",
                     "deletecollection",
@@ -65,7 +65,7 @@ pub fn controller_cluster_role() -> ClusterRole {
                     "resources".to_string(),
                     "resources/status".to_string(),
                 ]),
-                verbs: vec![
+                verbs: [
                     "create",
                     "delete",
                     "deletecollection",
@@ -83,7 +83,7 @@ pub fn controller_cluster_role() -> ClusterRole {
             PolicyRule {
                 api_groups: Some(vec!["apps".to_string()]),
                 resources: Some(vec!["deployments".to_string()]),
-                verbs: vec![
+                verbs: [
                     "create",
                     "delete",
                     "deletecollection",
@@ -100,7 +100,7 @@ pub fn controller_cluster_role() -> ClusterRole {
             PolicyRule {
                 api_groups: Some(vec!["batch".to_string()]),
                 resources: Some(vec!["jobs".to_string()]),
-                verbs: vec![
+                verbs: [
                     "create",
                     "delete",
                     "deletecollection",
