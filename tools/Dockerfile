@@ -65,24 +65,18 @@ USER root
 RUN mkdir -p /usr/share/licenses/eksctl-anywhere && \
     chown -R builder:builder /usr/share/licenses/eksctl-anywhere
 
-ARG EKSA_VERSION=0.16.0
-ARG EKSA_SOURCE_URL="https://github.com/aws/eks-anywhere/archive/refs/tags/v${EKSA_VERSION}.tar.gz"
+# Build the eksctl-anywhere from source. Override by setting pull location from
+# docker build (e.g. "--build-arg EKSA_REF=heads/main" to build from current main).
+ARG EKSA_REF=tags/v0.17.1
+ARG EKSA_SOURCE_URL="https://github.com/aws/eks-anywhere/archive/refs/${EKSA_REF}.tar.gz"
 
-ARG EKSA_RELEASE_NUMBER=39
-# TODO EKS-A currently does not provide an ARM64 binary, add the hash for it when they do
-ARG EKSA_BINARY_URL="https://anywhere-assets.eks.amazonaws.com/releases/eks-a/${EKSA_RELEASE_NUMBER}/artifacts/eks-a/v${EKSA_VERSION}/${GOOS}/amd64/eksctl-anywhere-v${EKSA_VERSION}-${GOOS}-amd64.tar.gz"
-
-# TODO Try and build this; it's not straightforward with the tight coupling between EKS-A releases and its bundles
 USER builder
 WORKDIR /home/builder/
 RUN mkdir eksctl-anywhere && \
-    curl -L "${EKSA_SOURCE_URL}" \
-      -o "eksctl_anywhere_${EKSA_VERSION}.tar.gz" && \
-    grep "eksctl_anywhere_${EKSA_VERSION}.tar.gz" \
-      /hashes/eksctl-anywhere | sha512sum --check - && \
-    tar -xf "eksctl_anywhere_${EKSA_VERSION}.tar.gz" \
+    curl -L "${EKSA_SOURCE_URL}" -o "eksctl_anywhere.tar.gz" && \
+    tar -xf "eksctl_anywhere.tar.gz" \
       --strip-components 1 -C eksctl-anywhere && \
-    rm "eksctl_anywhere_${EKSA_VERSION}.tar.gz"
+    rm "eksctl_anywhere.tar.gz"
 
 USER builder
 WORKDIR /home/builder/eksctl-anywhere/
@@ -93,12 +87,7 @@ RUN cp -p LICENSE /usr/share/licenses/eksctl-anywhere && \
       --spdx-data /usr/libexec/tools/spdx-data \
       --out-dir /usr/share/licenses/eksctl-anywhere/vendor \
       go-vendor ./vendor
-RUN curl -L "${EKSA_BINARY_URL}" \
-      -o "eksctl_anywhere_${EKSA_VERSION}_${EKSA_RELEASE_NUMBER}_${GOOS}_amd64.tar.gz" && \
-    grep "eksctl_anywhere_${EKSA_VERSION}_${EKSA_RELEASE_NUMBER}_${GOOS}_amd64.tar.gz" \
-      /hashes/eksctl-anywhere | sha512sum --check - && \
-    tar -xzf "eksctl_anywhere_${EKSA_VERSION}_${EKSA_RELEASE_NUMBER}_${GOOS}_amd64.tar.gz" && \
-    rm "eksctl_anywhere_${EKSA_VERSION}_${EKSA_RELEASE_NUMBER}_${GOOS}_amd64.tar.gz"
+RUN make eks-a
 
 # =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^=
 FROM build-go as kubernetes-build
@@ -267,7 +256,7 @@ COPY --from=eksctl-build /usr/share/licenses/eksctl /licenses/eksctl
 
 # eksctl-anywhere
 COPY --from=eksctl-anywhere-build \
-     /home/builder/eksctl-anywhere/eksctl-anywhere \
+     /home/builder/eksctl-anywhere/bin/eksctl-anywhere \
      /eksctl-anywhere
 COPY --from=eksctl-anywhere-build \
      /usr/share/licenses/eksctl-anywhere \
