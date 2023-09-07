@@ -5,7 +5,7 @@
 TOP := $(dir $(firstword $(MAKEFILE_LIST)))
 
 # Variables we update as newer versions are released
-BOTTLEROCKET_SDK_VERSION = v0.30.2
+BOTTLEROCKET_SDK_VERSION = v0.34.0
 BOTTLEROCKET_SDK_ARCH = $(TESTSYS_BUILD_HOST_UNAME_ARCH)
 BOTTLEROCKET_TOOLS_VERSION ?= v0.6.0
 
