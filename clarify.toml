@@ -29,15 +29,13 @@ skip-files = [
 ]
 
 [clarify.regex-automata]
-expression = "(MIT OR Unlicense)"
+expression = "MIT OR Apache-2.0"
 license-files = [
-    { path = "COPYING", hash = 0x969f37d8 },
-    { path = "LICENSE-MIT", hash = 0x616d8a83 },
-    { path = "UNLICENSE", hash = 0x87b84020 },
+    { path = "LICENSE-APACHE", hash = 0x24b54f4b },
+    { path = "LICENSE-MIT", hash = 0xb755395b },
 ]
 skip-files = [
-    "data/fowler-tests/LICENSE", # we aren't using the test data
-    "data/tests/fowler/LICENSE", # we aren't using the test data
+    "src/testdata/LICENSE", # we aren't using the test data
 ]
 
 [clarify.regex-syntax]
