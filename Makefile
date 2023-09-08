@@ -5,7 +5,7 @@
 TOP := $(dir $(firstword $(MAKEFILE_LIST)))
 
 # Variables we update as newer versions are released
-BOTTLEROCKET_SDK_VERSION = v0.30.2
+BOTTLEROCKET_SDK_VERSION = v0.34.0
 BOTTLEROCKET_SDK_ARCH = $(TESTSYS_BUILD_HOST_UNAME_ARCH)
 BOTTLEROCKET_TOOLS_VERSION ?= v0.6.0
 
@@ -18,6 +18,9 @@ TESTSYS_BUILD_HOST_GOARCH ?= $(lastword $(subst :, ,$(filter $(TESTSYS_BUILD_HOS
 TESTSYS_BUILD_HOST_PLATFORM=$(shell uname | tr '[:upper:]' '[:lower:]')
 # On some hosts we get an x509 certificate error and need to set GOPROXY to "direct"
 TESTSYS_BUILD_GOPROXY ?= direct
+
+# Default eksctl_anywhere source ref so it can be overridden
+TESTSYS_EKSA_REF ?= tags/v0.17.1
 
 # The set of agent images. Add new agent artifacts here when added to the
 # project
@@ -136,11 +139,12 @@ tools:
 		--build-arg BUILDER_IMAGE="$(BUILDER_IMAGE)" \
 		--build-arg GOARCH="$(TESTSYS_BUILD_HOST_GOARCH)" \
 		--build-arg GOPROXY="$(TESTSYS_BUILD_GOPROXY)" \
+		--build-arg EKSA_REF="$(TESTSYS_EKSA_REF)" \
 		--network=host \
 		-f ./tools/Dockerfile \
 		-t bottlerocket-test-tools \
 		-t $(TOOLS_IMAGE) \
-		--progress=tty \
+		--progress=plain \
 		./tools
 
 # Build the container image for a testsys agent
@@ -151,6 +155,7 @@ $(AGENT_IMAGES): show-variables fetch
 		--build-arg TOOLS_IMAGE="$(TOOLS_IMAGE)" \
 		--build-arg GOARCH="$(TESTSYS_BUILD_HOST_GOARCH)" \
 		--build-arg GOPROXY="$(TESTSYS_BUILD_GOPROXY)" \
+		--build-arg EKSA_REF="$(TESTSYS_EKSA_REF)" \
 		--network=host \
 		--target $@ \
 		--tag $@ \
