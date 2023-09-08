@@ -140,7 +140,7 @@ tools:
 		-f ./tools/Dockerfile \
 		-t bottlerocket-test-tools \
 		-t $(TOOLS_IMAGE) \
-		--progress=tty \
+		--progress=plain \
 		./tools
 
 # Build the container image for a testsys agent
