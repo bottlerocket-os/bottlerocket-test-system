@@ -134,6 +134,7 @@ impl Create for Ec2Creator {
             &spec.configuration.assume_role,
             &None,
             &Some(spec.configuration.region.clone()),
+            &None,
             false,
         )
         .await
@@ -726,6 +727,7 @@ impl Destroy for Ec2Destroyer {
             &memo.assume_role,
             &None,
             &Some(memo.region.clone()),
+            &None,
             false,
         )
         .await

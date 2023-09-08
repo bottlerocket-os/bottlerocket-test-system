@@ -119,6 +119,7 @@ impl Create for Ec2KarpenterCreator {
             &spec.configuration.assume_role,
             &None,
             &Some(spec.configuration.region.clone()),
+            &None,
             true,
         )
         .await
@@ -908,6 +909,7 @@ impl Destroy for Ec2KarpenterDestroyer {
             &spec.configuration.assume_role,
             &None,
             &Some(spec.configuration.region.clone()),
+            &None,
             true,
         )
         .await

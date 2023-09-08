@@ -117,6 +117,7 @@ impl Create for EcsCreator {
             &spec.configuration.assume_role,
             &None,
             &spec.configuration.region,
+            &None,
             false,
         )
         .await
@@ -376,6 +377,7 @@ impl Destroy for EcsDestroyer {
             &memo.assume_role,
             &None,
             &memo.region,
+            &None,
             false,
         )
         .await

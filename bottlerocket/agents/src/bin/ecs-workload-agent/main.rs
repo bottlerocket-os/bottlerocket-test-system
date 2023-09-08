@@ -88,6 +88,7 @@ where
             &self.config.assume_role,
             &None,
             &self.config.region,
+            &None,
             false,
         )
         .await?;

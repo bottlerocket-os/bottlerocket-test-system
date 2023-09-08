@@ -103,9 +103,9 @@ struct AwsClients {
 }
 
 impl AwsClients {
-    async fn new(shared_config: &SdkConfig) -> Self {
+    async fn new(shared_config: &SdkConfig, eks_config: &SdkConfig) -> Self {
         Self {
-            eks_client: aws_sdk_eks::Client::new(shared_config),
+            eks_client: aws_sdk_eks::Client::new(eks_config),
             ec2_client: aws_sdk_ec2::Client::new(shared_config),
             iam_client: aws_sdk_iam::Client::new(shared_config),
             cfn_client: aws_sdk_cloudformation::Client::new(shared_config),
@@ -336,11 +336,24 @@ impl Create for EksCreator {
             &spec.configuration.assume_role,
             &None,
             &Some(cluster_config.region()),
+            &None,
             true,
         )
         .await
         .context(Resources::Clear, "Error creating config")?;
-        let aws_clients = AwsClients::new(&shared_config).await;
+
+        let eks_sdk_config = aws_config(
+            &spec.secrets.get(AWS_CREDENTIALS_SECRET_NAME),
+            &spec.configuration.assume_role,
+            &None,
+            &Some(cluster_config.region()),
+            &spec.configuration.eks_service_endpoint,
+            true,
+        )
+        .await
+        .context(Resources::Clear, "Error creating EKS client config")?;
+
+        let aws_clients = AwsClients::new(&shared_config, &eks_sdk_config).await;
 
         info!("Determining cluster state");
         memo.current_status = "Determining cluster state".to_string();
@@ -389,6 +402,7 @@ impl Create for EksCreator {
 
         write_kubeconfig(
             &cluster_config.cluster_name(),
+            &spec.configuration.eks_service_endpoint,
             &cluster_config.region(),
             &kubeconfig_dir,
         )?;
@@ -491,21 +505,32 @@ async fn nodegroup_iam_role(
         .map(|s| s.to_string())
 }
 
-fn write_kubeconfig(cluster_name: &str, region: &str, kubeconfig_dir: &Path) -> ProviderResult<()> {
+fn write_kubeconfig(
+    cluster_name: &str,
+    endpoint: &Option<String>,
+    region: &str,
+    kubeconfig_dir: &Path,
+) -> ProviderResult<()> {
     info!("Updating kubeconfig file");
+    let mut aws_cli_args = vec![
+        "eks",
+        "update-kubeconfig",
+        "--region",
+        region,
+        "--name",
+        cluster_name,
+        "--kubeconfig",
+        kubeconfig_dir.to_str().context(
+            Resources::Remaining,
+            format!("Unable to convert '{:?}' to string path", kubeconfig_dir),
+        )?,
+    ];
+    if let Some(endpoint) = endpoint {
+        info!("Using EKS service endpoint: {}", endpoint);
+        aws_cli_args.append(&mut vec!["--endpoint", endpoint]);
+    }
     let status = Command::new("aws")
-        .args([
-            "eks",
-            "update-kubeconfig",
-            "--region",
-            region,
-            &format!("--name={}", cluster_name),
-            "--kubeconfig",
-            kubeconfig_dir.to_str().context(
-                Resources::Remaining,
-                format!("Unable to convert '{:?}' to string path", kubeconfig_dir),
-            )?,
-        ])
+        .args(aws_cli_args)
         .status()
         .context(Resources::Remaining, "Failed update kubeconfig")?;
 
@@ -867,6 +892,7 @@ impl Destroy for EksDestroyer {
             &memo.assume_role,
             &None,
             &memo.region.clone(),
+            &None,
             true,
         )
         .await

@@ -22,6 +22,7 @@ pub async fn aws_config(
     assume_role: &Option<String>,
     assume_role_session_duration: &Option<i32>,
     region: &Option<String>,
+    endpoint_url: &Option<String>,
     setup_env: bool,
 ) -> Result<SdkConfig, Error> {
     let region = region
@@ -70,10 +71,19 @@ pub async fn aws_config(
         None => config_loader.credentials_provider(base_provider),
     };
 
-    let config = config_loader
-        .region(Region::new(region.clone()))
-        .load()
-        .await;
+    let config = if let Some(endpoint) = endpoint_url {
+        config_loader
+            .region(Region::new(region.clone()))
+            .endpoint_url(endpoint)
+            .load()
+            .await
+    } else {
+        config_loader
+            .region(Region::new(region.clone()))
+            .load()
+            .await
+    };
+
     if let (Some(role_arn), true) = (assume_role, setup_env) {
         info!("Getting credentials for assumed role '{}'.", role_arn);
         let sts_client = aws_sdk_sts::Client::new(&config);
