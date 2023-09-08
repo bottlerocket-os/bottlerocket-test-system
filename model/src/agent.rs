@@ -92,9 +92,7 @@ pub fn timeout_schema(_: &mut schemars::gen::SchemaGenerator) -> schemars::schem
         string: Some(Box::new(StringValidation {
             max_length: Some(253),
             min_length: Some(1),
-            pattern: Some(
-                r#"^((([0-9]+)d)?(([0-9]+)h)?(([0-9]+)m)?(([0-9]+)s)?|\d+)$"#.to_string(),
-            ),
+            pattern: Some(r"^((([0-9]+)d)?(([0-9]+)h)?(([0-9]+)m)?(([0-9]+)s)?|\d+)$".to_string()),
         })),
         instance_type: Some(InstanceType::String.into()),
         extensions,

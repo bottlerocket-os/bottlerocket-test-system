@@ -140,11 +140,11 @@ impl Client for DefaultClient {
     }
 
     async fn results_directory(&self) -> Result<PathBuf, Self::E> {
-        return Ok(self.results_dir.path().to_path_buf());
+        Ok(self.results_dir.path().to_path_buf())
     }
 
     async fn results_file(&self) -> Result<PathBuf, Self::E> {
-        return Ok(PathBuf::from(TESTSYS_RESULTS_FILE));
+        Ok(PathBuf::from(TESTSYS_RESULTS_FILE))
     }
 }
 

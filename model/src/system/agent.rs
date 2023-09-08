@@ -100,7 +100,7 @@ impl AgentType {
         let mut policy_rules = vec![PolicyRule {
             api_groups: Some(vec![TESTSYS.to_string()]),
             resources: Some(vec![managed_resource, managed_status]),
-            verbs: vec!["get", "list", "patch", "update", "watch"]
+            verbs: ["get", "list", "patch", "update", "watch"]
                 .iter()
                 .map(|s| s.to_string())
                 .collect(),

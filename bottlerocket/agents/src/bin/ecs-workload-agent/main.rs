@@ -550,12 +550,7 @@ mod test_workload_agent {
     }
 
     fn fake_task_def(include_gpu: bool) -> TaskDefinition {
-        let revision;
-        if include_gpu {
-            revision = 2;
-        } else {
-            revision = 1;
-        }
+        let revision = if include_gpu { 2 } else { 1 };
 
         let mut builder = ContainerDefinition::builder()
             .name("test".to_string())
