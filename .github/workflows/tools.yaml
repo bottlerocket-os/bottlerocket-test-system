@@ -13,5 +13,5 @@ jobs:
       group: bottlerocket
       labels: bottlerocket_ubuntu-latest_8-core
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - run: make tools
