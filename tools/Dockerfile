@@ -220,7 +220,7 @@ RUN curl -L "${HELM_BINARY_URL}" \
     grep "helm_${HELM_VERSION}_${GOOS}_${GOARCH}.tar.gz" \
       /hashes/helm | sha512sum --check - && \
     tar -xf "helm_${HELM_VERSION}_${GOOS}_${GOARCH}.tar.gz" && \
-    mv  linux-amd64/helm helm && \
+    mv linux-${GOARCH}/helm helm && \
     chmod 0755 helm && \
     rm "helm_${HELM_VERSION}_${GOOS}_${GOARCH}.tar.gz"
 
