@@ -76,6 +76,7 @@ where
             &self.config.assume_role,
             &None,
             &None,
+            &None,
             true,
         )
         .await?;

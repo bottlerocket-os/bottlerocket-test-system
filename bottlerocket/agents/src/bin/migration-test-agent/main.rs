@@ -88,6 +88,7 @@ where
             &self.config.assume_role,
             &None,
             &Some(self.config.aws_region.clone()),
+            &None,
             false,
         )
         .await?;

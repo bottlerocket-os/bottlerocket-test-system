@@ -105,6 +105,11 @@ pub struct EksClusterConfig {
     /// The role that should be assumed when creating the cluster.
     pub assume_role: Option<String>,
 
+    /// The endpoint to create the EKS client with.
+    /// This applicable when the cluster already exists at some EKS service endpoint, and we'd like
+    /// to retrieve its details.
+    pub eks_service_endpoint: Option<String>,
+
     #[serde(flatten)]
     pub config: EksctlConfig,
 }

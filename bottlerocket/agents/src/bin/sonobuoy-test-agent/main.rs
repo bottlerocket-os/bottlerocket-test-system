@@ -75,6 +75,7 @@ where
             &self.config.assume_role,
             &None,
             &None,
+            &None,
             true,
         )
         .await?;
@@ -112,6 +113,7 @@ where
         aws_config(
             &self.aws_secret_name.as_ref(),
             &self.config.assume_role,
+            &None,
             &None,
             &None,
             true,

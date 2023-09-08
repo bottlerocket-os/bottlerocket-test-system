@@ -1,6 +1,7 @@
 use agent_utils::aws::aws_config;
-use agent_utils::{impl_display_as_json, json_display, provider_error_for_cmd_output};
-use aws_sdk_ec2::model::{Filter, SecurityGroup, Subnet};
+use agent_utils::{impl_display_as_json, json_display};
+use aws_sdk_cloudformation::model::StackStatus;
+use aws_sdk_ec2::model::{Filter, Subnet};
 use aws_sdk_ec2::types::SdkError;
 use aws_sdk_eks::error::{DescribeClusterError, DescribeClusterErrorKind};
 use aws_sdk_eks::model::{Cluster, IpFamily};
@@ -79,12 +80,11 @@ pub struct CreatedCluster {
 
     /// Security groups necessary for ec2 instances
     pub security_groups: Vec<String>,
-    #[serde(skip_serializing_if = "Vec::is_empty")]
-    pub nodegroup_sg: Vec<String>,
-    pub controlplane_sg: Vec<String>,
-    pub clustershared_sg: Vec<String>,
 
-    /// The eksctl create iam instance profile.
+    /// Cluster security group
+    pub cluster_sg: String,
+
+    /// The instance IAM instance profile.
     pub iam_instance_profile_arn: String,
 
     /// Base64 encoded kubeconfig
@@ -99,14 +99,16 @@ struct AwsClients {
     eks_client: aws_sdk_eks::Client,
     ec2_client: aws_sdk_ec2::Client,
     iam_client: aws_sdk_iam::Client,
+    cfn_client: aws_sdk_cloudformation::Client,
 }
 
 impl AwsClients {
-    async fn new(shared_config: &SdkConfig) -> Self {
+    async fn new(shared_config: &SdkConfig, eks_config: &SdkConfig) -> Self {
         Self {
-            eks_client: aws_sdk_eks::Client::new(shared_config),
+            eks_client: aws_sdk_eks::Client::new(eks_config),
             ec2_client: aws_sdk_ec2::Client::new(shared_config),
             iam_client: aws_sdk_iam::Client::new(shared_config),
+            cfn_client: aws_sdk_cloudformation::Client::new(shared_config),
         }
     }
 }
@@ -334,11 +336,24 @@ impl Create for EksCreator {
             &spec.configuration.assume_role,
             &None,
             &Some(cluster_config.region()),
+            &None,
             true,
         )
         .await
         .context(Resources::Clear, "Error creating config")?;
-        let aws_clients = AwsClients::new(&shared_config).await;
+
+        let eks_sdk_config = aws_config(
+            &spec.secrets.get(AWS_CREDENTIALS_SECRET_NAME),
+            &spec.configuration.assume_role,
+            &None,
+            &Some(cluster_config.region()),
+            &spec.configuration.eks_service_endpoint,
+            true,
+        )
+        .await
+        .context(Resources::Clear, "Error creating EKS client config")?;
+
+        let aws_clients = AwsClients::new(&shared_config, &eks_sdk_config).await;
 
         info!("Determining cluster state");
         memo.current_status = "Determining cluster state".to_string();
@@ -387,6 +402,7 @@ impl Create for EksCreator {
 
         write_kubeconfig(
             &cluster_config.cluster_name(),
+            &spec.configuration.eks_service_endpoint,
             &cluster_config.region(),
             &kubeconfig_dir,
         )?;
@@ -438,95 +454,83 @@ async fn is_eks_cluster_creation_required(
     is_cluster_creation_required(&cluster_exists, cluster_name, &creation_policy).await
 }
 
-fn cluster_iam_identity_mapping(cluster_name: &str, region: &str) -> ProviderResult<String> {
-    info!("Getting cluster role ARN");
-    let iam_identity_output = Command::new("eksctl")
-        .args([
-            "get",
-            "iamidentitymapping",
-            "--cluster",
-            cluster_name,
-            "--region",
-            region,
-            "--output",
-            "json",
-        ])
-        .output()
+async fn nodegroup_iam_role(
+    cluster_name: &str,
+    cfn_client: &aws_sdk_cloudformation::Client,
+) -> ProviderResult<String> {
+    let stack_name = cfn_client
+        .list_stacks()
+        .stack_status_filter(StackStatus::CreateComplete)
+        .stack_status_filter(StackStatus::UpdateComplete)
+        .send()
+        .await
+        .context(Resources::Remaining, "Unable to list CloudFormation stacks")?
+        .stack_summaries()
         .context(
             Resources::Remaining,
-            "Unable to run 'eksctl get iamidentitymapping'.",
-        )?;
-
-    let stdout = provider_error_for_cmd_output(
-        iam_identity_output,
-        "eksctl get iamidentitymapping",
-        Resources::Remaining,
-    )?;
-
-    let iam_identity: serde_json::Value = serde_json::from_str(&stdout).context(
-        Resources::Remaining,
-        "Unable to deserialize iam identity mapping",
-    )?;
-
-    iam_identity
-        .as_array()
-        .context(Resources::Remaining, "No profiles found.")?
+            "Missing CloudFormation stack summaries",
+        )?
         .iter()
-        .find(|profile_value| {
-            profile_value.get("username")
-                == Some(&Value::String(
-                    "system:node:{{EC2PrivateDNSName}}".to_string(),
-                ))
-        })
-        .context(Resources::Remaining, "No profiles found.")?
-        .get("rolearn")
-        .context(Resources::Remaining, "Profile does not contain rolearn.")?
-        .as_str()
-        .context(Resources::Remaining, "Rolearn is not a string.")
-        .map(|arn| arn.to_string())
+        .filter_map(|stack| stack.stack_name())
+        .find(|name|
+               // For eksctl created clusters
+              name.starts_with(&format!("eksctl-{cluster_name}-nodegroup"))
+                  // For non-eksctl created clusters
+                  || name.starts_with(&format!("{cluster_name}-node-group")))
+        .context(
+            Resources::Remaining,
+            "Could not find nodegroup cloudformation stack for cluster",
+        )?
+        .to_string();
+    cfn_client
+        .describe_stack_resource()
+        .stack_name(&stack_name)
+        .logical_resource_id("NodeInstanceRole")
+        .send()
+        .await
+        .context(
+            Resources::Remaining,
+            format!("Unable to describe CloudFormation stack resources for '{stack_name}'"),
+        )?
+        .stack_resource_detail()
+        .context(
+            Resources::Remaining,
+            format!("Missing 'NodeInstanceRole' stack resource for '{stack_name}'"),
+        )?
+        .physical_resource_id()
+        .context(
+            Resources::Remaining,
+            format!("Missing stack outputs in '{stack_name}'"),
+        )
+        .map(|s| s.to_string())
 }
 
-fn write_kubeconfig(cluster_name: &str, region: &str, kubeconfig_dir: &Path) -> ProviderResult<()> {
-    info!("Writing kubeconfig file");
-    let status = Command::new("eksctl")
-        .args([
-            "utils",
-            "write-kubeconfig",
-            "-r",
-            region,
-            &format!("--cluster={}", cluster_name),
-            &format!(
-                "--kubeconfig={}",
-                kubeconfig_dir.to_str().context(
-                    Resources::Remaining,
-                    format!("Unable to convert '{:?}' to string path", kubeconfig_dir),
-                )?
-            ),
-        ])
-        .status()
-        .context(Resources::Remaining, "Failed write kubeconfig")?;
-
-    if !status.success() {
-        return Err(ProviderError::new_with_context(
-            Resources::Remaining,
-            format!("Failed write kubeconfig with status code {}", status),
-        ));
-    }
-
+fn write_kubeconfig(
+    cluster_name: &str,
+    endpoint: &Option<String>,
+    region: &str,
+    kubeconfig_dir: &Path,
+) -> ProviderResult<()> {
     info!("Updating kubeconfig file");
+    let mut aws_cli_args = vec![
+        "eks",
+        "update-kubeconfig",
+        "--region",
+        region,
+        "--name",
+        cluster_name,
+        "--kubeconfig",
+        kubeconfig_dir.to_str().context(
+            Resources::Remaining,
+            format!("Unable to convert '{:?}' to string path", kubeconfig_dir),
+        )?,
+    ];
+    if let Some(endpoint) = endpoint {
+        info!("Using EKS service endpoint: {}", endpoint);
+        aws_cli_args.append(&mut vec!["--endpoint", endpoint]);
+    }
     let status = Command::new("aws")
-        .args([
-            "eks",
-            "update-kubeconfig",
-            "--region",
-            region,
-            &format!("--name={}", cluster_name),
-            "--kubeconfig",
-            kubeconfig_dir.to_str().context(
-                Resources::Remaining,
-                format!("Unable to convert '{:?}' to string path", kubeconfig_dir),
-            )?,
-        ])
+        .args(aws_cli_args)
         .status()
         .context(Resources::Remaining, "Failed update kubeconfig")?;
 
@@ -559,11 +563,11 @@ async fn created_cluster(
     let endpoint = endpoint(&cluster).await?;
     let certificate = certificate(&cluster).await?;
     let cluster_dns_ip = cluster_dns_ip(&cluster).await?;
+    let cluster_sg = cluster_sg(&cluster).await?;
 
     info!("Getting public subnet ids");
     let public_subnet_ids: Vec<String> = subnet_ids(
         &aws_clients.ec2_client,
-        cluster_name,
         eks_subnet_ids.clone(),
         SubnetType::Public,
     )
@@ -576,7 +580,6 @@ async fn created_cluster(
     info!("Getting private subnet ids");
     let private_subnet_ids: Vec<String> = subnet_ids(
         &aws_clients.ec2_client,
-        cluster_name,
         eks_subnet_ids.clone(),
         SubnetType::Private,
     )
@@ -586,48 +589,10 @@ async fn created_cluster(
     .collect();
     debug!("Private subnet ids: {:?}", private_subnet_ids);
 
-    info!("Getting the nodegroup security group");
-    let nodegroup_sg: Vec<String> = security_group(
-        &aws_clients.ec2_client,
-        cluster_name,
-        SecurityGroupType::NodeGroup,
-    )
-    .await?
-    .into_iter()
-    .filter_map(|security_group| security_group.group_id)
-    .collect();
-    debug!("nodegroup_sg: {:?}", nodegroup_sg);
-
-    info!("Getting the controlplane security group");
-    let controlplane_sg = security_group(
-        &aws_clients.ec2_client,
-        cluster_name,
-        SecurityGroupType::ControlPlane,
-    )
-    .await?
-    .into_iter()
-    .filter_map(|security_group| security_group.group_id)
-    .collect();
-    debug!("controlplane_sg: {:?}", controlplane_sg);
-
-    info!("Getting the cluster shared security group");
-    let clustershared_sg: Vec<String> = security_group(
-        &aws_clients.ec2_client,
-        cluster_name,
-        SecurityGroupType::ClusterShared,
-    )
-    .await?
-    .into_iter()
-    .filter_map(|security_group| security_group.group_id)
-    .collect();
-    debug!("clustershared_sg: {:?}", clustershared_sg);
-
-    let mut security_groups = vec![];
-    security_groups.append(&mut nodegroup_sg.clone());
-    security_groups.append(&mut clustershared_sg.clone());
+    let security_groups = vec![cluster_sg.to_owned()];
     debug!("security_groups: {:?}", security_groups);
 
-    let node_instance_role = cluster_iam_identity_mapping(cluster_name, region)?;
+    let node_instance_role = nodegroup_iam_role(cluster_name, &aws_clients.cfn_client).await?;
     let iam_instance_profile_arn =
         instance_profile_arn(&aws_clients.iam_client, &node_instance_role).await?;
 
@@ -639,9 +604,7 @@ async fn created_cluster(
         cluster_dns_ip,
         public_subnet_ids,
         private_subnet_ids,
-        nodegroup_sg,
-        controlplane_sg,
-        clustershared_sg,
+        cluster_sg,
         iam_instance_profile_arn,
         security_groups,
         encoded_kubeconfig,
@@ -663,6 +626,22 @@ async fn eks_subnet_ids(cluster: &Cluster) -> ProviderResult<Vec<String>> {
             "resources_vpc_config missing subnet ids",
         )
         .map(|ids| ids.clone())
+}
+
+async fn cluster_sg(cluster: &Cluster) -> ProviderResult<String> {
+    cluster
+        .resources_vpc_config
+        .as_ref()
+        .context(
+            Resources::Remaining,
+            "Cluster missing resources_vpc_config field",
+        )?
+        .cluster_security_group_id()
+        .context(
+            Resources::Remaining,
+            "resources_vpc_config missing cluster security group id",
+        )
+        .map(|s| s.to_string())
 }
 
 async fn endpoint(cluster: &Cluster) -> ProviderResult<String> {
@@ -771,19 +750,8 @@ enum SubnetType {
     Private,
 }
 
-impl SubnetType {
-    fn tag(&self, cluster_name: &str) -> String {
-        let subnet_type = match self {
-            SubnetType::Public => "Public",
-            SubnetType::Private => "Private",
-        };
-        format!("eksctl-{}-cluster/*{}*", cluster_name, subnet_type)
-    }
-}
-
 async fn subnet_ids(
     ec2_client: &aws_sdk_ec2::Client,
-    cluster_name: &str,
     eks_subnet_ids: Vec<String>,
     subnet_type: SubnetType,
 ) -> ProviderResult<Vec<Subnet>> {
@@ -792,8 +760,11 @@ async fn subnet_ids(
         .set_subnet_ids(Some(eks_subnet_ids))
         .filters(
             Filter::builder()
-                .name("tag:Name")
-                .values(subnet_type.tag(cluster_name))
+                .name("map-public-ip-on-launch")
+                .values(match subnet_type {
+                    SubnetType::Public => "true",
+                    SubnetType::Private => "false",
+                })
                 .build(),
         )
         .send()
@@ -804,85 +775,10 @@ async fn subnet_ids(
         .context(Resources::Remaining, "Results missing subnets field")
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
-enum SecurityGroupType {
-    NodeGroup,
-    ClusterShared,
-    ControlPlane,
-}
-
-impl SecurityGroupType {
-    fn tag(&self, cluster_name: &str) -> String {
-        let sg = match self {
-            SecurityGroupType::NodeGroup => "nodegroup",
-            SecurityGroupType::ClusterShared => "cluster/ClusterSharedNodeSecurityGroup",
-            SecurityGroupType::ControlPlane => "cluster/ControlPlaneSecurityGroup",
-        };
-        format!("*{}-{}*", cluster_name, sg)
-    }
-}
-
-async fn security_group(
-    ec2_client: &aws_sdk_ec2::Client,
-    cluster_name: &str,
-    security_group_type: SecurityGroupType,
-) -> ProviderResult<Vec<SecurityGroup>> {
-    // Extract the security groups.
-    let filter_value = security_group_type.tag(cluster_name);
-    trace!("Filtering for tag:Name={}", filter_value);
-    let describe_results = ec2_client
-        .describe_security_groups()
-        .filters(
-            Filter::builder()
-                .name("tag:Name")
-                .values(filter_value.clone())
-                .build(),
-        )
-        .send()
-        .await
-        .context(
-            Resources::Remaining,
-            format!("Unable to get {:?} security group", security_group_type),
-        )?;
-
-    let security_groups = describe_results.security_groups.context(
-        Resources::Remaining,
-        "Results missing security_groups field",
-    )?;
-
-    // If we haven't found the security group (or we found too many), the user may experience hard-
-    // to-diagnose issues downstream, so we want to raise an error here.
-    if security_groups.is_empty() {
-        // Only self-managed nodegroup will have this security group created.
-        // eksctl creates managed nodegroups by default in newer versions. So it's ok if this is missing.
-        if security_group_type == SecurityGroupType::NodeGroup {
-            return Ok(security_groups);
-        }
-        return Err(ProviderError::new_with_context(
-            Resources::Remaining,
-            format!(
-                "Security group not found when filtering the name tags with '{}'",
-                filter_value
-            ),
-        ));
-    } else if security_groups.len() > 1 {
-        return Err(ProviderError::new_with_context(
-            Resources::Remaining,
-            format!(
-                "More than one security group found when filtering the name tags with '{}'",
-                filter_value
-            ),
-        ));
-    }
-
-    Ok(security_groups)
-}
-
 async fn instance_profile_arn(
     iam_client: &aws_sdk_iam::Client,
-    role_arn: &str,
+    role_name: &str,
 ) -> ProviderResult<String> {
-    let role_name = role_name_from_arn(role_arn, Resources::Remaining)?;
     let instance_profiles = iam_client
         .list_instance_profiles_for_role()
         .role_name(role_name)
@@ -890,7 +786,7 @@ async fn instance_profile_arn(
         .await
         .context(
             Resources::Remaining,
-            format!("Unable to list instance profiles for role '{}'", role_arn),
+            format!("Unable to list instance profiles for role '{}'", role_name),
         )?
         .instance_profiles
         .ok_or_else(|| {
@@ -905,7 +801,7 @@ async fn instance_profile_arn(
             Resources::Remaining,
             format!(
                 "More than one instance profile was found for role '{}'",
-                role_arn
+                role_name
             ),
         ));
     }
@@ -913,7 +809,7 @@ async fn instance_profile_arn(
     let instance_profile = instance_profiles.into_iter().next().ok_or_else(|| {
         ProviderError::new_with_context(
             Resources::Remaining,
-            format!("No instance profile was found for role '{}'", role_arn),
+            format!("No instance profile was found for role '{}'", role_name),
         )
     })?;
 
@@ -922,17 +818,8 @@ async fn instance_profile_arn(
             Resources::Remaining,
             format!(
                 "Received an instance profile object with no arn for role '{}'",
-                role_arn
+                role_name
             ),
-        )
-    })
-}
-
-fn role_name_from_arn(arn: &str, error_resources: Resources) -> ProviderResult<&str> {
-    arn.split('/').nth(1).ok_or_else(|| {
-        ProviderError::new_with_context(
-            error_resources,
-            format!("Unable to parse role name from arn '{}'", arn),
         )
     })
 }
@@ -1005,6 +892,7 @@ impl Destroy for EksDestroyer {
             &memo.assume_role,
             &None,
             &memo.region.clone(),
+            &None,
             true,
         )
         .await
@@ -1037,18 +925,4 @@ impl Destroy for EksDestroyer {
 
         Ok(())
     }
-}
-
-#[test]
-fn test_role_name_from_arn() {
-    let result = role_name_from_arn("arn:aws:iam::123456789012:role/eksctl-testsys-nodegroup-testsys-NodeInstanceRole-1F52WG29KMPW6", Resources::Remaining).unwrap();
-    assert_eq!(
-        result,
-        "eksctl-testsys-nodegroup-testsys-NodeInstanceRole-1F52WG29KMPW6"
-    );
-}
-
-#[test]
-fn test_role_name_from_arn_error() {
-    assert!(role_name_from_arn("no-slash", Resources::Remaining).is_err());
 }

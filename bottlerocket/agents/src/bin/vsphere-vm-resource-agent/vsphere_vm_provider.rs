@@ -123,6 +123,7 @@ impl Create for VMCreator {
             &spec.configuration.assume_role,
             &None,
             &None,
+            &None,
             false,
         )
         .await
@@ -605,6 +606,7 @@ impl Destroy for VMDestroyer {
         let shared_config = aws_config(
             &memo.aws_secret_name.as_ref(),
             &memo.assume_role,
+            &None,
             &None,
             &None,
             false,
