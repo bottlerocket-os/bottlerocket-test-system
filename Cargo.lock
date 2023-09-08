@@ -216,6 +216,33 @@ dependencies = [
 ]
 
 [[package]]
+name = "aws-sdk-cloudformation"
+version = "0.24.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1ca505d83bd39d7f53a6f03fcc8872ab948898ec21530f6117a18d2589b0cc87"
+dependencies = [
+ "aws-credential-types",
+ "aws-endpoint",
+ "aws-http",
+ "aws-sig-auth",
+ "aws-smithy-async",
+ "aws-smithy-client",
+ "aws-smithy-http",
+ "aws-smithy-http-tower",
+ "aws-smithy-json",
+ "aws-smithy-query",
+ "aws-smithy-types",
+ "aws-smithy-xml",
+ "aws-types",
+ "bytes",
+ "fastrand",
+ "http",
+ "regex",
+ "tokio-stream",
+ "tower",
+]
+
+[[package]]
 name = "aws-sdk-ec2"
 version = "0.24.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -618,6 +645,7 @@ dependencies = [
  "agent-utils",
  "async-trait",
  "aws-config",
+ "aws-sdk-cloudformation",
  "aws-sdk-ec2",
  "aws-sdk-ecs",
  "aws-sdk-eks",
