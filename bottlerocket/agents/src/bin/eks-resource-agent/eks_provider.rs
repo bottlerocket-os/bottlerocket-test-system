@@ -7,6 +7,8 @@ use aws_sdk_eks::error::{DescribeClusterError, DescribeClusterErrorKind};
 use aws_sdk_eks::model::{Cluster, IpFamily};
 use aws_sdk_eks::output::DescribeClusterOutput;
 use aws_types::SdkConfig;
+use base64::engine::general_purpose::STANDARD as base64_engine;
+use base64::Engine as _;
 use bottlerocket_agents::is_cluster_creation_required;
 use bottlerocket_types::agent_config::{
     CreationPolicy, EksClusterConfig, EksctlConfig, K8sVersion, AWS_CREDENTIALS_SECRET_NAME,
@@ -130,7 +132,8 @@ impl ClusterConfig {
     pub fn new(eksctl_config: EksctlConfig) -> ProviderResult<Self> {
         let config = match eksctl_config {
             EksctlConfig::File { encoded_config } => {
-                let decoded_config = base64::decode(encoded_config)
+                let decoded_config = base64_engine
+                    .decode(encoded_config)
                     .context(Resources::Clear, "Unable to decode eksctl configuration.")?;
 
                 let config: Value =
@@ -408,7 +411,7 @@ impl Create for EksCreator {
         )?;
         let kubeconfig = std::fs::read_to_string(kubeconfig_dir)
             .context(Resources::Remaining, "Unable to read kubeconfig.")?;
-        let encoded_kubeconfig = base64::encode(kubeconfig);
+        let encoded_kubeconfig = base64_engine.encode(kubeconfig);
 
         info!("Gathering information about the cluster");
 

@@ -1,3 +1,5 @@
+use base64::engine::general_purpose::STANDARD as base64_engine;
+use base64::Engine as _;
 pub use delete::DeleteEvent;
 pub use error::{Error, Result};
 pub use manager::{read_manifest, TestManager};
@@ -65,7 +67,7 @@ struct DockerConfigAuth {
 impl DockerConfigJson {
     pub(crate) fn new(username: &str, password: &str, registry: &str) -> DockerConfigJson {
         let mut auths = HashMap::new();
-        let auth = base64::encode(format!("{}:{}", username, password));
+        let auth = base64_engine.encode(format!("{}:{}", username, password));
         auths.insert(registry.to_string(), DockerConfigAuth { auth });
         DockerConfigJson { auths }
     }

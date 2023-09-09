@@ -1,4 +1,6 @@
 use agent_utils::base64_decode_write_file;
+use base64::engine::general_purpose::STANDARD as base64_engine;
+use base64::Engine as _;
 use bottlerocket_agents::clusters::{
     retrieve_workload_cluster_kubeconfig, write_validate_mgmt_kubeconfig,
 };
@@ -548,7 +550,7 @@ spec:
 "###
     );
     debug!("{}", &clusterspec);
-    memo.encoded_clusterspec = base64::encode(&clusterspec);
+    memo.encoded_clusterspec = base64_engine.encode(&clusterspec);
     fs::write(clusterspec_path, clusterspec).context(
         resources,
         format!(

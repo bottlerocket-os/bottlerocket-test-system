@@ -14,7 +14,7 @@ aws-sdk-iam = "0.24"
 aws-sdk-ssm = "0.24"
 aws-sdk-sts = "0.24"
 aws-smithy-types = "0.54"
-base64 = "0.20"
+base64 = "0.21"
 env_logger = "0.10"
 log = "0.4"
 testsys-model = { version = "0.0.8", path = "../../model" }

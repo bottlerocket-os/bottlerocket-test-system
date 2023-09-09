@@ -1,7 +1,8 @@
 // Heavily borrowed from Bottlerocket's merge-toml crate.
 // See https://github.com/bottlerocket-os/bottlerocket/blob/v1.11.1/sources/api/storewolf/merge-toml/src/lib.rs
 
-use base64::decode;
+use base64::engine::general_purpose::STANDARD as base64_engine;
+use base64::Engine as _;
 use resource_agent::provider::{IntoProviderError, ProviderError, ProviderResult, Resources};
 use std::str::from_utf8;
 use toml::{map::Entry, Value};
@@ -66,7 +67,9 @@ pub fn merge_values<'a>(merge_from: &'a Value, merge_into: &'a mut Value) -> Pro
 
 pub fn decode_to_string(encoded_userdata: &String) -> ProviderResult<String> {
     Ok(from_utf8(
-        &decode(encoded_userdata).context(Resources::Clear, "Failed to decode base64 TOML")?,
+        &base64_engine
+            .decode(encoded_userdata)
+            .context(Resources::Clear, "Failed to decode base64 TOML")?,
     )
     .context(Resources::Clear, "Failed to decode base64 TOML")?
     .to_string())
