@@ -388,6 +388,19 @@ async fn create_vsphere_k8s_cluster(
         }
     }
 
+    // Set the feature flag for potential new EKS version support in EKS-A
+    env::set_var(
+        format!(
+            "K8S_{}_SUPPORT",
+            config
+                .version
+                .context(*resources, "K8s version missing from configuration")?
+                .major_minor_without_v()
+                .replace('.', "_")
+        ),
+        "true",
+    );
+
     // Set up EKS-A vSphere cluster spec file
     let clusterspec_path = format!("{}/vsphere-k8s-clusterspec.yaml", WORKING_DIR);
     write_vsphere_clusterspec(config, vm_template_name, resources, &clusterspec_path, memo).await?;
