@@ -27,7 +27,7 @@ use agent_utils::aws::aws_config;
 use agent_utils::base64_decode_write_file;
 use agent_utils::ssm::{create_ssm_activation, ensure_ssm_service_role, wait_for_ssm_ready};
 use bottlerocket_agents::clusters::{
-    retrieve_workload_cluster_kubeconfig, write_validate_mgmt_kubeconfig,
+    install_eks_a_binary, retrieve_workload_cluster_kubeconfig, write_validate_mgmt_kubeconfig,
 };
 use bottlerocket_types::agent_config::{
     CustomUserData, MetalK8sClusterConfig, AWS_CREDENTIALS_SECRET_NAME,
@@ -232,6 +232,8 @@ impl Create for MetalK8sClusterCreator {
                 eksa_config_path
             ),
         )?;
+
+        install_eks_a_binary(&spec.configuration.eks_a_release_manifest_url, &resources).await?;
 
         info!("Creating cluster");
         memo.current_status = "Creating cluster".to_string();
@@ -535,6 +537,9 @@ impl Destroy for MetalK8sClusterDestroyer {
         let configuration = spec
             .context(resources, "The spec was not provided for destruction")?
             .configuration;
+
+        install_eks_a_binary(&configuration.eks_a_release_manifest_url, &resources).await?;
+
         base64_decode_write_file(
             &configuration.mgmt_cluster_kubeconfig_base64,
             &mgmt_kubeconfig_path,

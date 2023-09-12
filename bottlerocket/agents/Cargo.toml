@@ -22,6 +22,7 @@ aws-sdk-cloudformation = "0.24"
 aws-smithy-types = "0.54"
 base64 = "0.20"
 env_logger = "0.10"
+flate2 = "1.0"
 hex ="0.4"
 k8s-openapi = { version = "0.18", default-features = false, features = ["v1_24"] }
 kube = { version = "0.82", default-features = false, features = ["config", "derive", "client"] }
@@ -37,6 +38,7 @@ serde_plain = "1"
 serde_yaml = "0.8"
 sha2 = "0.10"
 snafu = "0.7"
+tar = "0.4"
 tempfile = "3"
 test-agent = { version = "0.0.8", path = "../../agent/test-agent" }
 tokio = { version = "1", default-features = false, features = ["macros", "rt-multi-thread", "time"] }

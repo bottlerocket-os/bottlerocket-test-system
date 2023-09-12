@@ -161,10 +161,6 @@ RUN amazon-linux-extras install -y docker
 COPY --from=tools /eksctl /usr/bin/eksctl
 COPY --from=tools /licenses/eksctl /licenses/eksctl
 
-# Copy eksctl-anywhere
-COPY --from=tools /eksctl-anywhere /usr/bin/eksctl-anywhere
-COPY --from=tools /licenses/eksctl-anywhere /licenses/eksctl-anywhere
-
 # Copy govc
 COPY --from=build /usr/libexec/tools/govc /usr/local/bin/govc
 COPY --from=build /usr/share/licenses/govmomi /licenses/govmomi
@@ -193,10 +189,6 @@ RUN amazon-linux-extras install -y docker
 # Copy eksctl
 COPY --from=tools /eksctl /usr/bin/eksctl
 COPY --from=tools /licenses/eksctl /licenses/eksctl
-
-# Copy eksctl-anywhere
-COPY --from=tools /eksctl-anywhere /usr/bin/eksctl-anywhere
-COPY --from=tools /licenses/eksctl-anywhere /licenses/eksctl-anywhere
 
 # Copy kubectl
 COPY --from=tools /kubectl /usr/local/bin/kubectl
