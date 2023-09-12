@@ -402,8 +402,23 @@ async fn create_vsphere_k8s_cluster(
     );
 
     // Set up EKS-A vSphere cluster spec file
+    let mgmt_kubeconfig = Kubeconfig::read_from(mgmt_kubeconfig_path)
+        .context(*resources, "Unable to read kubeconfig")?;
+    let mgmt_cluster_name = &mgmt_kubeconfig
+        .clusters
+        .first()
+        .context(*resources, "Missing clusters in Kubeconfig")?
+        .name;
     let clusterspec_path = format!("{}/vsphere-k8s-clusterspec.yaml", WORKING_DIR);
-    write_vsphere_clusterspec(config, vm_template_name, resources, &clusterspec_path, memo).await?;
+    write_vsphere_clusterspec(
+        config,
+        vm_template_name,
+        mgmt_cluster_name.to_string(),
+        resources,
+        &clusterspec_path,
+        memo,
+    )
+    .await?;
 
     // Call eksctl-anywhere to create cluster with existing mgmt cluster in vsphere
     let status = Command::new("eksctl")
@@ -454,6 +469,7 @@ async fn create_vsphere_k8s_cluster(
 async fn write_vsphere_clusterspec(
     config: &VSphereK8sClusterConfig,
     vm_template_name: String,
+    mgmt_cluster_name: String,
     resources: &Resources,
     clusterspec_path: &str,
     memo: &mut ProductionMemo,
@@ -502,6 +518,8 @@ kind: Cluster
 metadata:
   name: {cluster_name}
 spec:
+  managementCluster:
+    name: {mgmt_cluster_name}
   clusterNetwork:
     cniConfig:
       cilium: {{}}
