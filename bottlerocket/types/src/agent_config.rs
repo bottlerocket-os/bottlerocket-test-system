@@ -184,6 +184,10 @@ pub struct VSphereK8sClusterConfig {
     /// Workloads folder to create the K8s cluster control plane in
     pub vcenter_workload_folder: String,
 
+    /// URL for an EKS-A release manifest that contains URLs for EKS-A binary archives.
+    /// Defaults to upstream EKS-A release channels.
+    pub eks_a_release_manifest_url: Option<String>,
+
     /// Base64-encoded Kubeconfig for the CAPI management cluster
     pub mgmt_cluster_kubeconfig_base64: String,
 }
@@ -193,7 +197,11 @@ pub struct VSphereK8sClusterConfig {
 #[serde(rename_all = "camelCase")]
 #[crd("Resource")]
 pub struct MetalK8sClusterConfig {
-    // Base64-encoded Kubeconfig for the CAPI management cluster
+    /// URL for an EKS-A release manifest that contains URLs for EKS-A binary archives.
+    /// Defaults to upstream EKS-A release channels.
+    pub eks_a_release_manifest_url: Option<String>,
+
+    /// Base64-encoded Kubeconfig for the CAPI management cluster
     pub mgmt_cluster_kubeconfig_base64: String,
 
     /// The role that should be assumed when activating SSM for the machines.

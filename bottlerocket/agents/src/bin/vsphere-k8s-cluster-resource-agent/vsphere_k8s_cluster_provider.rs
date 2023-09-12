@@ -1,6 +1,6 @@
 use agent_utils::base64_decode_write_file;
 use bottlerocket_agents::clusters::{
-    retrieve_workload_cluster_kubeconfig, write_validate_mgmt_kubeconfig,
+    install_eks_a_binary, retrieve_workload_cluster_kubeconfig, write_validate_mgmt_kubeconfig,
 };
 use bottlerocket_agents::constants::TEST_CLUSTER_KUBECONFIG_PATH;
 use bottlerocket_agents::is_cluster_creation_required;
@@ -148,6 +148,9 @@ impl Create for VSphereK8sClusterCreator {
 
         let mgmt_kubeconfig_path = format!("{}/mgmt.kubeconfig", WORKING_DIR);
         let encoded_kubeconfig = if do_create {
+            install_eks_a_binary(&spec.configuration.eks_a_release_manifest_url, &resources)
+                .await?;
+
             info!("Creating cluster");
             memo.current_status = "Creating cluster".to_string();
             client
@@ -672,6 +675,8 @@ impl Destroy for VSphereK8sClusterDestroyer {
             resources,
             "Failed to write out kubeconfig for the CAPI management cluster",
         )?;
+
+        install_eks_a_binary(&spec.configuration.eks_a_release_manifest_url, &resources).await?;
 
         // For cluster deletion, EKS-A needs the workload cluster's kubeconfig at
         // './${CLUSTER_NAME}/${CLUSTER_NAME}-eks-a-cluster.kubeconfig'
