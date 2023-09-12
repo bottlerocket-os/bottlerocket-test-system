@@ -180,13 +180,15 @@ impl Create for MetalK8sClusterCreator {
         let decoded_config = base64::decode(&spec.configuration.cluster_config_base64)
             .context(Resources::Clear, "Unable to decode eksctl configuration.")?;
 
-        let cluster_name = serde_yaml::Deserializer::from_slice(decoded_config.as_slice())
+        let deserialized_config = serde_yaml::Deserializer::from_slice(decoded_config.as_slice())
             .map(|config| {
                 serde_yaml::Value::deserialize(config)
                     .context(Resources::Clear, "Unable to deserialize eksa config file")
             })
             // Make sure all of the configs were deserializable
-            .collect::<ProviderResult<Vec<_>>>()?
+            .collect::<ProviderResult<Vec<_>>>()?;
+
+        let cluster_name = deserialized_config
             .iter()
             // Find the `Cluster` config
             .find(|config| {
@@ -201,6 +203,27 @@ impl Create for MetalK8sClusterCreator {
                 "Unable to determine the cluster name from the config file ",
             )?
             .to_string();
+        let cluster_version = deserialized_config
+            .iter()
+            // Find the `Cluster` config
+            .find(|config| {
+                config.get("kind") == Some(&serde_yaml::Value::String("Cluster".to_string()))
+            })
+            // Get the K8s version from the `spec` field in the `Cluster` config
+            .and_then(|config| config.get("spec"))
+            .and_then(|config| config.get("kubernetesVersion"))
+            .and_then(|ver| ver.as_str())
+            .context(
+                Resources::Clear,
+                "Unable to determine the cluster K8s version from the config file ",
+            )?
+            .to_string();
+
+        // Set the feature flag for potential new EKS version support in EKS-A
+        env::set_var(
+            format!("K8S_{}_SUPPORT", cluster_version.replace('.', "_")),
+            "true",
+        );
 
         fs::write(&eksa_config_path, decoded_config).context(
             Resources::Clear,
