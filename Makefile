@@ -19,9 +19,6 @@ TESTSYS_BUILD_HOST_PLATFORM=$(shell uname | tr '[:upper:]' '[:lower:]')
 # On some hosts we get an x509 certificate error and need to set GOPROXY to "direct"
 TESTSYS_BUILD_GOPROXY ?= direct
 
-# Default eksctl_anywhere source ref so it can be overridden
-TESTSYS_EKSA_REF ?= tags/v0.17.1
-
 # The set of agent images. Add new agent artifacts here when added to the
 # project
 AGENT_IMAGES = sonobuoy-test-agent ec2-resource-agent eks-resource-agent ecs-resource-agent \
@@ -139,7 +136,6 @@ tools:
 		--build-arg BUILDER_IMAGE="$(BUILDER_IMAGE)" \
 		--build-arg GOARCH="$(TESTSYS_BUILD_HOST_GOARCH)" \
 		--build-arg GOPROXY="$(TESTSYS_BUILD_GOPROXY)" \
-		--build-arg EKSA_REF="$(TESTSYS_EKSA_REF)" \
 		--network=host \
 		-f ./tools/Dockerfile \
 		-t bottlerocket-test-tools \
@@ -155,7 +151,6 @@ $(AGENT_IMAGES): show-variables fetch
 		--build-arg TOOLS_IMAGE="$(TOOLS_IMAGE)" \
 		--build-arg GOARCH="$(TESTSYS_BUILD_HOST_GOARCH)" \
 		--build-arg GOPROXY="$(TESTSYS_BUILD_GOPROXY)" \
-		--build-arg EKSA_REF="$(TESTSYS_EKSA_REF)" \
 		--network=host \
 		--target $@ \
 		--tag $@ \

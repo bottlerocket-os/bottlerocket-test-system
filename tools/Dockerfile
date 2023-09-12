@@ -59,37 +59,6 @@ RUN curl -L "${EKSCTL_BINARY_URL}" \
     rm "eksctl_${EKSCTL_VERSION}_${GOOS}_${GOARCH}.tar.gz"
 
 # =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^=
-FROM build-go as eksctl-anywhere-build
-
-USER root
-RUN mkdir -p /usr/share/licenses/eksctl-anywhere && \
-    chown -R builder:builder /usr/share/licenses/eksctl-anywhere
-
-# Build the eksctl-anywhere from source. Override by setting pull location from
-# docker build (e.g. "--build-arg EKSA_REF=heads/main" to build from current main).
-ARG EKSA_REF=tags/v0.17.1
-ARG EKSA_SOURCE_URL="https://github.com/aws/eks-anywhere/archive/refs/${EKSA_REF}.tar.gz"
-
-USER builder
-WORKDIR /home/builder/
-RUN mkdir eksctl-anywhere && \
-    curl -L "${EKSA_SOURCE_URL}" -o "eksctl_anywhere.tar.gz" && \
-    tar -xf "eksctl_anywhere.tar.gz" \
-      --strip-components 1 -C eksctl-anywhere && \
-    rm "eksctl_anywhere.tar.gz"
-
-USER builder
-WORKDIR /home/builder/eksctl-anywhere/
-RUN go mod vendor
-RUN cp -p LICENSE /usr/share/licenses/eksctl-anywhere && \
-    /usr/libexec/tools/bottlerocket-license-scan \
-      --clarify /clarify.toml \
-      --spdx-data /usr/libexec/tools/spdx-data \
-      --out-dir /usr/share/licenses/eksctl-anywhere/vendor \
-      go-vendor ./vendor
-RUN make eks-a
-
-# =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^=
 FROM build-go as kubernetes-build
 
 USER root
@@ -253,14 +222,6 @@ COPY --from=aws-iam-authenticator-build \
 # eksctl
 COPY --from=eksctl-build /home/builder/eksctl/eksctl /eksctl
 COPY --from=eksctl-build /usr/share/licenses/eksctl /licenses/eksctl
-
-# eksctl-anywhere
-COPY --from=eksctl-anywhere-build \
-     /home/builder/eksctl-anywhere/bin/eksctl-anywhere \
-     /eksctl-anywhere
-COPY --from=eksctl-anywhere-build \
-     /usr/share/licenses/eksctl-anywhere \
-     /licenses/eksctl-anywhere
 
 # kubeadm and kubectl
 COPY --from=kubernetes-build /home/builder/kubernetes/kubeadm /kubeadm
