@@ -11,6 +11,9 @@ use std::time::Duration;
 use test_agent::InfoClient;
 use testsys_model::{Outcome, TestResults};
 
+/// Timeout for sonobuoy status to become available (seconds)
+const SONOBUOY_STATUS_TIMEOUT: u64 = 900;
+
 /// Runs the sonobuoy conformance tests according to the provided configuration and returns a test
 /// result at the end.
 pub async fn run_sonobuoy<I>(
@@ -93,7 +96,7 @@ where
         .for_each(|e| error!("Unable to send test update: {}", e));
     info!("Sonobuoy testing has started, waiting for status to be available");
     tokio::time::timeout(
-        Duration::from_secs(300),
+        Duration::from_secs(SONOBUOY_STATUS_TIMEOUT),
         wait_for_sonobuoy_status(kubeconfig_path, None),
     )
     .await
@@ -166,7 +169,7 @@ where
 
     info!("Sonobuoy testing has started, waiting for status to be available");
     tokio::time::timeout(
-        Duration::from_secs(300),
+        Duration::from_secs(SONOBUOY_STATUS_TIMEOUT),
         wait_for_sonobuoy_status(kubeconfig_path, None),
     )
     .await
