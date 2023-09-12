@@ -13,6 +13,8 @@ use std::time::Duration;
 use test_agent::InfoClient;
 use testsys_model::TestResults;
 
+/// Timeout for sonobuoy status to become available (seconds)
+const SONOBUOY_STATUS_TIMEOUT: u64 = 900;
 const SONOBUOY_BIN_PATH: &str = "/usr/bin/sonobuoy";
 
 /// Runs the workload conformance tests according to the provided configuration and returns a test
@@ -84,7 +86,7 @@ where
 
     info!("Workload testing has started, waiting for status to be available");
     tokio::time::timeout(
-        Duration::from_secs(300),
+        Duration::from_secs(SONOBUOY_STATUS_TIMEOUT),
         wait_for_sonobuoy_status(kubeconfig_path, Some("testsys-workload")),
     )
     .await
@@ -130,7 +132,7 @@ where
 
     info!("Workload testing has started, waiting for status to be available");
     tokio::time::timeout(
-        Duration::from_secs(300),
+        Duration::from_secs(SONOBUOY_STATUS_TIMEOUT),
         wait_for_sonobuoy_status(kubeconfig_path, Some("testsys-workload")),
     )
     .await
