@@ -6,6 +6,16 @@ The format is inspired by [Keep a Changelog](https://keepachangelog.com/en/1.0.0
 Since this project is only a vessel for packaging a few binary tools, its adherence to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html) is loose at best.
 
+## [0.7.0] - 2023-09-13
+
+Removed eksctl-anywhere
+Update Bottlerocket SDK used to build the tools iamge to v0.34.1
+
+### Contents
+
+- eksctl 0.144.0
+- sonobuoy v0.56.15
+
 ## [0.6.0] - 2023-06-12
 
 Update eksctl, eksctl-anywhere, and sonobuoy

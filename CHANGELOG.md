@@ -6,7 +6,41 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
-[Unreleased]: https://github.com/bottlerocket-os/bottlerocket-test-system/compare/v0.0.8...develop
+[Unreleased]: https://github.com/bottlerocket-os/bottlerocket-test-system/compare/v0.0.9...develop
+
+## [0.0.9] - 2023-09-13
+
+### Fixed
+
+- Increase sonobuoy status check timeout to 15 mins and fix image used in retries ([#868])
+
+### Added
+
+- Add EKS service endpoint override in the EKS resource agent ([#860])
+- Set necessary environment variables to enable new K8s version cluster creation in metal and vsphere agents ([#866])
+- Add option for EKS-A release manifest url and fetch EKS-A binary at runtime in metal and vsphere agents ([#867])
+
+### Changed
+
+- Remove `eksctl` build workaround ([#844])
+- Remove `--force-cleanup` flag from eks-a invocation in metal and vsphere agents ([#851])
+- Restrict IMDS on nodes launched by testsys-launcher ([#852])
+- Build fixes and enhancements in the tools image ([#858])
+- Rust crate dependency updates ([#862])
+- Bump Bottlerocket SDK version to 0.34.1 ([#871])
+
+[#844]: https://github.com/bottlerocket-os/bottlerocket-test-system/pull/844
+[#851]: https://github.com/bottlerocket-os/bottlerocket-test-system/pull/851
+[#852]: https://github.com/bottlerocket-os/bottlerocket-test-system/pull/852
+[#858]: https://github.com/bottlerocket-os/bottlerocket-test-system/pull/858
+[#860]: https://github.com/bottlerocket-os/bottlerocket-test-system/pull/860
+[#862]: https://github.com/bottlerocket-os/bottlerocket-test-system/pull/862
+[#866]: https://github.com/bottlerocket-os/bottlerocket-test-system/pull/866
+[#867]: https://github.com/bottlerocket-os/bottlerocket-test-system/pull/867
+[#868]: https://github.com/bottlerocket-os/bottlerocket-test-system/pull/868
+[#871]: https://github.com/bottlerocket-os/bottlerocket-test-system/pull/871
+
+[0.0.9]: https://github.com/bottlerocket-os/bottlerocket-test-system/tree/v0.0.9
 
 ## [0.0.8] - 2023-06-12
 
