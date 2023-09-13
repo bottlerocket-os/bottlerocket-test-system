@@ -41,6 +41,9 @@ PUSH_IMAGES = $(addprefix push-, $(IMAGES))
 	tag-images $(TAG_IMAGES) push-images $(PUSH_IMAGES) print-image-names \
 	help
 
+# Store targets to create the ECR repos
+CREATE_REPOS = $(addprefix create-repo-, $(IMAGES))
+
 export DOCKER_BUILDKIT=1
 export CARGO_HOME = $(TOP)/.cargo
 
@@ -221,3 +224,17 @@ endif
 
 mdlint:
 	docker run --rm -v "$$(pwd)":/workdir ghcr.io/igorshubovych/markdownlint-cli:latest "**/*.md"
+
+# Define a target to create the ECR repos, if they don't exist for the configured credentials
+create-repos: $(CREATE_REPOS)
+$(CREATE_REPOS): REPO = $(@:create-repo-%=%)
+$(CREATE_REPOS):
+	@if ! 2>&1 1>/dev/null aws ecr describe-repositories --repository-names $(REPO); then \
+		echo "Creating repository $(REPO)"; \
+		if ! 2>&1 1>/dev/null aws ecr create-repository --repository-name=$(REPO); then \
+			echo "Failed to create repository $(REPO)"; exit 1; \
+		fi; \
+		echo "Created repository $(REPO)"; \
+	else \
+		echo "Repository already $(REPO) exists"; \
+	fi
