@@ -644,51 +644,50 @@ mod test {
 
         let docs: Vec<&str> = s.split("---").collect();
         let &yaml = docs.get(0).unwrap();
-        let test_1_initial: Test = serde_yaml::from_str(yaml).unwrap();
-        let _: EcsTestConfig = serde_json::from_value(JsonValue::Object(
-            test_1_initial.spec.agent.configuration.unwrap(),
-        ))
-        .unwrap();
-
-        let &yaml = docs.get(1).unwrap();
-        let test_2_migrate: Test = serde_yaml::from_str(yaml).unwrap();
-        let _: MigrationConfig = serde_json::from_value(JsonValue::Object(
-            test_2_migrate.spec.agent.configuration.unwrap(),
-        ))
-        .unwrap();
-
-        let &yaml = docs.get(2).unwrap();
-        let test_3_migrated: Test = serde_yaml::from_str(yaml).unwrap();
-        let _: EcsTestConfig = serde_json::from_value(JsonValue::Object(
-            test_3_migrated.spec.agent.configuration.unwrap(),
-        ))
-        .unwrap();
-
-        let &yaml = docs.get(3).unwrap();
-        let test_4_migrate: Test = serde_yaml::from_str(yaml).unwrap();
-        let _: MigrationConfig = serde_json::from_value(JsonValue::Object(
-            test_4_migrate.spec.agent.configuration.unwrap(),
-        ))
-        .unwrap();
-
-        let &yaml = docs.get(4).unwrap();
-        let test_5_final: Test = serde_yaml::from_str(yaml).unwrap();
-        let _: EcsTestConfig = serde_json::from_value(JsonValue::Object(
-            test_5_final.spec.agent.configuration.unwrap(),
-        ))
-        .unwrap();
-
-        let &yaml = docs.get(5).unwrap();
         let cluster_resource: Resource = serde_yaml::from_str(yaml).unwrap();
         let _: EcsClusterConfig = serde_json::from_value(JsonValue::Object(
             cluster_resource.spec.agent.configuration.unwrap(),
         ))
         .unwrap();
 
-        let &yaml = docs.get(6).unwrap();
+        let &yaml = docs.get(1).unwrap();
         let ec2_resource: Resource = serde_yaml::from_str(yaml).unwrap();
         let _: Ec2Config = serde_json::from_value(JsonValue::Object(
             ec2_resource.spec.agent.configuration.unwrap(),
+        ))
+        .unwrap();
+        let &yaml = docs.get(2).unwrap();
+        let test_1_initial: Test = serde_yaml::from_str(yaml).unwrap();
+        let _: EcsTestConfig = serde_json::from_value(JsonValue::Object(
+            test_1_initial.spec.agent.configuration.unwrap(),
+        ))
+        .unwrap();
+
+        let &yaml = docs.get(3).unwrap();
+        let test_2_migrate: Test = serde_yaml::from_str(yaml).unwrap();
+        let _: MigrationConfig = serde_json::from_value(JsonValue::Object(
+            test_2_migrate.spec.agent.configuration.unwrap(),
+        ))
+        .unwrap();
+
+        let &yaml = docs.get(4).unwrap();
+        let test_3_migrated: Test = serde_yaml::from_str(yaml).unwrap();
+        let _: EcsTestConfig = serde_json::from_value(JsonValue::Object(
+            test_3_migrated.spec.agent.configuration.unwrap(),
+        ))
+        .unwrap();
+
+        let &yaml = docs.get(5).unwrap();
+        let test_4_migrate: Test = serde_yaml::from_str(yaml).unwrap();
+        let _: MigrationConfig = serde_json::from_value(JsonValue::Object(
+            test_4_migrate.spec.agent.configuration.unwrap(),
+        ))
+        .unwrap();
+
+        let &yaml = docs.get(6).unwrap();
+        let test_5_final: Test = serde_yaml::from_str(yaml).unwrap();
+        let _: EcsTestConfig = serde_json::from_value(JsonValue::Object(
+            test_5_final.spec.agent.configuration.unwrap(),
         ))
         .unwrap();
     }
@@ -703,23 +702,23 @@ mod test {
 
         let docs: Vec<&str> = s.split("---").collect();
         let &yaml = docs.get(0).unwrap();
-        let test_1_initial: Test = serde_yaml::from_str(yaml).unwrap();
-        let _: EcsTestConfig = serde_json::from_value(JsonValue::Object(
-            test_1_initial.spec.agent.configuration.unwrap(),
-        ))
-        .unwrap();
-
-        let &yaml = docs.get(1).unwrap();
         let cluster_resource: Resource = serde_yaml::from_str(yaml).unwrap();
         let _: EcsClusterConfig = serde_json::from_value(JsonValue::Object(
             cluster_resource.spec.agent.configuration.unwrap(),
         ))
         .unwrap();
 
-        let &yaml = docs.get(2).unwrap();
+        let &yaml = docs.get(1).unwrap();
         let ec2_resource: Resource = serde_yaml::from_str(yaml).unwrap();
         let _: Ec2Config = serde_json::from_value(JsonValue::Object(
             ec2_resource.spec.agent.configuration.unwrap(),
+        ))
+        .unwrap();
+
+        let &yaml = docs.get(2).unwrap();
+        let test_1_initial: Test = serde_yaml::from_str(yaml).unwrap();
+        let _: EcsTestConfig = serde_json::from_value(JsonValue::Object(
+            test_1_initial.spec.agent.configuration.unwrap(),
         ))
         .unwrap();
     }
@@ -736,23 +735,23 @@ mod test {
 
         let docs: Vec<&str> = s.split("---").collect();
         let &yaml = docs.get(0).unwrap();
-        let test_1_initial: Test = serde_yaml::from_str(yaml).unwrap();
-        let _: EcsWorkloadTestConfig = serde_json::from_value(JsonValue::Object(
-            test_1_initial.spec.agent.configuration.unwrap(),
-        ))
-        .unwrap();
-
-        let &yaml = docs.get(1).unwrap();
         let cluster_resource: Resource = serde_yaml::from_str(yaml).unwrap();
         let _: EcsClusterConfig = serde_json::from_value(JsonValue::Object(
             cluster_resource.spec.agent.configuration.unwrap(),
         ))
         .unwrap();
 
-        let &yaml = docs.get(2).unwrap();
+        let &yaml = docs.get(1).unwrap();
         let ec2_resource: Resource = serde_yaml::from_str(yaml).unwrap();
         let _: Ec2Config = serde_json::from_value(JsonValue::Object(
             ec2_resource.spec.agent.configuration.unwrap(),
+        ))
+        .unwrap();
+
+        let &yaml = docs.get(2).unwrap();
+        let test_1_initial: Test = serde_yaml::from_str(yaml).unwrap();
+        let _: EcsWorkloadTestConfig = serde_json::from_value(JsonValue::Object(
+            test_1_initial.spec.agent.configuration.unwrap(),
         ))
         .unwrap();
     }
