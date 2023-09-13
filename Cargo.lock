@@ -919,7 +919,7 @@ checksum = "cd7cc57abe963c6d3b9d8be5b06ba7c8957a930305ca90304f24ef040aa6f961"
 
 [[package]]
 name = "cli"
-version = "0.0.8"
+version = "0.0.9"
 dependencies = [
  "anyhow",
  "assert_cmd",
