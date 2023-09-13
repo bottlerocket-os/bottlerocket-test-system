@@ -139,7 +139,7 @@ where
         rerun_failed_sonobuoy(
             TEST_CLUSTER_KUBECONFIG_PATH,
             e2e_repo_config,
-            self.config.sonobuoy_image.to_owned(),
+            &self.config,
             &self.results_dir,
             info_client,
         )

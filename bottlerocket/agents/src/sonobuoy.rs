@@ -11,6 +11,9 @@ use std::time::Duration;
 use test_agent::InfoClient;
 use testsys_model::{Outcome, TestResults};
 
+/// Timeout for sonobuoy status to become available (seconds)
+const SONOBUOY_STATUS_TIMEOUT: u64 = 900;
+
 /// Runs the sonobuoy conformance tests according to the provided configuration and returns a test
 /// result at the end.
 pub async fn run_sonobuoy<I>(
@@ -93,7 +96,7 @@ where
         .for_each(|e| error!("Unable to send test update: {}", e));
     info!("Sonobuoy testing has started, waiting for status to be available");
     tokio::time::timeout(
-        Duration::from_secs(300),
+        Duration::from_secs(SONOBUOY_STATUS_TIMEOUT),
         wait_for_sonobuoy_status(kubeconfig_path, None),
     )
     .await
@@ -109,7 +112,7 @@ where
 pub async fn rerun_failed_sonobuoy<I>(
     kubeconfig_path: &str,
     e2e_repo_config_path: Option<&str>,
-    sonobuoy_image: Option<String>,
+    sonobuoy_config: &SonobuoyConfig,
     results_dir: &Path,
     info_client: &I,
 ) -> Result<TestResults, error::Error>
@@ -118,6 +121,21 @@ where
 {
     let kubeconfig_arg = vec!["--kubeconfig", kubeconfig_path];
     let results_filepath = results_dir.join(SONOBUOY_RESULTS_FILENAME);
+    let version = sonobuoy_config
+        .kubernetes_version
+        .as_ref()
+        .map(|version| version.full_version_with_v());
+    let k8s_image_arg = match (&sonobuoy_config.kube_conformance_image, &version) {
+        (Some(image), None) | (Some(image), Some(_)) => {
+            vec!["--kube-conformance-image", image]
+        }
+        (None, Some(version)) => {
+            vec!["--kubernetes-version", version]
+        }
+        _ => {
+            vec![]
+        }
+    };
     let e2e_repo_arg = match e2e_repo_config_path {
         Some(e2e_repo_config_path) => {
             vec!["--e2e-repo-config", e2e_repo_config_path]
@@ -126,7 +144,7 @@ where
             vec![]
         }
     };
-    let sonobuoy_image_arg = match &sonobuoy_image {
+    let sonobuoy_image_arg = match &sonobuoy_config.sonobuoy_image {
         Some(sonobuoy_image_arg) => {
             vec!["--sonobuoy-image", sonobuoy_image_arg]
         }
@@ -138,6 +156,7 @@ where
     let status = Command::new("/usr/bin/sonobuoy")
         .args(kubeconfig_arg.to_owned())
         .arg("run")
+        .args(k8s_image_arg)
         .args(e2e_repo_arg)
         .args(sonobuoy_image_arg)
         .arg("--rerun-failed")
@@ -150,7 +169,7 @@ where
 
     info!("Sonobuoy testing has started, waiting for status to be available");
     tokio::time::timeout(
-        Duration::from_secs(300),
+        Duration::from_secs(SONOBUOY_STATUS_TIMEOUT),
         wait_for_sonobuoy_status(kubeconfig_path, None),
     )
     .await
