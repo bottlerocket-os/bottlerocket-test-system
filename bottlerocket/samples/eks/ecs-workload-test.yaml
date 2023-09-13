@@ -1,25 +1,4 @@
 apiVersion: testsys.system/v1
-kind: Test
-metadata:
-  name: ${CLUSTER_NAME}-test
-  namespace: testsys 
-spec:
-  agent:
-    name: ecs-workload-agent
-    image: ${ECS_WORKLOAD_AGENT_IMAGE_URI}
-    keepRunning: true
-    configuration:
-      clusterName: \${${CLUSTER_NAME}.clusterName}
-      region: \${${CLUSTER_NAME}.region}
-      assumeRole: ${ASSUME_ROLE}
-      tests:
-      - name: ${WORKLOAD_TEST_NAME}
-        image: ${WORKLOAD_TEST_IMAGE_URI}
-        gpu: ${GPU}
-  dependsOn: []
-  resources: [${CLUSTER_NAME}-instances, ${CLUSTER_NAME}]
----
-apiVersion: testsys.system/v1
 kind: Resource
 metadata:
   name: ${CLUSTER_NAME}
@@ -58,3 +37,24 @@ spec:
       assumeRole: ${ASSUME_ROLE}
   dependsOn: [${CLUSTER_NAME}]
   destructionPolicy: onDeletion
+---
+apiVersion: testsys.system/v1
+kind: Test
+metadata:
+  name: ${CLUSTER_NAME}-test
+  namespace: testsys 
+spec:
+  agent:
+    name: ecs-workload-agent
+    image: ${ECS_WORKLOAD_AGENT_IMAGE_URI}
+    keepRunning: true
+    configuration:
+      clusterName: \${${CLUSTER_NAME}.clusterName}
+      region: \${${CLUSTER_NAME}.region}
+      assumeRole: ${ASSUME_ROLE}
+      tests:
+      - name: ${WORKLOAD_TEST_NAME}
+        image: ${WORKLOAD_TEST_IMAGE_URI}
+        gpu: ${GPU}
+  dependsOn: []
+  resources: [${CLUSTER_NAME}-instances, ${CLUSTER_NAME}]
