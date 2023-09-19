@@ -261,7 +261,7 @@ impl Create for Ec2KarpenterCreator {
                     .value(&spec.configuration.cluster_name)
                     .build(),
             )
-            .set_resources(Some(spec.configuration.cluster_sg.clone()))
+            .set_resources(Some(vec![spec.configuration.cluster_sg.clone()]))
             .send()
             .await
             .context(resources, "Unable to tag cluster's security groups")?;
