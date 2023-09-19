@@ -38,8 +38,8 @@ async fn main() {
 async fn run(data: BootstrapData) -> AgentResult<()> {
     // We specify all of our custom types with this PhantomData struct.
     let types = Types {
-        info_client: PhantomData::<DefaultInfoClient>::default(),
-        agent_client: PhantomData::<DefaultAgentClient>::default(),
+        info_client: PhantomData::<DefaultInfoClient>,
+        agent_client: PhantomData::<DefaultAgentClient>,
     };
 
     // We build the agent component and use it to either create or destroy resources.
