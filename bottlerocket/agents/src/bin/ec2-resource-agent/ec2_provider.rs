@@ -394,6 +394,12 @@ fn tag_specifications(
             .resource_type(ResourceType::Instance)
             .tags(
                 Tag::builder()
+                    .key("Name")
+                    .value(format!("{}_node", cluster_name))
+                    .build(),
+            )
+            .tags(
+                Tag::builder()
                     .key(INSTANCE_UUID_TAG_NAME)
                     .value(instance_uuid)
                     .build(),
