@@ -458,33 +458,53 @@ async fn nodegroup_iam_role(
     cluster_name: &str,
     cfn_client: &aws_sdk_cloudformation::Client,
 ) -> ProviderResult<String> {
-    let stack_name = cfn_client
+    let mut list_stack_output = cfn_client
         .list_stacks()
         .stack_status_filter(StackStatus::CreateComplete)
         .stack_status_filter(StackStatus::UpdateComplete)
         .send()
         .await
-        .context(Resources::Remaining, "Unable to list CloudFormation stacks")?
-        .stack_summaries()
-        .context(
-            Resources::Remaining,
-            "Missing CloudFormation stack summaries",
-        )?
-        .iter()
-        .filter_map(|stack| stack.stack_name())
-        .find(|name|
-               // For eksctl created clusters
-              name.starts_with(&format!("eksctl-{cluster_name}-nodegroup"))
-                  // For non-eksctl created clusters
-                  || name.starts_with(&format!("{cluster_name}-node-group")))
-        .context(
-            Resources::Remaining,
-            "Could not find nodegroup cloudformation stack for cluster",
-        )?
-        .to_string();
+        .context(Resources::Remaining, "Unable to list CloudFormation stacks")?;
+
+    let stack_name;
+    loop {
+        if let Some(name) = list_stack_output
+            .stack_summaries()
+            .context(
+                Resources::Remaining,
+                "Missing CloudFormation stack summaries",
+            )?
+            .iter()
+            .filter_map(|stack| stack.stack_name())
+            .find(|name|
+                // For eksctl created clusters
+                name.starts_with(&format!("eksctl-{cluster_name}-nodegroup"))
+                    // For non-eksctl created clusters
+                    || name.starts_with(&format!("{cluster_name}-node-group")))
+        {
+            stack_name = name;
+            break;
+        } else if let Some(token) = list_stack_output.next_token() {
+            list_stack_output = cfn_client
+                .list_stacks()
+                .next_token(token)
+                .stack_status_filter(StackStatus::CreateComplete)
+                .stack_status_filter(StackStatus::UpdateComplete)
+                .send()
+                .await
+                .context(Resources::Remaining, "Unable to list CloudFormation stacks")?;
+            continue;
+        } else {
+            return Err(ProviderError::new_with_context(
+                Resources::Remaining,
+                "Could not find nodegroup cloudformation stack for cluster",
+            ));
+        }
+    }
+
     cfn_client
         .describe_stack_resource()
-        .stack_name(&stack_name)
+        .stack_name(stack_name)
         .logical_resource_id("NodeInstanceRole")
         .send()
         .await
