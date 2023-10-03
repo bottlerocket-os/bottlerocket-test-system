@@ -325,7 +325,7 @@ pub struct Ec2KarpenterConfig {
     pub endpoint: String,
 
     /// The cluster security group
-    pub cluster_sg: Vec<String>,
+    pub cluster_sg: String,
 
     /// The device mappings used for karpenter provisioning
     #[serde(default)]
