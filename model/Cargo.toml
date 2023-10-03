@@ -1,6 +1,6 @@
 [package]
 name = "testsys-model"
-version = "0.0.9"
+version = "0.0.10"
 edition = "2021"
 publish = false
 license = "MIT OR Apache-2.0"
@@ -32,7 +32,7 @@ tokio-util = "0.7"
 topological-sort = "0.2"
 
 [dev-dependencies]
-selftest = { version = "0.0.9", path = "../selftest" }
+selftest = { version = "0.0.10", path = "../selftest" }
 tokio = { version = "1", features = ["macros"] }
 
 [features]
