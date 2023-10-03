@@ -6,7 +6,31 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
-[Unreleased]: https://github.com/bottlerocket-os/bottlerocket-test-system/compare/v0.0.9...develop
+[Unreleased]: https://github.com/bottlerocket-os/bottlerocket-test-system/compare/v0.0.10...develop
+
+## [0.0.10] - 2023-10-03
+
+### Fixed
+
+- eks-resource: Process paginated results from list-stacks ([#873])
+- karpenter-ec2: Take cluster sg as a single string instead of sequence ([#874])
+
+### Added
+
+- ecs-provider: Add name tag to ec2 instances ([#875])
+
+### Removed
+
+- Remove extraneous default() calls ([#847])
+- Removed indirect dependencies ([#848])
+
+[#847]: https://github.com/bottlerocket-os/bottlerocket-test-system/pull/847
+[#848]: https://github.com/bottlerocket-os/bottlerocket-test-system/pull/848
+[#873]: https://github.com/bottlerocket-os/bottlerocket-test-system/pull/873
+[#874]: https://github.com/bottlerocket-os/bottlerocket-test-system/pull/874
+[#875]: https://github.com/bottlerocket-os/bottlerocket-test-system/pull/875
+
+[0.0.10]: https://github.com/bottlerocket-os/bottlerocket-test-system/tree/v0.0.10
 
 ## [0.0.9] - 2023-09-13
 
