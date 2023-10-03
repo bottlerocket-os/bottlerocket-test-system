@@ -1,6 +1,6 @@
 [package]
 name = "controller"
-version = "0.0.9"
+version = "0.0.10"
 edition = "2021"
 publish = false
 license = "MIT OR Apache-2.0"
@@ -15,6 +15,6 @@ kube = { version = "0.82", default-features = false, features = ["derive", "clie
 kube-runtime = "0.82"
 lazy_static = "1"
 log = "0.4"
-testsys-model = { version = "0.0.9", path = "../model" }
+testsys-model = { version = "0.0.10", path = "../model" }
 snafu = "0.7"
 tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
