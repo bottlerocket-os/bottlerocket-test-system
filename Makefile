@@ -236,5 +236,5 @@ $(CREATE_REPOS):
 		fi; \
 		echo "Created repository $(REPO)"; \
 	else \
-		echo "Repository already $(REPO) exists"; \
+		echo "Repository $(REPO) already exists"; \
 	fi
