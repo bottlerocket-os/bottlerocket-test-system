@@ -806,7 +806,7 @@ dependencies = [
  "quote",
  "serde",
  "serde_json",
- "syn 1.0.109",
+ "syn 2.0.31",
  "testsys-model",
 ]
 
@@ -940,7 +940,7 @@ name = "configuration-derive"
 version = "0.0.10"
 dependencies = [
  "quote",
- "syn 1.0.109",
+ "syn 2.0.31",
 ]
 
 [[package]]
