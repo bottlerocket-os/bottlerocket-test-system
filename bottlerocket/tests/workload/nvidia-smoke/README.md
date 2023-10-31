@@ -42,6 +42,12 @@ You can then add that host to your Buildx builder by running:
 docker buildx create --name $BUILDER_NAME --append ssh://user@hostname
 ```
 
+You must bootstrap the new builder.
+
+```sh
+docker buildx inspect --bootstrap --builder $BUILDER_NAME
+```
+
 Supported platforms can be verified by running:
 
 ```bash
