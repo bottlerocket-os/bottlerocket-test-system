@@ -294,6 +294,14 @@ impl Create for VMCreator {
         serde_json::to_writer_pretty(&import_spec_file, &import_spec)
             .context(resources, "Failed to write out OVA import spec file")?;
 
+        // Delete any conflicting VM/template
+        let vm_template_name = format!("{}-node-vmtemplate", vsphere_cluster.name);
+        let _ = Command::new("govc")
+            .arg("vm.destroy")
+            .arg(&vm_template_name)
+            .status()
+            .context(resources, "Failed to launch govc process")?;
+
         info!("Importing OVA");
         memo.current_status = "Importing OVA".to_string();
         client
@@ -302,7 +310,6 @@ impl Create for VMCreator {
             .context(resources, "Error sending cluster creation message")?;
         // Import OVA and create a template out of it
         info!("Importing OVA and creating a VM template out of it");
-        let vm_template_name = format!("{}-node-vmtemplate", vsphere_cluster.name);
         let import_ova_output = Command::new("govc")
             .arg("import.ova")
             .arg("-options=/local/ova.importspec")
