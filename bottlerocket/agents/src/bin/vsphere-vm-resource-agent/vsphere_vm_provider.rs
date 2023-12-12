@@ -29,6 +29,7 @@ use std::process::Command;
 use std::time::Duration;
 use testsys_model::{Configuration, SecretName};
 use toml::Value;
+use uuid::Uuid;
 
 /// The default number of VMs to spin up.
 const DEFAULT_VM_COUNT: i32 = 2;
@@ -294,6 +295,14 @@ impl Create for VMCreator {
         serde_json::to_writer_pretty(&import_spec_file, &import_spec)
             .context(resources, "Failed to write out OVA import spec file")?;
 
+        // Delete any conflicting VM/template
+        let vm_template_name = format!("{}-node-vmtemplate", vsphere_cluster.name);
+        let _ = Command::new("govc")
+            .arg("vm.destroy")
+            .arg(&vm_template_name)
+            .status()
+            .context(resources, "Failed to launch govc process")?;
+
         info!("Importing OVA");
         memo.current_status = "Importing OVA".to_string();
         client
@@ -302,7 +311,6 @@ impl Create for VMCreator {
             .context(resources, "Error sending cluster creation message")?;
         // Import OVA and create a template out of it
         info!("Importing OVA and creating a VM template out of it");
-        let vm_template_name = format!("{}-node-vmtemplate", vsphere_cluster.name);
         let import_ova_output = Command::new("govc")
             .arg("import.ova")
             .arg("-options=/local/ova.importspec")
@@ -377,8 +385,10 @@ impl Create for VMCreator {
             .await
             .context(resources, "Error sending cluster creation message")?;
         info!("Launching {} Bottlerocket worker nodes", vm_count);
-        for i in 0..vm_count {
-            let node_name = format!("{}-node-{}", vsphere_cluster.name, i + 1);
+        for _ in 0..vm_count {
+            let mut vm_uuid = Uuid::new_v4().simple().to_string();
+            vm_uuid.truncate(8);
+            let node_name = format!("{}-node-{}", vsphere_cluster.name, vm_uuid);
             info!("Cloning VM for worker node '{}'", node_name);
             let vm_clone_output = Command::new("govc")
                 .arg("vm.clone")
