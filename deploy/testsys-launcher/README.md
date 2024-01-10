@@ -13,8 +13,9 @@ cdk deploy
 ```
 
 The default role that can assume the `testsys-admin` role is "Administrator".
-During deployment, use `--parameter TestsysAssumerRole={MY-ROLE-NAME}` to specify
-a different role that can assume the `testsys-admin` role.
+To specify other roles to assume `testsys-admin`, modify `cdk.json` or use
+a comma separated set of roles via CDK context like
+`--context testsysAdminAssumedBy=<role1>,<role2>,<role3>`.
 
 To get the kubeconfig, assuming you are acting as the role that can assume `testsys-admin`,
 use the `aws eks update-kubeconfig` command with the `testsys-admin` role:
@@ -42,5 +43,8 @@ Bottlerocket nodes on the cluster consume the latest releases and stay up to dat
 
 ## Optional Parameters
 
-* `TestsysAssumerRole`    name of the role that can assume the `testsys-admin` role to perform cluster operations _(string)_ - Default: "Administrator"
 * `TestsysNodegroupSize`  number of instances for the testsys node-group _(number)_ - Default: "3"
+
+## Optional Context
+
+* `testsysAdminAssumedBy`: a comma separated list of roles that can assume the `testsys-admin` role - Default: "Administrator"
