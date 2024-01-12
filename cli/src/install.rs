@@ -14,6 +14,9 @@ pub(crate) struct Install {
     // TODO - add default controller_uri after images are published.
     #[clap(long = "controller-uri")]
     controller_uri: String,
+
+    #[clap(long = "archive-logs")]
+    archive_logs: bool,
 }
 
 impl Install {
@@ -22,9 +25,12 @@ impl Install {
             (Some(secret), image) => ImageConfig::WithCreds { secret, image },
             (None, image) => ImageConfig::Image(image),
         };
-        client.install(controller_image).await.context(
-            "Unable to install testsys to the cluster. (Some artifacts may be left behind)",
-        )?;
+        client
+            .install(controller_image, self.archive_logs)
+            .await
+            .context(
+                "Unable to install testsys to the cluster. (Some artifacts may be left behind)",
+            )?;
 
         println!("testsys components were successfully installed.");
 

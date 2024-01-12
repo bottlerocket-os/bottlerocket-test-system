@@ -119,8 +119,9 @@ impl TestManager {
         &self,
         uri: String,
         secret: Option<String>,
+        enable_logging: bool,
     ) -> Result<()> {
-        let controller_deployment = controller_deployment(uri, secret);
+        let controller_deployment = controller_deployment(uri, secret, enable_logging);
 
         // If the controller deployment already exists, update it with the new one using Patch. If
         // not create a new controller deployment.

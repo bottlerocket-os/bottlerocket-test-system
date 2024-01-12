@@ -2,14 +2,19 @@ mod error;
 mod job_builder;
 
 pub(crate) use crate::job::error::{JobError, JobResult};
+use aws_sdk_cloudwatchlogs::model::InputLogEvent;
 pub(crate) use job_builder::{JobBuilder, JobType};
 use k8s_openapi::api::batch::v1::Job;
+use k8s_openapi::api::core::v1::Pod;
 use k8s_openapi::chrono::{Duration, Utc};
-use kube::api::{DeleteParams, PropagationPolicy};
-use kube::Api;
-use log::debug;
-use snafu::ensure;
+use kube::api::{DeleteParams, ListParams, LogParams, PropagationPolicy};
+use kube::{Api, ResourceExt};
+use log::{debug, info, warn};
+use snafu::{ensure, OptionExt, ResultExt};
+use std::env;
+use std::time::{SystemTime, UNIX_EPOCH};
 use testsys_model::constants::NAMESPACE;
+use testsys_model::system::TESTSYS_CONTROLLER_ARCHIVE_LOGS;
 
 lazy_static::lazy_static! {
     /// The maximum amount of time for a test to begin running (in seconds).
@@ -120,5 +125,118 @@ pub(crate) async fn delete_job(k8s_client: kube::Client, name: &str) -> JobResul
         return Ok(());
     }
     let _ = result?;
+    Ok(())
+}
+
+async fn get_pod(k8s_client: kube::Client, job_name: &str) -> JobResult<String> {
+    let pod_api: Api<Pod> = Api::namespaced(k8s_client, NAMESPACE);
+    let name = pod_api
+        .list(&ListParams {
+            label_selector: Some(format!("job-name={}", job_name)),
+            ..Default::default()
+        })
+        .await
+        .context(error::NotFoundSnafu {})?
+        .items
+        .first()
+        .context(error::NoPodsSnafu {
+            job: job_name.to_string(),
+        })?
+        .name_any();
+
+    Ok(name)
+}
+
+async fn pod_logs(k8s_client: kube::Client, pod_name: &str) -> JobResult<String> {
+    let log_params = LogParams {
+        follow: false,
+        pretty: true,
+        ..Default::default()
+    };
+    let pod_api: Api<Pod> = Api::namespaced(k8s_client, NAMESPACE);
+
+    pod_api
+        .logs(pod_name, &log_params)
+        .await
+        .context(error::NoLogsSnafu { pod: pod_name })
+}
+
+pub(crate) async fn archive_logs(k8s_client: kube::Client, job_name: &str) -> JobResult<()> {
+    let archive_logs = match env::var(TESTSYS_CONTROLLER_ARCHIVE_LOGS) {
+        Ok(s) => s == true.to_string(),
+        Err(e) => {
+            warn!(
+                "Unable to read environment variable '{}': {}",
+                TESTSYS_CONTROLLER_ARCHIVE_LOGS, e
+            );
+            false
+        }
+    };
+
+    if !archive_logs {
+        return Ok(());
+    }
+    let config = aws_config::from_env().load().await;
+    let client = aws_sdk_cloudwatchlogs::Client::new(&config);
+
+    match client
+        .create_log_group()
+        .log_group_name("testsys")
+        .send()
+        .await
+    {
+        Ok(_) => info!("Creating log group"),
+        Err(e) => {
+            let service_error = e.into_service_error();
+            if service_error.is_resource_already_exists_exception() {
+                info!("Log group already exists.")
+            }
+            return Err(error::JobError::CreateLogGroup {
+                message: service_error.to_string(),
+                log_group: "testsys".to_string(),
+            });
+        }
+    }
+
+    let pod_name = get_pod(k8s_client.clone(), job_name).await?;
+    let logs = pod_logs(k8s_client, &pod_name).await?;
+    let name = format!(
+        "{}-{}",
+        job_name,
+        SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs()
+    );
+
+    client
+        .create_log_stream()
+        .log_group_name("testsys")
+        .log_stream_name(&name)
+        .send()
+        .await
+        .context(error::CreateLogStreamSnafu {
+            log_stream: name.to_string(),
+        })?;
+
+    client
+        .put_log_events()
+        .log_group_name("testsys")
+        .log_stream_name(&name)
+        .log_events(
+            InputLogEvent::builder()
+                .message(logs)
+                .timestamp(
+                    SystemTime::now()
+                        .duration_since(UNIX_EPOCH)?
+                        .as_millis()
+                        .try_into()
+                        .unwrap_or_default(),
+                )
+                .build(),
+        )
+        .send()
+        .await
+        .context(error::CreateLogEventSnafu { log_event: &name })?;
+
+    info!("Archive of '{job_name}' can be found at '{name}'");
+
     Ok(())
 }

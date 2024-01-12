@@ -1,7 +1,8 @@
 use crate::error::Result;
-use crate::job::{delete_job, get_job_state, JobState};
+use crate::job::{archive_logs, delete_job, get_job_state, JobState};
 use anyhow::Context as AnyhowContext;
 use kube::{Api, Client};
+use log::error;
 use std::sync::Arc;
 use testsys_model::clients::{CrdClient, TestClient};
 use testsys_model::Test;
@@ -77,6 +78,9 @@ impl TestInterface {
     }
 
     pub(super) async fn delete_job(&self) -> Result<()> {
+        if let Err(e) = archive_logs(self.k8s_client(), self.name()).await {
+            error!("Unable to archive logs for test '{}': {}", self.name(), e);
+        }
         delete_job(self.k8s_client(), self.name())
             .await
             .with_context(|| format!("Unable to delete job for test '{}'", self.name()))
