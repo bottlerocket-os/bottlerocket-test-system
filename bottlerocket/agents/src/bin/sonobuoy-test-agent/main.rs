@@ -94,6 +94,14 @@ where
             None => None,
         };
 
+        match delete_sonobuoy(TEST_CLUSTER_KUBECONFIG_PATH).await {
+            Ok(_) => {}
+            Err(e) => info!(
+                "Unable to delete sonobuoy namespace. It is possible it was already deleted. {}",
+                e
+            ),
+        };
+
         run_sonobuoy(
             TEST_CLUSTER_KUBECONFIG_PATH,
             e2e_repo_config,
