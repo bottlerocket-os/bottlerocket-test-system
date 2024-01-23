@@ -171,7 +171,7 @@ async fn creation_not_done_action(
     if !is_task_state_running && !r.resource().has_finalizer(FINALIZER_CREATION_JOB) {
         return Ok(CreationAction::AddJobFinalizer);
     }
-    if !is_task_state_running && !r.resource().has_finalizer(FINALIZER_CLEANUP_REQUIRED) {
+    if !r.resource().has_finalizer(FINALIZER_CLEANUP_REQUIRED) {
         return Ok(CreationAction::AddCleanupFinalizer);
     }
     let job_state = r.get_job_state(ResourceAction::Create).await?;
@@ -296,6 +296,9 @@ async fn destruction_action_with_resources(r: &ResourceInterface) -> Result<Dest
                 r.name(),
                 destruction_policy
             );
+            if r.resource().has_finalizer(FINALIZER_CLEANUP_REQUIRED) {
+                return Ok(DestructionAction::RemoveCleanupFinalizer);
+            }
             return Ok(DestructionAction::RemoveResourceFinalizer);
         }
     }
