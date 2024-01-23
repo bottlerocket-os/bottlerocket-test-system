@@ -49,6 +49,8 @@ pub struct ProductionMemo {
 
     // The role arn that is being assumed.
     pub assume_role: Option<String>,
+
+    pub provisioning_started: bool,
 }
 
 impl Configuration for ProductionMemo {}
@@ -380,6 +382,7 @@ impl Create for EksCreator {
         if do_create {
             info!("Creating cluster with eksctl");
             memo.current_status = "Creating cluster".to_string();
+            memo.provisioning_started = true;
             client
                 .send_info(memo.clone())
                 .await
@@ -897,8 +900,12 @@ impl Destroy for EksDestroyer {
             .await
             .context(Resources::Remaining, "Unable to get info from client")?;
 
+        if !memo.provisioning_started {
+            return Ok(());
+        }
+
         let cluster_name = match &memo.cluster_name {
-            Some(x) => x,
+            Some(cluster_name) => cluster_name,
             None => {
                 return Err(ProviderError::new_with_context(
                     Resources::Unknown,
