@@ -54,6 +54,10 @@ pub struct ProductionMemo {
 
     /// Name of the cluster the EC2 instances are for
     pub cluster_name: String,
+
+    pub tainted_nodegroup_exists: bool,
+    pub karpenter_namespace_exists: bool,
+    pub inflate_deployment_exists: bool,
 }
 
 impl Configuration for ProductionMemo {}
@@ -331,6 +335,12 @@ impl Create for Ec2KarpenterCreator {
                 format!("Failed to create nodegroup with status code {}", status),
             ));
         }
+        memo.tainted_nodegroup_exists = true;
+        memo.current_status = "Tainting nodegroup".to_string();
+        client
+            .send_info(memo.clone())
+            .await
+            .context(resources, "Error sending message")?;
 
         info!("Applying node taint and scaling nodegroup");
         eks_client
@@ -391,6 +401,13 @@ impl Create for Ec2KarpenterCreator {
                 ),
             ));
         }
+
+        memo.karpenter_namespace_exists = true;
+        memo.current_status = "Karpenter Installed".to_string();
+        client
+            .send_info(memo.clone())
+            .await
+            .context(resources, "Error sending message")?;
 
         info!("Karpenter has been installed to the cluster. Creating EC2 provisioner");
 
@@ -534,6 +551,13 @@ spec:
             .create(&Default::default(), &deployment)
             .await
             .context(resources, "Unable to create deployment")?;
+
+        memo.inflate_deployment_exists = true;
+        memo.current_status = "Waiting for Karpenter Nodes".to_string();
+        client
+            .send_info(memo.clone())
+            .await
+            .context(resources, "Error sending message")?;
 
         info!("Waiting for new nodes to be created");
         tokio::time::timeout(
@@ -886,6 +910,10 @@ impl Destroy for Ec2KarpenterDestroyer {
         })?;
         let resources = Resources::Remaining;
 
+        if !memo.tainted_nodegroup_exists {
+            return Ok(());
+        }
+
         info!("Getting AWS secret");
         memo.current_status = "Getting AWS secret".to_string();
         client
@@ -970,41 +998,45 @@ impl Destroy for Ec2KarpenterDestroyer {
                     "Unable to create k8s client from cluster kubeconfig",
                 )?;
 
-        info!("Deleting inflate deployment");
-        let deployment_api = Api::<Deployment>::namespaced(k8s_client.clone(), "default");
-        deployment_api
-            .delete("inflate", &Default::default())
+        if memo.inflate_deployment_exists {
+            info!("Deleting inflate deployment");
+            let deployment_api = Api::<Deployment>::namespaced(k8s_client.clone(), "default");
+            deployment_api
+                .delete("inflate", &Default::default())
+                .await
+                .context(resources, "Unable to delete deployment")?;
+
+            let node_api = Api::<Node>::all(k8s_client);
+
+            info!("Waiting for karpenter nodes to be cleaned up");
+            tokio::time::timeout(
+                Duration::from_secs(600),
+                wait_for_nodes(&node_api, 2, Ordering::Equal),
+            )
             .await
-            .context(resources, "Unable to delete deployment")?;
+            .context(
+                resources,
+                "Timed out waiting for karpenter nodes to leave the cluster",
+            )??;
+        }
 
-        let node_api = Api::<Node>::all(k8s_client);
+        if memo.karpenter_namespace_exists {
+            info!("Uninstalling karpenter");
+            let status = Command::new("helm")
+                .env("KUBECONFIG", CLUSTER_KUBECONFIG)
+                .args(["uninstall", "karpenter", "--namespace", "karpenter"])
+                .status()
+                .context(Resources::Remaining, "Failed to create helm template")?;
 
-        info!("Waiting for karpenter nodes to be cleaned up");
-        tokio::time::timeout(
-            Duration::from_secs(600),
-            wait_for_nodes(&node_api, 2, Ordering::Equal),
-        )
-        .await
-        .context(
-            resources,
-            "Timed out waiting for karpenter nodes to join the cluster",
-        )??;
-
-        info!("Uninstalling karpenter");
-        let status = Command::new("helm")
-            .env("KUBECONFIG", CLUSTER_KUBECONFIG)
-            .args(["uninstall", "karpenter", "--namespace", "karpenter"])
-            .status()
-            .context(Resources::Remaining, "Failed to create helm template")?;
-
-        if !status.success() {
-            return Err(ProviderError::new_with_context(
-                Resources::Remaining,
-                format!(
-                    "Failed to launch karpenter template with status code {}",
-                    status
-                ),
-            ));
+            if !status.success() {
+                return Err(ProviderError::new_with_context(
+                    Resources::Remaining,
+                    format!(
+                        "Failed to launch karpenter template with status code {}",
+                        status
+                    ),
+                ));
+            }
         }
 
         info!("Deleting tainted nodegroup");
