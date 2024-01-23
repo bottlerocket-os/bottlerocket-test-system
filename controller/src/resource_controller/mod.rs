@@ -17,7 +17,8 @@ use std::ops::Deref;
 use std::sync::Arc;
 use testsys_model::clients::CrdClient;
 use testsys_model::constants::{
-    FINALIZER_CREATION_JOB, FINALIZER_MAIN, FINALIZER_RESOURCE, NAMESPACE,
+    FINALIZER_CLEANUP_REQUIRED, FINALIZER_CREATION_JOB, FINALIZER_MAIN, FINALIZER_RESOURCE,
+    NAMESPACE,
 };
 use testsys_model::{CrdExt, ErrorResources, Resource, ResourceAction, ResourceError};
 
@@ -86,6 +87,13 @@ async fn do_creation_action(r: ResourceInterface, action: CreationAction) -> Res
                 .await
                 .with_context(|| format!("Unable to creation job finalizer to '{}'", r.name()))?;
         }
+        CreationAction::AddCleanupFinalizer => {
+            let _ = r
+                .resource_client()
+                .add_finalizer(FINALIZER_CLEANUP_REQUIRED, r.resource())
+                .await
+                .with_context(|| format!("Unable to add resource finalizer to '{}'", r.name()))?;
+        }
         CreationAction::StartJob => r.start_job(ResourceAction::Create).await?,
         CreationAction::WaitForCreation => {
             debug!("waiting for creation of resource '{}'", r.name())
@@ -147,6 +155,14 @@ async fn do_destruction_action(r: ResourceInterface, action: DestructionAction) 
         DestructionAction::Wait => {}
         DestructionAction::RemoveDestructionJob => {
             r.remove_job(ResourceAction::Destroy).await?;
+        }
+        DestructionAction::RemoveCleanupFinalizer => {
+            r.resource_client()
+                .remove_finalizer(FINALIZER_CLEANUP_REQUIRED, r.resource())
+                .await
+                .with_context(|| {
+                    format!("Unable to cleanup resource finalizer from '{}'", r.name())
+                })?;
         }
         DestructionAction::RemoveResourceFinalizer => {
             r.resource_client()
