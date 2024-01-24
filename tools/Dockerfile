@@ -6,6 +6,7 @@ FROM "${BUILDER_IMAGE}" as base
 USER root
 COPY ./hashes /hashes
 COPY ./clarify.toml /clarify.toml
+COPY ./eksctl.clarify.toml /eksctl.clarify.toml
 
 # =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^=
 # Shared build stage used to build Go binaries.
@@ -27,10 +28,10 @@ USER root
 RUN mkdir -p /usr/share/licenses/eksctl && \
     chown -R builder:builder /usr/share/licenses/eksctl
 
-ARG EKSCTL_VERSION=0.144.0
-ARG EKSCTL_SOURCE_URL="https://github.com/weaveworks/eksctl/archive/refs/tags/v${EKSCTL_VERSION}.tar.gz"
+ARG EKSCTL_VERSION=0.169.0
+ARG EKSCTL_SOURCE_URL="https://github.com/eksctl-io/eksctl/archive/refs/tags/v${EKSCTL_VERSION}.tar.gz"
 
-ARG EKSCTL_BINARY_URL="https://github.com/weaveworks/eksctl/releases/download/v${EKSCTL_VERSION}/eksctl_Linux_${GOARCH}.tar.gz"
+ARG EKSCTL_BINARY_URL="https://github.com/eksctl-io/eksctl/releases/download/v${EKSCTL_VERSION}/eksctl_Linux_${GOARCH}.tar.gz"
 
 USER builder
 WORKDIR /home/builder/
@@ -47,7 +48,7 @@ WORKDIR /home/builder/eksctl/
 RUN go mod vendor
 RUN cp -p LICENSE /usr/share/licenses/eksctl && \
     /usr/libexec/tools/bottlerocket-license-scan \
-      --clarify /clarify.toml \
+      --clarify /eksctl.clarify.toml \
       --spdx-data /usr/libexec/tools/spdx-data \
       --out-dir /usr/share/licenses/eksctl/vendor \
       go-vendor ./vendor
@@ -147,7 +148,7 @@ USER root
 RUN mkdir -p /usr/share/licenses/helm && \
     chown -R builder:builder /usr/share/licenses/helm
 
-ARG HELM_VERSION=3.8.2
+ARG HELM_VERSION=3.14.0
 ARG HELM_SOURCE_URL="https://github.com/helm/helm/archive/refs/tags/v${HELM_VERSION}.tar.gz"
 
 # ARG HELM_BINARY_URL="https://github.com/helm/helm/releases/download/v${HELM_VERSION}/helm-v${HELM_VERSION}-${GOOS}-${GOARCH}.tar.gz.asc"

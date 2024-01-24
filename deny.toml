@@ -19,8 +19,8 @@ allow = [
     "ISC",
     "MIT",
     "OpenSSL",
-    "Unicode-DFS-2016"
-    #"Unlicense",
+    "Unicode-DFS-2016",
+    "Unlicense",
     #"Zlib"
 ]
 
