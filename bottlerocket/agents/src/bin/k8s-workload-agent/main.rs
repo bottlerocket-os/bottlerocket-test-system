@@ -86,6 +86,14 @@ where
             .await?;
         info!("Stored kubeconfig in {}", TEST_CLUSTER_KUBECONFIG_PATH);
 
+        match delete_workload(TEST_CLUSTER_KUBECONFIG_PATH).await {
+            Ok(_) => {}
+            Err(e) => info!(
+                "Unable to delete workload testing namespace. It is possible it was already deleted. {}",
+                e
+            ),
+        };
+
         run_workload(
             TEST_CLUSTER_KUBECONFIG_PATH,
             &self.config,
