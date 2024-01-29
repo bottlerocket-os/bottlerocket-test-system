@@ -1,8 +1,8 @@
 use crate::error::Result;
-use crate::job::{delete_job, get_job_state, JobBuilder, JobState, JobType};
+use crate::job::{archive_logs, delete_job, get_job_state, JobBuilder, JobState, JobType};
 use anyhow::Context as AnyhowContext;
 use kube::Api;
-use log::debug;
+use log::{debug, error};
 use std::sync::Arc;
 use testsys_model::clients::{CrdClient, ResourceClient};
 use testsys_model::constants::{ENV_RESOURCE_ACTION, ENV_RESOURCE_NAME};
@@ -102,6 +102,13 @@ impl ResourceInterface {
     }
 
     pub(super) async fn remove_job(&self, op: ResourceAction) -> Result<()> {
+        if let Err(e) = archive_logs(self.k8s_client(), self.job_name(op)).await {
+            error!(
+                "Unable to archive logs for job '{}': {}",
+                self.job_name(op),
+                e
+            );
+        }
         delete_job(self.k8s_client(), self.job_name(op))
             .await
             .context(format!("Unable to remove job '{}'", self.job_name(op)))?;

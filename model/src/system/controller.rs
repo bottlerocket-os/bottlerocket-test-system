@@ -5,8 +5,8 @@ use k8s_openapi::api::apps::v1::{
     Deployment, DeploymentSpec, DeploymentStrategy, RollingUpdateDeployment,
 };
 use k8s_openapi::api::core::v1::{
-    Affinity, Container, LocalObjectReference, NodeAffinity, NodeSelector, NodeSelectorRequirement,
-    NodeSelectorTerm, PodSpec, PodTemplateSpec, ServiceAccount,
+    Affinity, Container, EnvVar, LocalObjectReference, NodeAffinity, NodeSelector,
+    NodeSelectorRequirement, NodeSelectorTerm, PodSpec, PodTemplateSpec, ServiceAccount,
 };
 use k8s_openapi::api::rbac::v1::{ClusterRole, ClusterRoleBinding, PolicyRule, RoleRef, Subject};
 use k8s_openapi::apimachinery::pkg::apis::meta::v1::LabelSelector;
@@ -16,6 +16,7 @@ use maplit::btreemap;
 
 const TESTSYS_CONTROLLER_SERVICE_ACCOUNT: &str = "testsys-controller-service-account";
 const TESTSYS_CONTROLLER_CLUSTER_ROLE: &str = "testsys-controller-role";
+pub const TESTSYS_CONTROLLER_ARCHIVE_LOGS: &str = "TESTSYS_CONTROLLER_ARCHIVE_LOGS";
 
 /// Defines the testsys-controller service account
 pub fn controller_service_account() -> ServiceAccount {
@@ -114,6 +115,12 @@ pub fn controller_cluster_role() -> ClusterRole {
                 .collect(),
                 ..Default::default()
             },
+            PolicyRule {
+                api_groups: Some(vec!["".to_string()]),
+                resources: Some(vec!["pods".to_string(), "pods/log".to_string()]),
+                verbs: ["get", "list"].iter().map(|s| s.to_string()).collect(),
+                ..Default::default()
+            },
         ]),
         ..Default::default()
     }
@@ -145,6 +152,7 @@ pub fn controller_cluster_role_binding() -> ClusterRoleBinding {
 pub fn controller_deployment(
     controller_image: String,
     image_pull_secret: Option<String>,
+    enable_logging: bool,
 ) -> Deployment {
     let image_pull_secrets =
         image_pull_secret.map(|secret| vec![LocalObjectReference { name: Some(secret) }]);
@@ -214,6 +222,11 @@ pub fn controller_deployment(
                         image: Some(controller_image),
                         image_pull_policy: None,
                         name: "controller".to_string(),
+                        env: Some(vec![EnvVar {
+                            name: TESTSYS_CONTROLLER_ARCHIVE_LOGS.to_string(),
+                            value: Some(enable_logging.to_string()),
+                            ..Default::default()
+                        }]),
                         ..Default::default()
                     }],
                     image_pull_secrets,

@@ -13,14 +13,42 @@ pub(crate) enum JobError {
     #[snafu(display("Unable to create job: {}", source))]
     Create { source: kube::Error },
 
+    #[snafu(display("Unable to create log event '{}': {:?}", log_event, source))]
+    CreateLogEvent {
+        log_event: String,
+        source: aws_sdk_cloudwatchlogs::types::SdkError<
+            aws_sdk_cloudwatchlogs::error::PutLogEventsError,
+        >,
+    },
+
+    #[snafu(display("Unable to create log group '{}': {}", log_group, message))]
+    CreateLogGroup { log_group: String, message: String },
+
+    #[snafu(display("Unable to create log stream '{}': {:?}", log_stream, source))]
+    CreateLogStream {
+        log_stream: String,
+        source: aws_sdk_cloudwatchlogs::types::SdkError<
+            aws_sdk_cloudwatchlogs::error::CreateLogStreamError,
+        >,
+    },
+
     #[snafu(display("Unable to delete job: {}", source))]
     Delete { source: kube::Error },
 
     #[snafu(display("Unable to get job: {}", source))]
     Get { source: kube::Error },
 
+    #[snafu(display("Unable to read logs for pod '{}': {}", pod, source))]
+    NoLogs { pod: String, source: kube::Error },
+
+    #[snafu(display("No pods found for job '{}'", job))]
+    NoPods { job: String },
+
     #[snafu(display("Job does not exist: {}", source))]
     NotFound { source: kube::Error },
+
+    #[snafu(display("{}", source), context(false))]
+    SystemTime { source: std::time::SystemTimeError },
 
     #[snafu(display(
         "There should be only one container for job '{}' but found {} running, {} succeeded, and {} failed",

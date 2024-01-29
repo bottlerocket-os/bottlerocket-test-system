@@ -131,7 +131,7 @@ impl TestManager {
     }
 
     /// Install testsys to a cluster.
-    pub async fn install(&self, controller_config: ImageConfig) -> Result<()> {
+    pub async fn install(&self, controller_config: ImageConfig, store_logs: bool) -> Result<()> {
         self.create_namespace().await?;
         self.create_crd().await?;
         self.create_roles(AgentType::Test).await?;
@@ -145,7 +145,7 @@ impl TestManager {
             ImageConfig::WithCreds { secret, image } => (image, Some(secret)),
             ImageConfig::Image(image) => (image, None),
         };
-        self.create_deployment(image, secret).await?;
+        self.create_deployment(image, secret, store_logs).await?;
 
         Ok(())
     }
