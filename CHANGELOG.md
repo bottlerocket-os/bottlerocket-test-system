@@ -6,7 +6,21 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
-[Unreleased]: https://github.com/bottlerocket-os/bottlerocket-test-system/compare/v0.0.10...develop
+[Unreleased]: https://github.com/bottlerocket-os/bottlerocket-test-system/compare/v0.0.11...develop
+
+## [0.0.11] - 2024-01-29
+
+### Added
+
+- vSphere: Delete conflicting vms/templates [#879]
+- sonobuoy: Automatically delete namespace [#883]
+- controller: Add flag to enable log archiving [#882]
+
+[#879]: https://github.com/bottlerocket-os/bottlerocket-test-system/pull/879
+[#882]: https://github.com/bottlerocket-os/bottlerocket-test-system/pull/882
+[#883]: https://github.com/bottlerocket-os/bottlerocket-test-system/pull/883
+
+[0.0.11]: https://github.com/bottlerocket-os/bottlerocket-test-system/tree/v0.0.11
 
 ## [0.0.10] - 2023-10-03
 
