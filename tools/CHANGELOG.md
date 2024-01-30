@@ -6,6 +6,12 @@ The format is inspired by [Keep a Changelog](https://keepachangelog.com/en/1.0.0
 Since this project is only a vessel for packaging a few binary tools, its adherence to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html) is loose at best.
 
+## [0.8.0] - 2024-01-29
+
+Update eksctl to 0.169.0
+Update helm to 3.14.0
+Update Bottlerocket SDK to 0.37.0
+
 ## [0.7.0] - 2023-09-13
 
 Removed eksctl-anywhere
