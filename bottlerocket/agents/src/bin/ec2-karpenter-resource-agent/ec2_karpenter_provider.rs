@@ -1,5 +1,6 @@
 use agent_utils::aws::aws_config;
 use agent_utils::json_display;
+use aws_sdk_cloudformation::model::{Capability, Parameter, StackStatus};
 use aws_sdk_ec2::model::Tag;
 use aws_sdk_eks::model::{
     NodegroupScalingConfig, NodegroupStatus, Taint, TaintEffect, UpdateTaintsPayload,
@@ -11,7 +12,7 @@ use k8s_openapi::api::apps::v1::Deployment;
 use k8s_openapi::api::core::v1::Node;
 use kube::config::{KubeConfigOptions, Kubeconfig};
 use kube::{Api, Client, Config};
-use log::{debug, info};
+use log::{debug, info, warn};
 use resource_agent::clients::InfoClient;
 use resource_agent::provider::{
     Create, Destroy, IntoProviderError, ProviderError, ProviderResult, Resources, Spec,
@@ -25,11 +26,13 @@ use std::fs;
 use std::process::Command;
 use std::time::Duration;
 use testsys_model::{Configuration, SecretName};
+use tokio::fs::read_to_string;
 
-const KARPENTER_VERSION: &str = "v0.27.1";
+const KARPENTER_VERSION: &str = "v0.33.1";
 const CLUSTER_KUBECONFIG: &str = "/local/cluster.kubeconfig";
 const PROVISIONER_YAML: &str = "/local/provisioner.yaml";
 const TAINTED_NODEGROUP_NAME: &str = "tainted-nodegroup";
+const TEMPLATE_PATH: &str = "/local/cloudformation.yaml";
 
 #[derive(Clone, Debug, Default, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -54,6 +57,11 @@ pub struct ProductionMemo {
 
     /// Name of the cluster the EC2 instances are for
     pub cluster_name: String,
+
+    pub cloud_formation_stack_exists: bool,
+    pub tainted_nodegroup_exists: bool,
+    pub karpenter_namespace_exists: bool,
+    pub inflate_deployment_exists: bool,
 }
 
 impl Configuration for ProductionMemo {}
@@ -86,6 +94,13 @@ impl Create for Ec2KarpenterCreator {
             "create is starting with the following spec:\n{}",
             json_display(&spec)
         );
+
+        let karpenter_version = spec
+            .configuration
+            .karpenter_version
+            .unwrap_or_else(|| KARPENTER_VERSION.to_string());
+
+        let stack_name = format!("Karpenter-{}", spec.configuration.cluster_name);
 
         let mut resources = Resources::Unknown;
 
@@ -127,7 +142,7 @@ impl Create for Ec2KarpenterCreator {
         let ec2_client = aws_sdk_ec2::Client::new(&shared_config);
         let eks_client = aws_sdk_eks::Client::new(&shared_config);
         let sts_client = aws_sdk_sts::Client::new(&shared_config);
-        let iam_client = aws_sdk_iam::Client::new(&shared_config);
+        let cfn_client = aws_sdk_cloudformation::Client::new(&shared_config);
 
         info!("Writing cluster's kubeconfig to {}", CLUSTER_KUBECONFIG);
         let status = Command::new("eksctl")
@@ -160,11 +175,45 @@ impl Create for Ec2KarpenterCreator {
             .to_string();
         info!("Using account '{account_id}'");
 
-        info!("Checking for KarpenterInstanceNodeRole");
-        create_karpenter_instance_role(&iam_client).await?;
+        memo.cloud_formation_stack_exists = true;
+        client
+            .send_info(memo.clone())
+            .await
+            .context(resources, "Error sending cluster creation message")?;
 
-        info!("Checking for KarpenterControllerPolicy");
-        create_controller_policy(&iam_client, &account_id).await?;
+        info!("Launching karpenter cloud formation stack");
+        cfn_client
+            .create_stack()
+            .stack_name(&stack_name)
+            .template_body(
+                read_to_string(TEMPLATE_PATH)
+                    .await
+                    .context(Resources::Clear, "Unable to read cloudformation template")?,
+            )
+            .capabilities(Capability::CapabilityNamedIam)
+            .parameters(
+                Parameter::builder()
+                    .parameter_key("ClusterName")
+                    .parameter_value(&spec.configuration.cluster_name)
+                    .build(),
+            )
+            .send()
+            .await
+            .context(
+                Resources::Remaining,
+                "Unable to create cloudformation stack",
+            )?;
+
+        tokio::time::timeout(
+            Duration::from_secs(600),
+            wait_for_cloudformation_stack(
+                stack_name.to_string(),
+                StackStatus::CreateComplete,
+                &cfn_client,
+            ),
+        )
+        .await
+        .context(resources, "Timed out waiting for cloud formation stack.")??;
 
         info!(
             "Adding associate-iam-oidc-provider to {}",
@@ -216,7 +265,11 @@ impl Create for Ec2KarpenterCreator {
                 )
                 .as_str(),
                 "--attach-policy-arn",
-                format!("arn:aws:iam::{account_id}:policy/KarpenterControllerPolicy").as_str(),
+                format!(
+                    "arn:aws:iam::{account_id}:policy/KarpenterControllerPolicy-{}",
+                    &spec.configuration.cluster_name
+                )
+                .as_str(),
                 "--role-only",
                 "--approve",
             ])
@@ -291,7 +344,10 @@ impl Create for Ec2KarpenterCreator {
                 "--cluster",
                 spec.configuration.cluster_name.as_str(),
                 "--arn",
-                &format!("arn:aws:iam::{account_id}:role/KarpenterInstanceNodeRole"),
+                &format!(
+                    "arn:aws:iam::{account_id}:role/KarpenterNodeRole-{}",
+                    spec.configuration.cluster_name
+                ),
                 "--username",
                 "system:node:{{EC2PrivateDNSName}}",
                 "--group",
@@ -331,6 +387,12 @@ impl Create for Ec2KarpenterCreator {
                 format!("Failed to create nodegroup with status code {}", status),
             ));
         }
+        memo.tainted_nodegroup_exists = true;
+        memo.current_status = "Tainting nodegroup".to_string();
+        client
+            .send_info(memo.clone())
+            .await
+            .context(resources, "Error sending message")?;
 
         info!("Applying node taint and scaling nodegroup");
         eks_client
@@ -367,17 +429,30 @@ impl Create for Ec2KarpenterCreator {
         let status = Command::new("helm")
             .env("KUBECONFIG", CLUSTER_KUBECONFIG)
             .args([
-                "upgrade", 
-                "--install", 
-                "--namespace", "karpenter",
-                "--create-namespace", "karpenter", 
+                "upgrade",
+                "--install",
+                "karpenter",
+                "--namespace",
+                "karpenter",
+                "--create-namespace",
                 "oci://public.ecr.aws/karpenter/karpenter",
-                "--version", KARPENTER_VERSION,
-                "--set", "settings.aws.defaultInstanceProfile=KarpenterInstanceNodeRole",
-                "--set", &format!("settings.aws.clusterEndpoint={}", spec.configuration.endpoint),
-                "--set", &format!("settings.aws.clusterName={}", spec.configuration.cluster_name),
+                "--version",
+                &karpenter_version,
+                "--set",
+                &format!(
+                    "aws.defaultInstanceProfile=KarpenterNodeRole-{}",
+                    spec.configuration.cluster_name
+                ),
+                "--set",
+                &format!("settings.clusterName={}", spec.configuration.cluster_name),
+                "--set",
+                &format!(
+                    "settings.aws.clusterEndpoint={}",
+                    spec.configuration.endpoint
+                ),
                 "--set", &format!(r#"serviceAccount.annotations.eks\.amazonaws\.com/role-arn=arn:aws:iam::{account_id}:role/KarpenterControllerRole-{}"#, spec.configuration.cluster_name),
-                "--wait", "--debug"
+                "--wait",
+                "--debug",
             ])
             .status()
             .context(Resources::Remaining, "Failed to create helm template")?;
@@ -392,15 +467,22 @@ impl Create for Ec2KarpenterCreator {
             ));
         }
 
+        memo.karpenter_namespace_exists = true;
+        memo.current_status = "Karpenter Installed".to_string();
+        client
+            .send_info(memo.clone())
+            .await
+            .context(resources, "Error sending message")?;
+
         info!("Karpenter has been installed to the cluster. Creating EC2 provisioner");
 
         let requirements = if spec.configuration.instance_types.is_empty() {
             Default::default()
         } else {
             format!(
-                r#"    - key: node.kubernetes.io/instance-type
-      operator: In
-      values: [{}]
+                r#"        - key: node.kubernetes.io/instance-type
+          operator: In
+          values: [{}]
 
 "#,
                 spec.configuration.instance_types.join(",")
@@ -434,35 +516,40 @@ impl Create for Ec2KarpenterCreator {
         };
 
         let provisioner = format!(
-            r#"apiVersion: karpenter.sh/v1alpha5
-kind: Provisioner
+            r#"apiVersion: karpenter.sh/v1beta1
+kind: NodePool
 metadata:
     name: default
-spec:
-    ttlSecondsAfterEmpty: 1   
-    providerRef:
-        name: my-provider
-    requirements:
-    - key: kubernetes.io/arch
-      operator: In
-      values: ["arm64", "amd64"]
+spec: 
+  template:
+    spec:
+        nodeClassRef:
+            name: my-provider
+        requirements:
+        - key: kubernetes.io/arch
+          operator: In
+          values: ["arm64", "amd64"]
 {}
 ---
-apiVersion: karpenter.k8s.aws/v1alpha1
-kind: AWSNodeTemplate
+apiVersion: karpenter.k8s.aws/v1beta1
+kind: EC2NodeClass
 metadata:
     name: my-provider
 spec:
     amiFamily: Bottlerocket
-    amiSelector: 
-      aws-ids: {}
-    subnetSelector:
-        karpenter.sh/discovery: {}
-    securityGroupSelector:
-        karpenter.sh/discovery: {}
+    role: "KarpenterNodeRole-{}"
+    amiSelectorTerms: 
+      - id: {}
+    subnetSelectorTerms:
+        - tags:
+            karpenter.sh/discovery: {}
+    securityGroupSelectorTerms:
+        - tags:
+            karpenter.sh/discovery: {}
 {}
 "#,
             requirements,
+            spec.configuration.cluster_name,
             spec.configuration.node_ami,
             spec.configuration.cluster_name,
             spec.configuration.cluster_name,
@@ -534,6 +621,13 @@ spec:
             .create(&Default::default(), &deployment)
             .await
             .context(resources, "Unable to create deployment")?;
+
+        memo.inflate_deployment_exists = true;
+        memo.current_status = "Waiting for Karpenter Nodes".to_string();
+        client
+            .send_info(memo.clone())
+            .await
+            .context(resources, "Error sending message")?;
 
         info!("Waiting for new nodes to be created");
         tokio::time::timeout(
@@ -697,167 +791,6 @@ async fn wait_for_nodegroup(
     }
 }
 
-async fn create_karpenter_instance_role(iam_client: &aws_sdk_iam::Client) -> ProviderResult<()> {
-    if iam_client
-        .get_instance_profile()
-        .instance_profile_name("KarpenterInstanceNodeRole")
-        .send()
-        .await
-        .map(|instance_profile| instance_profile.instance_profile().is_some())
-        .unwrap_or_default()
-    {
-        info!("KarpenterInstanceNodeRole instance profile already exists");
-        return Ok(());
-    }
-
-    if iam_client
-        .get_role()
-        .role_name("KarpenterInstanceNodeRole")
-        .send()
-        .await
-        .is_ok()
-    {
-        info!("KarpenterInstanceNodeRole already exists");
-    } else {
-        info!("Creating karpenter instance role");
-        iam_client
-            .create_role()
-            .role_name("KarpenterInstanceNodeRole")
-            .assume_role_policy_document(
-                r#"{
-        "Version": "2012-10-17",
-        "Statement": [
-            {
-            "Effect": "Allow",
-            "Principal": {
-                "Service": "ec2.amazonaws.com"
-            },
-            "Action": "sts:AssumeRole"
-            }
-        ]
-    }"#,
-            )
-            .send()
-            .await
-            .context(
-                Resources::Clear,
-                "Unable to create KarpenterInstanceNodeRole",
-            )?;
-        let policies = vec![
-            "AmazonEKSWorkerNodePolicy",
-            "AmazonEKS_CNI_Policy",
-            "AmazonEC2ContainerRegistryReadOnly",
-            "AmazonSSMManagedInstanceCore",
-        ];
-        for policy in policies {
-            iam_client
-                .attach_role_policy()
-                .role_name("KarpenterInstanceNodeRole")
-                .policy_arn(format!("arn:aws:iam::aws:policy/{}", policy))
-                .send()
-                .await
-                .context(
-                    Resources::Clear,
-                    format!(
-                        "Unable to add policy {} to KarpenterInstanceNodeRole",
-                        policy
-                    ),
-                )?;
-        }
-    }
-
-    info!("Creating instance profile: 'KarpenterInstanceNodeRole'");
-    iam_client
-        .create_instance_profile()
-        .instance_profile_name("KarpenterInstanceNodeRole")
-        .send()
-        .await
-        .context(Resources::Clear, "Unable to create instance profile")?;
-
-    iam_client
-        .add_role_to_instance_profile()
-        .instance_profile_name("KarpenterInstanceNodeRole")
-        .role_name("KarpenterInstanceNodeRole")
-        .send()
-        .await
-        .context(Resources::Clear, "Unable to add role to InstanceProfile")?;
-
-    Ok(())
-}
-
-async fn create_controller_policy(
-    iam_client: &aws_sdk_iam::Client,
-    account_id: &str,
-) -> ProviderResult<()> {
-    if iam_client
-        .get_policy()
-        .policy_arn(format!(
-            "arn:aws:iam::{}:policy/KarpenterControllerPolicy",
-            account_id
-        ))
-        .send()
-        .await
-        .is_ok()
-    {
-        info!("KarpenterControllerPolicy already exists");
-        return Ok(());
-    }
-
-    info!("Creating controller policy");
-    iam_client
-        .create_policy()
-        .policy_name("KarpenterControllerPolicy")
-        .policy_document(
-            r#"{
-        "Statement": [
-            {
-                "Action": [
-                    "ssm:GetParameter",
-                    "iam:PassRole",
-                    "ec2:DescribeImages",
-                    "ec2:RunInstances",
-                    "ec2:DescribeSubnets",
-                    "ec2:DescribeSecurityGroups",
-                    "ec2:DescribeLaunchTemplates",
-                    "ec2:DescribeInstances",
-                    "ec2:DescribeInstanceTypes",
-                    "ec2:DescribeInstanceTypeOfferings",
-                    "ec2:DescribeAvailabilityZones",
-                    "ec2:DeleteLaunchTemplate",
-                    "ec2:CreateTags",
-                    "ec2:CreateLaunchTemplate",
-                    "ec2:CreateFleet",
-                    "ec2:DescribeSpotPriceHistory",
-                    "pricing:GetProducts"
-                ],
-                "Effect": "Allow",
-                "Resource": "*",
-                "Sid": "Karpenter"
-            },
-            {
-                "Action": "ec2:TerminateInstances",
-                "Condition": {
-                    "StringLike": {
-                        "ec2:ResourceTag/Name": "*karpenter*"
-                    }
-                },
-                "Effect": "Allow",
-                "Resource": "*",
-                "Sid": "ConditionalEC2Termination"
-            }
-        ],
-        "Version": "2012-10-17"
-    }"#,
-        )
-        .send()
-        .await
-        .context(
-            Resources::Clear,
-            "Unable to create Karpenter controller policy",
-        )?;
-    Ok(())
-}
-
 /// This is the object that will destroy ec2 instances.
 pub struct Ec2KarpenterDestroyer {}
 
@@ -885,6 +818,10 @@ impl Destroy for Ec2KarpenterDestroyer {
             )
         })?;
         let resources = Resources::Remaining;
+
+        if !memo.cloud_formation_stack_exists {
+            return Ok(());
+        }
 
         info!("Getting AWS secret");
         memo.current_status = "Getting AWS secret".to_string();
@@ -914,130 +851,288 @@ impl Destroy for Ec2KarpenterDestroyer {
         )
         .await
         .context(resources, "Error creating config")?;
+        if memo.tainted_nodegroup_exists {
+            let eks_client = aws_sdk_eks::Client::new(&shared_config);
 
-        let eks_client = aws_sdk_eks::Client::new(&shared_config);
+            info!("Writing cluster's kubeconfig to {}", CLUSTER_KUBECONFIG);
+            let status = Command::new("eksctl")
+                .args([
+                    "utils",
+                    "write-kubeconfig",
+                    "-r",
+                    &spec.configuration.region,
+                    &format!("--cluster={}", &spec.configuration.cluster_name),
+                    &format!("--kubeconfig={}", CLUSTER_KUBECONFIG),
+                ])
+                .status()
+                .context(Resources::Remaining, "Failed write kubeconfig")?;
 
-        info!("Writing cluster's kubeconfig to {}", CLUSTER_KUBECONFIG);
-        let status = Command::new("eksctl")
-            .args([
-                "utils",
-                "write-kubeconfig",
-                "-r",
-                &spec.configuration.region,
-                &format!("--cluster={}", &spec.configuration.cluster_name),
-                &format!("--kubeconfig={}", CLUSTER_KUBECONFIG),
-            ])
-            .status()
-            .context(Resources::Remaining, "Failed write kubeconfig")?;
+            if !status.success() {
+                return Err(ProviderError::new_with_context(
+                    Resources::Remaining,
+                    format!("Failed write kubeconfig with status code {}", status),
+                ));
+            }
 
-        if !status.success() {
-            return Err(ProviderError::new_with_context(
-                Resources::Remaining,
-                format!("Failed write kubeconfig with status code {}", status),
-            ));
-        }
-
-        info!("Removing taint from tainted nodegroup");
-        eks_client
-            .update_nodegroup_config()
-            .cluster_name(&spec.configuration.cluster_name)
-            .nodegroup_name(TAINTED_NODEGROUP_NAME)
-            .taints(
-                UpdateTaintsPayload::builder()
-                    .remove_taints(
-                        Taint::builder()
-                            .key("sonobuoy")
-                            .value("ignore")
-                            .effect(TaintEffect::NoSchedule)
-                            .build(),
-                    )
-                    .build(),
+            info!("Checking that tainted nodegroup is ready");
+            tokio::time::timeout(
+                Duration::from_secs(600),
+                wait_for_nodegroup(
+                    &eks_client,
+                    &spec.configuration.cluster_name,
+                    TAINTED_NODEGROUP_NAME,
+                ),
             )
-            .send()
             .await
-            .context(resources, "Unable to apply taints")?;
+            .context(
+                resources,
+                "Timed out waiting for tainted nodegroup to be `ACTIVE`",
+            )??;
 
-        info!("Creating K8s Client from cluster kubeconfig");
-        let kubeconfig = Kubeconfig::read_from(CLUSTER_KUBECONFIG)
-            .context(resources, "Unable to create config from cluster kubeconfig")?;
-        let k8s_client: Client =
-            Config::from_custom_kubeconfig(kubeconfig, &KubeConfigOptions::default())
+            info!("Removing taint from tainted nodegroup");
+            eks_client
+                .update_nodegroup_config()
+                .cluster_name(&spec.configuration.cluster_name)
+                .nodegroup_name(TAINTED_NODEGROUP_NAME)
+                .taints(
+                    UpdateTaintsPayload::builder()
+                        .remove_taints(
+                            Taint::builder()
+                                .key("sonobuoy")
+                                .value("ignore")
+                                .effect(TaintEffect::NoSchedule)
+                                .build(),
+                        )
+                        .build(),
+                )
+                .send()
                 .await
-                .context(resources, "Unable to convert kubeconfig")?
-                .try_into()
+                .context(resources, "Unable to apply taints")?;
+
+            info!("Creating K8s Client from cluster kubeconfig");
+            let kubeconfig = Kubeconfig::read_from(CLUSTER_KUBECONFIG)
+                .context(resources, "Unable to create config from cluster kubeconfig")?;
+            let k8s_client: Client =
+                Config::from_custom_kubeconfig(kubeconfig, &KubeConfigOptions::default())
+                    .await
+                    .context(resources, "Unable to convert kubeconfig")?
+                    .try_into()
+                    .context(
+                        resources,
+                        "Unable to create k8s client from cluster kubeconfig",
+                    )?;
+
+            if memo.inflate_deployment_exists {
+                info!("Deleting inflate deployment");
+                let deployment_api = Api::<Deployment>::namespaced(k8s_client.clone(), "default");
+                deployment_api
+                    .delete("inflate", &Default::default())
+                    .await
+                    .context(resources, "Unable to delete deployment")?;
+
+                let node_api = Api::<Node>::all(k8s_client);
+
+                info!("Waiting for karpenter nodes to be cleaned up");
+                tokio::time::timeout(
+                    Duration::from_secs(600),
+                    wait_for_nodes(&node_api, 2, Ordering::Equal),
+                )
+                .await
                 .context(
                     resources,
-                    "Unable to create k8s client from cluster kubeconfig",
-                )?;
+                    "Timed out waiting for karpenter nodes to leave the cluster",
+                )??;
+            }
 
-        info!("Deleting inflate deployment");
-        let deployment_api = Api::<Deployment>::namespaced(k8s_client.clone(), "default");
-        deployment_api
-            .delete("inflate", &Default::default())
-            .await
-            .context(resources, "Unable to delete deployment")?;
+            if memo.karpenter_namespace_exists {
+                info!("Uninstalling karpenter");
+                let status = Command::new("helm")
+                    .env("KUBECONFIG", CLUSTER_KUBECONFIG)
+                    .args(["uninstall", "karpenter", "--namespace", "karpenter"])
+                    .status()
+                    .context(Resources::Remaining, "Failed to create helm template")?;
 
-        let node_api = Api::<Node>::all(k8s_client);
+                if !status.success() {
+                    return Err(ProviderError::new_with_context(
+                        Resources::Remaining,
+                        format!(
+                            "Failed to launch karpenter template with status code {}",
+                            status
+                        ),
+                    ));
+                }
+            }
 
-        info!("Waiting for karpenter nodes to be cleaned up");
-        tokio::time::timeout(
-            Duration::from_secs(600),
-            wait_for_nodes(&node_api, 2, Ordering::Equal),
-        )
-        .await
-        .context(
-            resources,
-            "Timed out waiting for karpenter nodes to join the cluster",
-        )??;
+            info!("Deleting tainted nodegroup");
+            let status = Command::new("eksctl")
+                .args([
+                    "delete",
+                    "nodegroup",
+                    "-r",
+                    &spec.configuration.region,
+                    "--cluster",
+                    spec.configuration.cluster_name.as_str(),
+                    "--name",
+                    TAINTED_NODEGROUP_NAME,
+                    "--wait",
+                    "--disable-eviction",
+                ])
+                .status()
+                .context(resources, "Failed to delete nodegroup")?;
+            if !status.success() {
+                return Err(ProviderError::new_with_context(
+                    resources,
+                    format!("Failed to delete nodegroup with status code {}", status),
+                ));
+            }
 
-        info!("Uninstalling karpenter");
-        let status = Command::new("helm")
-            .env("KUBECONFIG", CLUSTER_KUBECONFIG)
-            .args(["uninstall", "karpenter", "--namespace", "karpenter"])
-            .status()
-            .context(Resources::Remaining, "Failed to create helm template")?;
-
-        if !status.success() {
-            return Err(ProviderError::new_with_context(
-                Resources::Remaining,
-                format!(
-                    "Failed to launch karpenter template with status code {}",
-                    status
-                ),
-            ));
+            memo.current_status = "Instances deleted".into();
+            client.send_info(memo.clone()).await.map_err(|e| {
+                ProviderError::new_with_source_and_context(
+                    resources,
+                    "Error sending final destruction message",
+                    e,
+                )
+            })?;
         }
 
-        info!("Deleting tainted nodegroup");
+        // Remove the instance profile from the karpenter role
+        let iam_client = aws_sdk_iam::Client::new(&shared_config);
+        let instance_profile_out = iam_client
+            .list_instance_profiles_for_role()
+            .role_name(format!(
+                "KarpenterNodeRole-{}",
+                spec.configuration.cluster_name
+            ))
+            .send()
+            .await
+            .context(Resources::Remaining, "Unable to list instance profiles")?;
+        let instance_profile = instance_profile_out
+            .instance_profiles()
+            .and_then(|profiles| profiles.first())
+            .and_then(|instance_profile| instance_profile.instance_profile_name().to_owned());
+
+        if let Some(instance_profile) = instance_profile {
+            iam_client
+                .remove_role_from_instance_profile()
+                .instance_profile_name(instance_profile)
+                .role_name(format!(
+                    "KarpenterNodeRole-{}",
+                    spec.configuration.cluster_name
+                ))
+                .send()
+                .await
+                .context(
+                    Resources::Remaining,
+                    "Unable to remove role from instance profile",
+                )?;
+        }
+
         let status = Command::new("eksctl")
             .args([
                 "delete",
-                "nodegroup",
+                "iamserviceaccount",
                 "-r",
                 &spec.configuration.region,
                 "--cluster",
                 spec.configuration.cluster_name.as_str(),
                 "--name",
-                TAINTED_NODEGROUP_NAME,
+                "karpenter",
+                "--namespace",
+                "karpenter",
                 "--wait",
             ])
-            .status()
-            .context(resources, "Failed to delete nodegroup")?;
-        if !status.success() {
-            return Err(ProviderError::new_with_context(
-                resources,
-                format!("Failed to delete nodegroup with status code {}", status),
-            ));
+            .status();
+        if status.is_err() {
+            warn!("Unable to delete service account. It is possible it was already deleted.");
         }
 
-        memo.current_status = "Instances deleted".into();
-        client.send_info(memo.clone()).await.map_err(|e| {
-            ProviderError::new_with_source_and_context(
-                resources,
-                "Error sending final destruction message",
-                e,
-            )
-        })?;
+        let status = iam_client
+            .delete_role()
+            .role_name(format!(
+                "KarpenterControllerRole-{}",
+                &spec.configuration.cluster_name
+            ))
+            .send()
+            .await;
+        if status.is_err() {
+            warn!("Unable to Karpenter controller role. It is possible it was already deleted.");
+        }
+
+        let stack_name = format!("Karpenter-{}", spec.configuration.cluster_name);
+        let cfn_client = aws_sdk_cloudformation::Client::new(&shared_config);
+
+        cfn_client
+            .delete_stack()
+            .stack_name(&stack_name)
+            .send()
+            .await
+            .context(
+                Resources::Remaining,
+                "Unable to delete cloudformation stack",
+            )?;
+
+        let _ = tokio::time::timeout(
+            Duration::from_secs(600),
+            wait_for_cloudformation_stack_deletion(stack_name, &cfn_client),
+        )
+        .await
+        .context(
+            Resources::Remaining,
+            "Timed out waiting for cloud formation stack to delete.",
+        )?;
 
         Ok(())
+    }
+}
+
+async fn wait_for_cloudformation_stack(
+    stack_name: String,
+    desired_state: StackStatus,
+    cfn_client: &aws_sdk_cloudformation::Client,
+) -> ProviderResult<()> {
+    let mut state = StackStatus::CreateInProgress;
+    while state != desired_state {
+        info!(
+            "Waiting for cloudformation stack '{}' to reach '{:?}' state",
+            stack_name, desired_state
+        );
+        state = cfn_client
+            .describe_stacks()
+            .stack_name(&stack_name)
+            .send()
+            .await
+            .context(Resources::Remaining, "Unable to describe stack")?
+            .stacks
+            .and_then(|stacks| stacks.into_iter().next())
+            .and_then(|stack| stack.stack_status)
+            .unwrap_or(StackStatus::CreateInProgress);
+        tokio::time::sleep(Duration::from_secs(5)).await;
+    }
+    Ok(())
+}
+
+async fn wait_for_cloudformation_stack_deletion(
+    stack_name: String,
+    cfn_client: &aws_sdk_cloudformation::Client,
+) -> ProviderResult<()> {
+    loop {
+        info!(
+            "Waiting for cloudformation stack '{}' to be deleted",
+            stack_name
+        );
+        if cfn_client
+            .describe_stacks()
+            .stack_name(&stack_name)
+            .send()
+            .await
+            .context(Resources::Remaining, "Unable to describe stack")?
+            .stacks()
+            .map(|s| s.is_empty())
+            .unwrap_or_default()
+        {
+            return Ok(());
+        }
+        tokio::time::sleep(Duration::from_secs(5)).await;
     }
 }

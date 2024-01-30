@@ -6,7 +6,9 @@ use kube::core::object::HasSpec;
 use kube::ResourceExt;
 use log::{debug, trace};
 use testsys_model::clients::{AllowNotFound, CrdClient, TestClient};
-use testsys_model::constants::{FINALIZER_CREATION_JOB, FINALIZER_MAIN, FINALIZER_RESOURCE};
+use testsys_model::constants::{
+    FINALIZER_CLEANUP_REQUIRED, FINALIZER_CREATION_JOB, FINALIZER_MAIN, FINALIZER_RESOURCE,
+};
 use testsys_model::{CrdExt, DestructionPolicy, ResourceAction, TaskState, TestUserState};
 
 /// The action that the controller needs to take in order to reconcile the [`Resource`].
@@ -21,6 +23,7 @@ pub(super) enum CreationAction {
     Initialize,
     AddMainFinalizer,
     AddJobFinalizer,
+    AddCleanupFinalizer,
     StartJob,
     WaitForDependency(String),
     WaitForConflict(String),
@@ -39,6 +42,7 @@ pub(super) enum DestructionAction {
     StartDestructionJob,
     Wait,
     RemoveDestructionJob,
+    RemoveCleanupFinalizer,
     RemoveResourceFinalizer,
     RemoveMainFinalizer,
     Error(ErrorState),
@@ -167,6 +171,9 @@ async fn creation_not_done_action(
     if !is_task_state_running && !r.resource().has_finalizer(FINALIZER_CREATION_JOB) {
         return Ok(CreationAction::AddJobFinalizer);
     }
+    if !r.resource().has_finalizer(FINALIZER_CLEANUP_REQUIRED) {
+        return Ok(CreationAction::AddCleanupFinalizer);
+    }
     let job_state = r.get_job_state(ResourceAction::Create).await?;
     match job_state {
         JobState::None if !is_task_state_running => Ok(CreationAction::StartJob),
@@ -254,7 +261,9 @@ async fn destruction_action(r: &ResourceInterface) -> Result<DestructionAction> 
         Ok(DestructionAction::StartResourceDeletion)
     } else if let Some(creation_cleanup_action) = creation_cleanup_action(r).await? {
         Ok(creation_cleanup_action)
-    } else if r.resource().has_finalizer(FINALIZER_RESOURCE) {
+    } else if r.resource().has_finalizer(FINALIZER_RESOURCE)
+        || r.resource().has_finalizer(FINALIZER_CLEANUP_REQUIRED)
+    {
         destruction_action_with_resources(r).await
     } else {
         destruction_action_without_resources(r).await
@@ -287,6 +296,9 @@ async fn destruction_action_with_resources(r: &ResourceInterface) -> Result<Dest
                 r.name(),
                 destruction_policy
             );
+            if r.resource().has_finalizer(FINALIZER_CLEANUP_REQUIRED) {
+                return Ok(DestructionAction::RemoveCleanupFinalizer);
+            }
             return Ok(DestructionAction::RemoveResourceFinalizer);
         }
     }
@@ -300,6 +312,8 @@ async fn destruction_action_with_resources(r: &ResourceInterface) -> Result<Dest
             trace!("job exists: {:?}", job_exists);
             if job_exists {
                 Ok(DestructionAction::RemoveDestructionJob)
+            } else if r.resource().has_finalizer(FINALIZER_CLEANUP_REQUIRED) {
+                Ok(DestructionAction::RemoveCleanupFinalizer)
             } else {
                 Ok(DestructionAction::RemoveResourceFinalizer)
             }

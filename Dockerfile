@@ -90,6 +90,8 @@ COPY --from=tools /licenses/helm /licenses/helm
 
 # Copy ec2-karpenter-resource-agent
 COPY --from=build-src /src/bottlerocket/agents/bin/ec2-karpenter-resource-agent ./
+# Copy cloudformation template
+COPY --from=build-src /src/bottlerocket/agents/src/bin/ec2-karpenter-resource-agent/cloudformation.yaml /local/cloudformation.yaml
 COPY --from=build-src /usr/share/licenses/testsys /licenses/testsys
 
 ENTRYPOINT ["./ec2-karpenter-resource-agent"]
