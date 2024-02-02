@@ -9,7 +9,7 @@ use k8s_openapi::api::core::v1::Pod;
 use k8s_openapi::chrono::{Duration, Utc};
 use kube::api::{DeleteParams, ListParams, LogParams, PropagationPolicy};
 use kube::{Api, ResourceExt};
-use log::{debug, info, warn};
+use log::{debug, info, trace, warn};
 use snafu::{ensure, OptionExt, ResultExt};
 use std::env;
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -206,15 +206,16 @@ pub(crate) async fn archive_logs(k8s_client: kube::Client, job_name: &str) -> Jo
         SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs()
     );
 
-    client
+    if client
         .create_log_stream()
         .log_group_name("testsys")
         .log_stream_name(&name)
         .send()
         .await
-        .context(error::CreateLogStreamSnafu {
-            log_stream: name.to_string(),
-        })?;
+        .is_err()
+    {
+        trace!("Unable to create log group it is possible it already exists.");
+    }
 
     client
         .put_log_events()
