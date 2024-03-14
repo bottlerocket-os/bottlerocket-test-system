@@ -46,6 +46,9 @@ use test_agent::{
 };
 use testsys_model::{SecretName, TestResults};
 
+// Default Sonobuoy agents assume role duration to 4 hours.
+const DEFAULT_ASSUME_ROLE_SESSION_DURATION: i32 = 14400;
+
 struct SonobuoyTestRunner {
     config: SonobuoyConfig,
     aws_secret_name: Option<SecretName>,
@@ -73,7 +76,7 @@ where
         aws_config(
             &self.aws_secret_name.as_ref(),
             &self.config.assume_role,
-            &None,
+            &Some(DEFAULT_ASSUME_ROLE_SESSION_DURATION),
             &None,
             &None,
             true,
