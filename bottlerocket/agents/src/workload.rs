@@ -11,7 +11,7 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::time::Duration;
 use test_agent::InfoClient;
-use testsys_model::TestResults;
+use testsys_model::{SecretName, TestResults};
 
 /// Timeout for sonobuoy status to become available (seconds)
 const SONOBUOY_STATUS_TIMEOUT: u64 = 900;
@@ -24,6 +24,7 @@ pub async fn run_workload<I>(
     workload_config: &WorkloadConfig,
     results_dir: &Path,
     info_client: &I,
+    aws_secret_name: &Option<&SecretName>,
 ) -> Result<TestResults, error::Error>
 where
     I: InfoClient,
@@ -92,7 +93,14 @@ where
     .await
     .context(error::SonobuoyTimeoutSnafu)??;
     info!("Workload status is available, waiting for test to complete");
-    wait_for_sonobuoy_results(kubeconfig_path, Some("testsys-workload"), info_client).await?;
+    wait_for_sonobuoy_results(
+        kubeconfig_path,
+        Some("testsys-workload"),
+        info_client,
+        &workload_config.assume_role,
+        aws_secret_name,
+    )
+    .await?;
     info!("Workload testing has completed, checking results");
 
     results_workload(kubeconfig_path, results_dir)
@@ -103,6 +111,8 @@ pub async fn rerun_failed_workload<I>(
     kubeconfig_path: &str,
     results_dir: &Path,
     info_client: &I,
+    workload_config: &WorkloadConfig,
+    aws_secret_name: &Option<&SecretName>,
 ) -> Result<TestResults, error::Error>
 where
     I: InfoClient,
@@ -138,7 +148,14 @@ where
     .await
     .context(error::SonobuoyTimeoutSnafu)??;
     info!("Workload status is available, waiting for test to complete");
-    wait_for_sonobuoy_results(kubeconfig_path, Some("testsys-workload"), info_client).await?;
+    wait_for_sonobuoy_results(
+        kubeconfig_path,
+        Some("testsys-workload"),
+        info_client,
+        &workload_config.assume_role,
+        aws_secret_name,
+    )
+    .await?;
     info!("Workload testing has completed, checking results");
 
     results_workload(kubeconfig_path, results_dir)

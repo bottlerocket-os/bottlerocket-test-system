@@ -1,4 +1,5 @@
 use crate::error;
+use agent_utils::aws::aws_config;
 use bottlerocket_types::agent_config::{SonobuoyConfig, SONOBUOY_RESULTS_FILENAME};
 use log::{error, info, trace};
 use serde_json::Value;
@@ -9,7 +10,7 @@ use std::path::Path;
 use std::process::Command;
 use std::time::Duration;
 use test_agent::InfoClient;
-use testsys_model::{Outcome, TestResults};
+use testsys_model::{Outcome, SecretName, TestResults};
 
 /// Timeout for sonobuoy status to become available (seconds)
 const SONOBUOY_STATUS_TIMEOUT: u64 = 900;
@@ -22,6 +23,7 @@ pub async fn run_sonobuoy<I>(
     sonobuoy_config: &SonobuoyConfig,
     results_dir: &Path,
     info_client: &I,
+    aws_secret_name: &Option<&SecretName>,
 ) -> Result<TestResults, error::Error>
 where
     I: InfoClient,
@@ -102,7 +104,14 @@ where
     .await
     .context(error::SonobuoyTimeoutSnafu)??;
     info!("Sonobuoy status is available, waiting for test to complete");
-    wait_for_sonobuoy_results(kubeconfig_path, None, info_client).await?;
+    wait_for_sonobuoy_results(
+        kubeconfig_path,
+        None,
+        info_client,
+        &sonobuoy_config.assume_role,
+        aws_secret_name,
+    )
+    .await?;
     info!("Sonobuoy testing has completed, checking results");
 
     results_sonobuoy(kubeconfig_path, results_dir)
@@ -115,6 +124,7 @@ pub async fn rerun_failed_sonobuoy<I>(
     sonobuoy_config: &SonobuoyConfig,
     results_dir: &Path,
     info_client: &I,
+    aws_secret_name: &Option<&SecretName>,
 ) -> Result<TestResults, error::Error>
 where
     I: InfoClient,
@@ -175,7 +185,14 @@ where
     .await
     .context(error::SonobuoyTimeoutSnafu)??;
     info!("Sonobuoy status is available, waiting for test to complete");
-    wait_for_sonobuoy_results(kubeconfig_path, None, info_client).await?;
+    wait_for_sonobuoy_results(
+        kubeconfig_path,
+        None,
+        info_client,
+        &sonobuoy_config.assume_role,
+        aws_secret_name,
+    )
+    .await?;
     info!("Sonobuoy testing has completed, checking results");
 
     results_sonobuoy(kubeconfig_path, results_dir)
@@ -220,6 +237,8 @@ pub async fn wait_for_sonobuoy_results<I>(
     kubeconfig_path: &str,
     namespace: Option<&str>,
     info_client: &I,
+    assume_role: &Option<String>,
+    aws_secret_name: &Option<&SecretName>,
 ) -> Result<(), error::Error>
 where
     I: InfoClient,
@@ -230,10 +249,20 @@ where
         ..Default::default()
     };
     let mut retries = 0;
+    // Max duration for assume role credential is 3600 seconds, and we refresh every 50 loops * 30 seconds (loop sleep time) before it expires.
+    let mut credential_refresh_countdown = 50;
+
     loop {
         if retries > 5 {
             return Err(error::Error::SonobuoyStatus { retries });
         }
+
+        // Refresh the credentials if the countdown is 0
+        if credential_refresh_countdown == 0 {
+            aws_config(aws_secret_name, assume_role, &None, &None, &None, true).await?;
+            credential_refresh_countdown = 50;
+        }
+
         let kubeconfig_arg = vec!["--kubeconfig", kubeconfig_path];
         let namespace_arg = namespace
             .map(|namespace| vec!["--namespace", namespace])
@@ -300,6 +329,7 @@ where
             .for_each(|e| error!("Unable to send test update: {}", e));
 
         tokio::time::sleep(Duration::from_secs(30)).await;
+        credential_refresh_countdown -= 1;
     }
 }
 
