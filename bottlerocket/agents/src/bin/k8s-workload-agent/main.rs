@@ -99,6 +99,7 @@ where
             &self.config,
             &self.results_dir,
             info_client,
+            &self.aws_secret_name.as_ref(),
         )
         .await
     }
@@ -115,7 +116,14 @@ where
             .await?;
         info!("Stored kubeconfig in {}", TEST_CLUSTER_KUBECONFIG_PATH);
 
-        rerun_failed_workload(TEST_CLUSTER_KUBECONFIG_PATH, &self.results_dir, info_client).await
+        rerun_failed_workload(
+            TEST_CLUSTER_KUBECONFIG_PATH,
+            &self.results_dir,
+            info_client,
+            &self.config,
+            &self.aws_secret_name.as_ref(),
+        )
+        .await
     }
 
     async fn terminate(&mut self) -> Result<(), Self::E> {
