@@ -1,6 +1,6 @@
 [package]
 name = "builder-derive"
-version = "0.0.11"
+version = "0.0.12"
 edition = "2018"
 publish = false
 license = "MIT OR Apache-2.0"
@@ -17,5 +17,5 @@ proc-macro = true
 [dev-dependencies]
 serde = "1"
 serde_json= "1"
-testsys-model = { version = "0.0.11", path = "../../model" }
-configuration-derive = { version = "0.0.11", path = "../configuration-derive" }
+testsys-model = { version = "0.0.12", path = "../../model" }
+configuration-derive = { version = "0.0.12", path = "../configuration-derive" }

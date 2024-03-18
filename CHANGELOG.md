@@ -8,6 +8,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 [Unreleased]: https://github.com/bottlerocket-os/bottlerocket-test-system/compare/v0.0.11...develop
 
+## [0.0.12] - 2024-03-18
+
+### Fixed
+
+- sonobuoy: refresh the assume role credential frequently ([#891], [#892])
+
+[#891]: https://github.com/bottlerocket-os/bottlerocket-test-system/pull/891
+[#892]: https://github.com/bottlerocket-os/bottlerocket-test-system/pull/892
+
+[0.0.12]: https://github.com/bottlerocket-os/bottlerocket-test-system/tree/v0.0.12
+
 ## [0.0.11] - 2024-01-29
 
 ### Added
