@@ -8,7 +8,7 @@ ARCH = { value = "x86_64", condition = { env_not_set = ["ARCH"] } }
 CLUSTER_TYPE = { value = "eks", condition = { env_not_set = ["CLUSTER_TYPE"] } }
 ASSUME_ROLE = { value = "~", condition = { env_not_set = ["ASSUME_ROLE"] } }
 AWS_REGION = { value = "us-west-2", condition = { env_not_set = ["AWS_REGION"] } }
-UPGRADE_VERSION = { value = "v1.11.1", condition = { env_not_set = ["UPGRADE_VERSION"] } }
+UPGRADE_VERSION = { value = "v1.20.0", condition = { env_not_set = ["UPGRADE_VERSION"] } }
 STARTING_VERSION = { script = ["""\
         aws ssm get-parameter \
             --region us-west-2 \
