@@ -1,7 +1,7 @@
 # Builder for the CUDA Sample binaries. The image we run to perform the tests
 # doesn't need everything that is included in the "devel" image. So we build with
 # the larger image, then copy them to the lightweight image we use to run.
-FROM nvidia/cuda:11.4.3-devel-ubi8 as builder
+FROM nvidia/cuda:11.8.0-devel-ubi8 as builder
 
 # Make sure we have git to clone the sample repo
 RUN dnf makecache \
@@ -10,7 +10,7 @@ RUN dnf makecache \
   && rm -fr /var/cache/dnf
 
 # Clone the samples, pinned to a version we know should work
-RUN git clone --branch v11.6 --depth 1 https://github.com/NVIDIA/cuda-samples.git
+RUN git clone --branch v11.8 --depth 1 https://github.com/NVIDIA/cuda-samples.git
 RUN mkdir -p /samples
 
 # There is a Makefile in the 'cuda-samples' project, but it will
@@ -31,8 +31,8 @@ RUN cd /cuda-samples/Samples/3_CUDA_Features/globalToShmemAsyncCopy/ && make && 
 RUN cd /cuda-samples/Samples/6_Performance/UnifiedMemoryPerf/ && make && cp $(basename $(pwd)) /samples/
 
 # We only need the base image to run the tests. It contains the necessary
-# drivers and runtime environment we need.
-FROM nvidia/cuda:11.4.3-base-ubi8
+# runtime and libraries we need.
+FROM nvidia/cuda:11.8.0-base-ubi8
 COPY ./run.sh /
 COPY --from=builder /samples/* /samples/
 RUN chmod +x ./run.sh
