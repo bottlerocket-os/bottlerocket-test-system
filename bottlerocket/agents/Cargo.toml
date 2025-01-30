@@ -22,7 +22,7 @@ base64 = "0.21"
 flate2 = "1.0"
 hex ="0.4"
 k8s-openapi = { version = "0.21", default-features = false, features = ["v1_24"] }
-kube = { version = "0.88", default-features = false, features = ["config", "derive", "client"] }
+kube = { version = "0.98", default-features = false, features = ["config", "derive", "client"] }
 log = "0.4"
 maplit = "1"
 openssh = { version = "0.10", features = ["native-mux"] }

@@ -14,7 +14,7 @@ env_logger = "0.11"
 futures = "0.3"
 http = "1"
 k8s-openapi = { version = "0.21", default-features = false, features = ["v1_24"] }
-kube = { version = "0.88", default-features = false, features = ["derive", "client", "rustls-tls"] }
+kube = { version = "0.98", default-features = false, features = ["derive", "client", "rustls-tls"] }
 kube-runtime = "0.88"
 lazy_static = "1"
 log = "0.4"
