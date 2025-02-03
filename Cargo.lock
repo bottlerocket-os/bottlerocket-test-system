@@ -1794,7 +1794,7 @@ checksum = "ec9ad60d674508f3ca8f380a928cfe7b096bc729c4e2dbfe3852bc45da3ab30b"
 dependencies = [
  "serde",
  "serde_json",
- "thiserror",
+ "thiserror 1.0.69",
 ]
 
 [[package]]
@@ -1807,7 +1807,7 @@ dependencies = [
  "pest_derive",
  "regex",
  "serde_json",
- "thiserror",
+ "thiserror 1.0.69",
 ]
 
 [[package]]
@@ -1864,7 +1864,7 @@ dependencies = [
  "serde",
  "serde_json",
  "serde_yaml",
- "thiserror",
+ "thiserror 1.0.69",
  "tokio",
  "tokio-tungstenite",
  "tokio-util",
@@ -1888,7 +1888,7 @@ dependencies = [
  "schemars",
  "serde",
  "serde_json",
- "thiserror",
+ "thiserror 1.0.69",
 ]
 
 [[package]]
@@ -1924,7 +1924,7 @@ dependencies = [
  "serde",
  "serde_json",
  "smallvec",
- "thiserror",
+ "thiserror 1.0.69",
  "tokio",
  "tokio-util",
  "tracing",
@@ -2086,18 +2086,17 @@ checksum = "1261fe7e33c73b354eab43b1273a57c8f967d0391e80353e51f764ac02cf6775"
 
 [[package]]
 name = "openssh"
-version = "0.10.5"
+version = "0.11.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "330f4b61092456dc0aaa0cf9a205d956cae07d8127a69ffeff6760a72549c77f"
+checksum = "ea0bb128ba90e86bc55dae66031935f361cda4cbc1f011547c55a7d80079bc3e"
 dependencies = [
  "libc",
  "once_cell",
  "openssh-mux-client",
  "shell-escape",
  "tempfile",
- "thiserror",
+ "thiserror 2.0.11",
  "tokio",
- "tokio-pipe",
 ]
 
 [[package]]
@@ -2125,7 +2124,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "015d49e592f4d2a456033e6ec48036588e8e58c8908424b1bc40994de58ae648"
 dependencies = [
  "ssh_format_error",
- "thiserror",
+ "thiserror 1.0.69",
 ]
 
 [[package]]
@@ -2206,7 +2205,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "879952a81a83930934cbf1786752d6dedc3b1f29e8f8fb2ad1d0a36f377cf442"
 dependencies = [
  "memchr",
- "thiserror",
+ "thiserror 1.0.69",
  "ucd-trie",
 ]
 
@@ -3161,7 +3160,16 @@ version = "1.0.69"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b6aaf5339b578ea85b50e080feb250a3e8ae8cfcdff9a461c9ec2904bc923f52"
 dependencies = [
- "thiserror-impl",
+ "thiserror-impl 1.0.69",
+]
+
+[[package]]
+name = "thiserror"
+version = "2.0.11"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d452f284b73e6d76dd36758a0c8684b1d5be31f92b89d07fd5822175732206fc"
+dependencies = [
+ "thiserror-impl 2.0.11",
 ]
 
 [[package]]
@@ -3169,6 +3177,17 @@ name = "thiserror-impl"
 version = "1.0.69"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4fee6c4efc90059e10f81e6d42c60a18f76588c3d74cb83a0b242a2b6c7504c1"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.96",
+]
+
+[[package]]
+name = "thiserror-impl"
+version = "2.0.11"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "26afc1baea8a989337eeb52b6e72a039780ce45c3edfcc9c5b9d112feeb173c2"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -3275,16 +3294,6 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 2.0.96",
-]
-
-[[package]]
-name = "tokio-pipe"
-version = "0.2.12"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f213a84bffbd61b8fa0ba8a044b4bbe35d471d0b518867181e82bd5c15542784"
-dependencies = [
- "libc",
- "tokio",
 ]
 
 [[package]]
@@ -3474,7 +3483,7 @@ dependencies = [
  "log",
  "rand",
  "sha1",
- "thiserror",
+ "thiserror 1.0.69",
  "url",
  "utf-8",
 ]
