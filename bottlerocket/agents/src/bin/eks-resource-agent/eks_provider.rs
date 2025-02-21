@@ -31,9 +31,13 @@ use strum_macros::EnumString;
 /// The default region for the cluster.
 const DEFAULT_REGION: &str = "us-west-2";
 /// The default cluster version.
-const DEFAULT_VERSION: &str = "1.24";
+const DEFAULT_VERSION: &str = "1.32";
 const TEST_CLUSTER_CONFIG_PATH: &str = "/local/eksctl_config.yaml";
 const CLUSTER_CONFIG_PATH: &str = "/local/cluster_config.yaml";
+/// The default cluster managed node group values.
+const MNG_MIN_SIZE: i32 = 0;
+const MNG_MAX_SIZE: i32 = 2;
+const MNG_DESIRED_CAPACITY: i32 = 0;
 
 #[derive(Clone, Debug, Default, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -227,9 +231,16 @@ struct IAMConfig {
 /// # Fields:
 /// - `name`: The name of the managed node group.
 #[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
 struct ManagedNodeGroup {
     /// Name of the managed node group
     name: String,
+    /// The minimum number of nodes in the managed node group.
+    min_size: i32,
+    /// The maximum number of nodes in the managed node group.
+    max_size: i32,
+    // The desired number of nodes in the managed node group.
+    desired_capacity: i32,
 }
 
 #[allow(clippy::unwrap_or_default)]
@@ -274,6 +285,9 @@ fn create_yaml(
         iam: IAMConfig { withOIDC: true },
         managed_node_groups: vec![ManagedNodeGroup {
             name: "mng-1".to_string(),
+            min_size: MNG_MIN_SIZE,
+            max_size: MNG_MAX_SIZE,
+            desired_capacity: MNG_DESIRED_CAPACITY,
         }],
     };
 
