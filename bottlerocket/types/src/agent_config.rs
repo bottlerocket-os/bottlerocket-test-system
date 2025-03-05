@@ -145,6 +145,9 @@ impl Default for EksctlConfig {
 #[serde(rename_all = "camelCase")]
 #[crd("Resource")]
 pub struct VSphereK8sClusterConfig {
+    /// The role that should be assumed when creating the vms.
+    pub assume_role: Option<String>,
+
     /// vSphere K8s cluster name.
     pub name: String,
 
