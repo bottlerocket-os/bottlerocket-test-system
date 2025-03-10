@@ -6,6 +6,7 @@ publish = false
 license = "MIT OR Apache-2.0"
 
 [dependencies]
+aws-sdk-ec2 = "1"
 configuration-derive = { version = "0.0.15", path = "../../agent/configuration-derive" }
 builder-derive = { version = "0.0.15", path = "../../agent/builder-derive" }
 testsys-model = { version = "0.0.15", path = "../../model" }

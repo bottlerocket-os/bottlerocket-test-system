@@ -1,3 +1,4 @@
+use aws_sdk_ec2::types::{BlockDeviceMapping, EbsBlockDevice, VolumeType};
 use builder_derive::Builder;
 use configuration_derive::Configuration;
 use serde::{Deserialize, Serialize};
@@ -288,15 +289,34 @@ pub struct Ec2Config {
     /// The security groups that should be attached to the instances.
     #[serde(default)]
     pub security_groups: Vec<String>,
+
+    /// The device mappings used for EC2 resource provisioning
+    #[serde(default)]
+    pub device_mappings: Option<Vec<BlockDeviceMappingConfig>>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, Default)]
 #[serde(rename_all = "camelCase")]
-pub struct KarpenterDeviceMapping {
+pub struct BlockDeviceMappingConfig {
     pub name: String,
     pub volume_type: String,
-    pub volume_size: u8,
+    pub volume_size: i32,
     pub delete_on_termination: bool,
+}
+
+impl From<&BlockDeviceMappingConfig> for BlockDeviceMapping {
+    fn from(mapping: &BlockDeviceMappingConfig) -> Self {
+        BlockDeviceMapping::builder()
+            .device_name(mapping.name.clone())
+            .ebs(
+                EbsBlockDevice::builder()
+                    .delete_on_termination(mapping.delete_on_termination)
+                    .volume_type(VolumeType::from(mapping.volume_type.as_str()))
+                    .volume_size(mapping.volume_size)
+                    .build(),
+            )
+            .build()
+    }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, Default, Configuration, Builder)]
@@ -332,7 +352,7 @@ pub struct Ec2KarpenterConfig {
 
     /// The device mappings used for karpenter provisioning
     #[serde(default)]
-    pub device_mappings: Vec<KarpenterDeviceMapping>,
+    pub device_mappings: Vec<BlockDeviceMappingConfig>,
 
     /// The type of instance to spin up. m5.large is recommended for x86_64 and m6g.large is
     /// recommended for arm64 on eks

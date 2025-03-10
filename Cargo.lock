@@ -798,6 +798,7 @@ dependencies = [
 name = "bottlerocket-types"
 version = "0.0.15"
 dependencies = [
+ "aws-sdk-ec2",
  "builder-derive",
  "configuration-derive",
  "serde",
