@@ -41,6 +41,9 @@ struct Limits {
     cpu: Option<u32>,
     #[serde(skip_serializing_if = "Option::is_none")]
     memory: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(rename = "nvidia.com/gpu")]
+    nvidia_com_gpu: Option<u32>,
 }
 
 #[derive(Default, Serialize)]
@@ -49,6 +52,9 @@ struct Requests {
     cpu: Option<u32>,
     #[serde(skip_serializing_if = "Option::is_none")]
     memory: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(rename = "nvidia.com/gpu")]
+    nvidia_com_gpu: Option<u32>,
 }
 
 impl PluginConfig {
@@ -98,6 +104,20 @@ where
 
         // Generate additional configuration for specific workloads
         let mut additional_configuration = PluginConfig::new();
+
+        // Explicitly request GPUs for NVIDIA workloads
+        if test.gpu && test.name.contains("nvidia") {
+            additional_configuration
+                .spec
+                .resources
+                .limits
+                .nvidia_com_gpu = Some(1);
+            additional_configuration
+                .spec
+                .resources
+                .requests
+                .nvidia_com_gpu = Some(1);
+        };
 
         // Merge additional configuration with the initialization output
         let plugin_init_stdout = output.stdout;
