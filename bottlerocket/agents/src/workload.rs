@@ -4,6 +4,8 @@ use crate::sonobuoy::{
 };
 use bottlerocket_types::agent_config::{WorkloadConfig, SONOBUOY_RESULTS_FILENAME};
 use log::{info, trace};
+use serde::Serialize;
+use serde_yaml;
 use snafu::{ensure, ResultExt};
 use std::fs::File;
 use std::io::Write;
@@ -16,6 +18,51 @@ use testsys_model::{SecretName, TestResults};
 /// Timeout for sonobuoy status to become available (seconds)
 const SONOBUOY_STATUS_TIMEOUT: u64 = 900;
 const SONOBUOY_BIN_PATH: &str = "/usr/bin/sonobuoy";
+
+#[derive(Serialize)]
+struct PluginConfig {
+    spec: Spec,
+}
+
+#[derive(Serialize)]
+struct Spec {
+    resources: Resources,
+}
+
+#[derive(Serialize)]
+struct Resources {
+    limits: Limits,
+    requests: Requests,
+}
+
+#[derive(Default, Serialize)]
+struct Limits {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    cpu: Option<u32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    memory: Option<String>,
+}
+
+#[derive(Default, Serialize)]
+struct Requests {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    cpu: Option<u32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    memory: Option<String>,
+}
+
+impl PluginConfig {
+    fn new() -> Self {
+        PluginConfig {
+            spec: Spec {
+                resources: Resources {
+                    limits: Limits::default(),
+                    requests: Requests::default(),
+                },
+            },
+        }
+    }
+}
 
 /// Runs the workload conformance tests according to the provided configuration and returns a test
 /// result at the end.
@@ -49,19 +96,31 @@ where
             }
         );
 
+        // Generate additional configuration for specific workloads
+        let mut additional_configuration = PluginConfig::new();
+
+        // Merge additional configuration with the initialization output
+        let plugin_init_stdout = output.stdout;
+        let mut plugin_json: serde_json::Value =
+            serde_yaml::from_slice(&plugin_init_stdout).context(error::DeserializeYamlSnafu)?;
+        let additional_configuration_json =
+            serde_json::to_value(additional_configuration).context(error::SerializeJsonSnafu)?;
+        json_patch::merge(&mut plugin_json, &additional_configuration_json);
+        let plugin_yaml = serde_yaml::to_string(&plugin_json).context(error::SerializeYamlSnafu)?;
+
         // Write out the output to a file we can reference later
         let file_name = format!("{}-plugin.yaml", test.name);
-        let plugin_yaml = PathBuf::from(".").join(file_name);
-        let mut f = File::create(&plugin_yaml).context(error::FileWriteSnafu {
-            path: plugin_yaml.display().to_string(),
+        let file_path = PathBuf::from(".").join(file_name);
+        let mut f = File::create(&file_path).context(error::FileWriteSnafu {
+            path: file_path.display().to_string(),
         })?;
-        f.write_all(&output.stdout)
+        f.write_all(plugin_yaml.as_bytes())
             .context(error::WorkloadProcessSnafu)?;
 
         // Add plugin to the arguments to be passed to sonobuoy run
         plugin_test_args.append(&mut vec![
             "--plugin".to_string(),
-            plugin_yaml.display().to_string(),
+            file_path.display().to_string(),
         ]);
     }
     let sonobuoy_image_arg = match &workload_config.sonobuoy_image {

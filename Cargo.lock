@@ -770,6 +770,7 @@ dependencies = [
  "bottlerocket-types",
  "flate2",
  "hex",
+ "json-patch",
  "k8s-openapi",
  "kube",
  "log",
