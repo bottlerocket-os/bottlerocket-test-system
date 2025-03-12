@@ -1,14 +1,14 @@
 [package]
 name = "bottlerocket-agents"
-version = "0.0.15"
+version = "0.0.16"
 edition = "2018"
 publish = false
 license = "MIT OR Apache-2.0"
 
 [dependencies]
-agent-common = { version = "0.0.15", path = "../../agent/agent-common" }
-agent-utils = { version = "0.0.15", path = "../../agent/utils" }
-bottlerocket-types = { version = "0.0.15", path = "../types" }
+agent-common = { version = "0.0.16", path = "../../agent/agent-common" }
+agent-utils = { version = "0.0.16", path = "../../agent/utils" }
+bottlerocket-types = { version = "0.0.16", path = "../types" }
 async-trait = "0.1"
 aws-types = "1"
 aws-sdk-ec2 = "1"
@@ -28,16 +28,16 @@ kube = { version = "0.88", default-features = false, features = ["config", "deri
 log = "0.4"
 maplit = "1"
 openssh = { version = "0.10", features = ["native-mux"] }
-testsys-model = { version = "0.0.15", path = "../../model" }
+testsys-model = { version = "0.0.16", path = "../../model" }
 reqwest = { version = "0.11", default-features = false, features = ["rustls-tls", "blocking"] }
-resource-agent = { version = "0.0.15", path = "../../agent/resource-agent" }
+resource-agent = { version = "0.0.16", path = "../../agent/resource-agent" }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 serde_yaml = "0.9"
 sha2 = "0.10"
 snafu = "0.8"
 tar = "0.4"
-test-agent = { version = "0.0.15", path = "../../agent/test-agent" }
+test-agent = { version = "0.0.16", path = "../../agent/test-agent" }
 tokio = { version = "1", default-features = false, features = ["macros", "rt-multi-thread", "time"] }
 toml = "0.5"
 tough = { version = "0.18", features = ["http"] }

@@ -1,12 +1,12 @@
 [package]
 name = "agent-utils"
-version = "0.0.15"
+version = "0.0.16"
 edition = "2018"
 publish = false
 license = "MIT OR Apache-2.0"
 
 [dependencies]
-agent-common = { version = "0.0.15", path = "../../agent/agent-common" }
+agent-common = { version = "0.0.16", path = "../../agent/agent-common" }
 aws-config = "1"
 aws-credential-types = "1"
 aws-types = "1"
@@ -17,10 +17,10 @@ aws-smithy-types = "1"
 base64 = "0.21"
 env_logger = "0.11"
 log = "0.4"
-testsys-model = { version = "0.0.15", path = "../../model" }
-resource-agent = { version = "0.0.15", path = "../../agent/resource-agent" }
+testsys-model = { version = "0.0.16", path = "../../model" }
+resource-agent = { version = "0.0.16", path = "../../agent/resource-agent" }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 snafu = "0.8"
-test-agent = { version = "0.0.15", path = "../../agent/test-agent" }
+test-agent = { version = "0.0.16", path = "../../agent/test-agent" }
 tokio = { version = "1", default-features = false, features = ["time"] }

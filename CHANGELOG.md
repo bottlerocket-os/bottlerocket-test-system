@@ -6,7 +6,34 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
-[Unreleased]: https://github.com/bottlerocket-os/bottlerocket-test-system/compare/v0.0.15...develop
+[Unreleased]: https://github.com/bottlerocket-os/bottlerocket-test-system/compare/v0.0.16...develop
+
+## [0.0.16] - 2025-03-12
+
+### Fixed
+
+- fix NVIDIA workload test ([#979])
+
+### Added
+
+- workload: add tests for ruby and dotnet ([#972])
+- vSphere-k8s-cluster-agent: Add licenseToken to cluster configurations ([#975])
+- ec2 agent: Implement EBS volume provisioning support ([#978])
+
+### Changed
+
+- karpenter version update to 1.2.1 ([#959])
+- ec2-resource-agent: Remove ecr-credential-provider from userdata ([#973])
+- eks-resource-agent: default ManagedNodeGroup desiredCapacity to 0 ([#974])
+
+[#959]: https://github.com/bottlerocket-os/bottlerocket-test-system/pull/959
+[#972]: https://github.com/bottlerocket-os/bottlerocket-test-system/pull/972
+[#973]: https://github.com/bottlerocket-os/bottlerocket-test-system/pull/973
+[#974]: https://github.com/bottlerocket-os/bottlerocket-test-system/pull/974
+[#975]: https://github.com/bottlerocket-os/bottlerocket-test-system/pull/975
+[#978]: https://github.com/bottlerocket-os/bottlerocket-test-system/pull/978
+[#979]: https://github.com/bottlerocket-os/bottlerocket-test-system/pull/979
+[0.0.16]: https://github.com/bottlerocket-os/bottlerocket-test-system/tree/v0.0.16
 
 ## [0.0.15] - 2025-01-30
 
