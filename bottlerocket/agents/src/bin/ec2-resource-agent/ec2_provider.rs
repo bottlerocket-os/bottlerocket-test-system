@@ -4,15 +4,15 @@ use aws_sdk_ec2::error::SdkError as Ec2SdkError;
 use aws_sdk_ec2::operation::run_instances::builders::RunInstancesFluentBuilder;
 use aws_sdk_ec2::operation::run_instances::{RunInstancesError, RunInstancesOutput};
 use aws_sdk_ec2::types::{
-    ArchitectureValues, Filter, HttpTokensState, IamInstanceProfileSpecification,
-    InstanceMetadataEndpointState, InstanceMetadataOptionsRequest, InstanceType, ResourceType, Tag,
-    TagSpecification,
+    ArchitectureValues, BlockDeviceMapping, Filter, HttpTokensState,
+    IamInstanceProfileSpecification, InstanceMetadataEndpointState, InstanceMetadataOptionsRequest,
+    InstanceType, ResourceType, Tag, TagSpecification,
 };
 use base64::engine::general_purpose::STANDARD as Base64;
 use base64::Engine;
 use bottlerocket_agents::userdata::{decode_to_string, merge_values};
 use bottlerocket_types::agent_config::{
-    ClusterType, CustomUserData, Ec2Config, AWS_CREDENTIALS_SECRET_NAME,
+    BlockDeviceMappingConfig, ClusterType, CustomUserData, Ec2Config, AWS_CREDENTIALS_SECRET_NAME,
 };
 use log::{debug, info, trace, warn};
 use resource_agent::clients::InfoClient;
@@ -269,6 +269,9 @@ where
                     &spec.configuration.custom_user_data,
                     memo,
                 )?)
+                .set_block_device_mappings(block_device_mappings(
+                    &spec.configuration.device_mappings,
+                ))
                 .iam_instance_profile(
                     IamInstanceProfileSpecification::builder()
                         .arn(&spec.configuration.instance_profile_arn)
@@ -830,4 +833,13 @@ impl AsResources for &ProductionMemo {
     fn as_resources(&self) -> Resources {
         resources_situation(self)
     }
+}
+
+/// Convert the device mappings from the `BlockDeviceMappingConfig` to the AWS SDK's `BlockDeviceMapping` type.
+fn block_device_mappings(
+    device_mappings: &Option<Vec<BlockDeviceMappingConfig>>,
+) -> Option<Vec<BlockDeviceMapping>> {
+    device_mappings
+        .as_ref()
+        .map(|mappings| mappings.iter().map(BlockDeviceMapping::from).collect())
 }
