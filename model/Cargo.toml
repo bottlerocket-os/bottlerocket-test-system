@@ -15,7 +15,7 @@ futures = "0.3"
 http = "1"
 json-patch = "1"
 k8s-openapi = { version = "0.21", default-features = false, features = ["v1_24"] }
-kube = { version = "0.88", default-features = false, features = ["config", "derive", "jsonpatch", "client", "ws", "rustls-tls"] }
+kube = { version = "0.99", default-features = false, features = ["config", "derive", "jsonpatch", "client", "ws", "rustls-tls"] }
 lazy_static = "1"
 log = "0.4"
 maplit = "1.0.2"
