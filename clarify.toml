@@ -5,6 +5,22 @@ ignore-licenses = [
     "Pixar"
 ]
 
+[clarify.aws-lc-sys]
+expression = "ISC AND (Apache-2.0 OR ISC) AND OpenSSL AND MIT"
+license-files = [
+    { path = "LICENSE", hash = 0xf308ccd7 },
+    { path = "aws-lc/LICENSE", hash = 0xb6d14686 },
+    { path = "aws-lc/third_party/fiat/LICENSE", hash = 0x75829ee2 },
+]
+
+[clarify.aws-lc-fips-sys]
+expression = "ISC AND (Apache-2.0 OR ISC) AND OpenSSL AND MIT"
+license-files = [
+    { path = "LICENSE", hash = 0xf308ccd7 },
+    { path = "aws-lc/LICENSE", hash = 0xb6d14686 },
+    { path = "aws-lc/third_party/fiat/LICENSE", hash = 0x75829ee2 },
+]
+
 [clarify.bstr]
 expression = "(MIT OR Apache-2.0) AND Unicode-DFS-2016"
 license-files = [
@@ -22,6 +38,14 @@ license-files = [
     { path = "LICENSE-APACHE", hash = 0x18785531 },
     { path = "LICENSE-MIT", hash = 0xafaec4cb },
     { path = "LICENSE-WHATWG", hash = 0xbcb87a0c },
+]
+
+[clarify.minimal-lexical]
+expression = "MIT OR Apache-2.0"
+license-files = [
+    { path = "LICENSE.md", hash = 0xfe66d806 },
+    { path = "LICENSE-APACHE", hash = 0x4fccb6b7 },
+    { path = "LICENSE-MIT", hash = 0x386ca1bc },
 ]
 
 [clarify.regex]

@@ -31,14 +31,25 @@ skip = [
     "http@0.2",
     "http-body@0.4",
 
-    # reqwest@11 still uses bitflags v1
-    "bitflags@1",
-
     # many crates still use syn v1
     "syn@1",
 
+    # many crates still use base64 v0.21
+    "base64@0.21",
+
     # tabled uses an older version of heck
     "heck@0.4.1",
+
+    # aws-lc-rs uses an older version of untrusted
+    "untrusted@0.7",
+
+    # several crates use an older version of hyper/rustls
+    "hyper@0.14",
+    "hyper-rustls@0.24",
+    "rustls@0.21",
+    "rustls-pemfile@1",
+    "rustls-webpki@0.101",
+    "tokio-rustls@0.24",
 ]
 
 skip-tree = [
