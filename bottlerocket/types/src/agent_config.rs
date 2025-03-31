@@ -296,6 +296,9 @@ pub struct Ec2Config {
     /// The device mappings used for EC2 resource provisioning
     #[serde(default)]
     pub device_mappings: Option<Vec<BlockDeviceMappingConfig>>,
+
+     /// The target availibity zones
+     pub input_availability_zones: Vec<String>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, Default)]
