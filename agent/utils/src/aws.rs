@@ -34,7 +34,7 @@ pub async fn aws_config(
         region
     );
 
-    let mut config_loader = aws_config::defaults(BehaviorVersion::v2024_03_28()).retry_config(
+    let mut config_loader = aws_config::defaults(BehaviorVersion::v2025_01_17()).retry_config(
         RetryConfig::standard()
             .with_retry_mode(RetryMode::Adaptive)
             .with_max_attempts(15),
