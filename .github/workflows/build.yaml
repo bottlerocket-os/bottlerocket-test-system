@@ -19,7 +19,7 @@ jobs:
       group: bottlerocket
       labels: bottlerocket_ubuntu-latest_8-core
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
       - run: make sdk-build
         # If we forget to add yamlgen changes to our commits, this will fail.
       - name: ensure that git is clean
