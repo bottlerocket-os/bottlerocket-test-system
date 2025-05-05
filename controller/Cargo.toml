@@ -6,10 +6,11 @@ publish = false
 license = "MIT OR Apache-2.0"
 
 [dependencies]
+aws-lc-rs = { version = "1", features = ["bindgen"] }
 anyhow = "1"
-aws-config = "1"
+aws-config = { version = "1", default-features = false, features = ["rt-tokio", "default-https-client"] }
 aws-types = "1"
-aws-sdk-cloudwatchlogs = "1"
+aws-sdk-cloudwatchlogs = { version = "1", default-features = false, features = ["rt-tokio", "default-https-client"] }
 env_logger = "0.11"
 futures = "0.3"
 http = "1"
