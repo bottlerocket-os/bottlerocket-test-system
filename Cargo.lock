@@ -19,7 +19,7 @@ checksum = "512761e0bb2578dd7380c6baaa0f4ce03e84f95e960231d1dec8bf4d7d6e2627"
 
 [[package]]
 name = "agent-common"
-version = "0.0.16"
+version = "0.0.17"
 dependencies = [
  "snafu",
  "tempfile",
@@ -28,7 +28,7 @@ dependencies = [
 
 [[package]]
 name = "agent-utils"
-version = "0.0.16"
+version = "0.0.17"
 dependencies = [
  "agent-common",
  "aws-config",
@@ -845,7 +845,7 @@ dependencies = [
 
 [[package]]
 name = "bottlerocket-agents"
-version = "0.0.16"
+version = "0.0.17"
 dependencies = [
  "agent-common",
  "agent-utils",
@@ -891,7 +891,7 @@ dependencies = [
 
 [[package]]
 name = "bottlerocket-types"
-version = "0.0.16"
+version = "0.0.17"
 dependencies = [
  "aws-lc-rs",
  "aws-sdk-ec2",
@@ -917,7 +917,7 @@ dependencies = [
 
 [[package]]
 name = "builder-derive"
-version = "0.0.16"
+version = "0.0.17"
 dependencies = [
  "configuration-derive",
  "proc-macro2",
@@ -1060,7 +1060,7 @@ checksum = "f46ad14479a25103f283c0f10005961cf086d8dc42205bb44c46ac563475dca6"
 
 [[package]]
 name = "cli"
-version = "0.0.16"
+version = "0.0.17"
 dependencies = [
  "anyhow",
  "assert_cmd",
@@ -1092,7 +1092,7 @@ checksum = "5b63caa9aa9397e2d9480a9b13673856c78d8ac123288526c37d7839f2a86990"
 
 [[package]]
 name = "configuration-derive"
-version = "0.0.16"
+version = "0.0.17"
 dependencies = [
  "quote",
  "syn 2.0.100",
@@ -1100,7 +1100,7 @@ dependencies = [
 
 [[package]]
 name = "controller"
-version = "0.0.16"
+version = "0.0.17"
 dependencies = [
  "anyhow",
  "aws-config",
@@ -2835,7 +2835,7 @@ dependencies = [
 
 [[package]]
 name = "resource-agent"
-version = "0.0.16"
+version = "0.0.17"
 dependencies = [
  "agent-common",
  "async-trait",
@@ -3125,7 +3125,7 @@ dependencies = [
 
 [[package]]
 name = "selftest"
-version = "0.0.16"
+version = "0.0.17"
 dependencies = [
  "anyhow",
  "envy",
@@ -3500,7 +3500,7 @@ checksum = "8f50febec83f5ee1df3015341d8bd429f2d1cc62bcba7ea2076759d315084683"
 
 [[package]]
 name = "test-agent"
-version = "0.0.16"
+version = "0.0.17"
 dependencies = [
  "agent-common",
  "async-trait",
@@ -3516,7 +3516,7 @@ dependencies = [
 
 [[package]]
 name = "test-agent-cli"
-version = "0.0.16"
+version = "0.0.17"
 dependencies = [
  "agent-common",
  "argh",
@@ -3537,7 +3537,7 @@ dependencies = [
 
 [[package]]
 name = "testsys-model"
-version = "0.0.16"
+version = "0.0.17"
 dependencies = [
  "async-recursion",
  "async-trait",

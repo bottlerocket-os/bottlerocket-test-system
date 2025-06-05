@@ -6,7 +6,27 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
-[Unreleased]: https://github.com/bottlerocket-os/bottlerocket-test-system/compare/v0.0.16...develop
+[Unreleased]: https://github.com/bottlerocket-os/bottlerocket-test-system/compare/v0.0.17...develop
+
+## [0.0.17] - 2025-06-05
+
+### Added
+
+- github: lock actions by commit ([#985])
+- Add kubernetes 1.33 support ([#994])
+
+### Changed
+
+- Update tough ([#987])
+- update bottlerocket sample to use latest k8s version ([#990])
+- Update tough, aws-sdk*, and aws-config ([#993])
+
+[#985]: https://github.com/bottlerocket-os/bottlerocket-test-system/pull/985
+[#987]: https://github.com/bottlerocket-os/bottlerocket-test-system/pull/987
+[#990]: https://github.com/bottlerocket-os/bottlerocket-test-system/pull/990
+[#993]: https://github.com/bottlerocket-os/bottlerocket-test-system/pull/993
+[#994]: https://github.com/bottlerocket-os/bottlerocket-test-system/pull/994
+[0.0.17]: https://github.com/bottlerocket-os/bottlerocket-test-system/tree/v0.0.17
 
 ## [0.0.16] - 2025-03-12
 

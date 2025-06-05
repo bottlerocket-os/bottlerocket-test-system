@@ -13,7 +13,7 @@ In order for the resources and tests to be created as desired, the ARN of an exi
 - For ECS clusters, this can be accomplished by adding a field `iamInstanceProfileName` to the ECS cluster config, the value of which is the ARN of a role with at least these permissions: [ecs-iam-instance-profile.json](./ecs-iam-instance-profile.json).
 
 - For EKS clusters, this can be accomplished by replacing the `clusterName`, `region`, and `version` fields with an `encodedConfig` field in the EKS cluster config.
-This field's value should be a string representing a base64-encoded EKS cluster config, an example of which can be found [here](./eksctl-config.yaml).
+This field's value should be a string representing a base64-encoded EKS cluster config, an example of which can be found in this [EKS cluster config](./eksctl-config.yaml).
 This config should contain the ARNs of an existing service role and an existing node instance role with at least these permissions: [eks-service-role.json](./eks-service-role.json) and [eks-node-instance-role.json](./eks-node-instance-role.json).
 
 ### ECS Test
