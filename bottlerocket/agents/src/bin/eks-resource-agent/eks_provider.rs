@@ -142,6 +142,11 @@ enum IPFamily {
     IPv4,
 }
 
+#[derive(Serialize, Debug, EnumString)]
+enum AmiFamily {
+    Bottlerocket,
+}
+
 /// Configuration for setting up an EKS cluster using eksctl yaml file.
 ///
 /// # Fields:
@@ -241,6 +246,8 @@ struct ManagedNodeGroup {
     max_size: i32,
     // The desired number of nodes in the managed node group.
     desired_capacity: i32,
+    // The desired OS of nodes in the managed node group.
+    ami_family: AmiFamily,
 }
 
 #[allow(clippy::unwrap_or_default)]
@@ -288,6 +295,7 @@ fn create_yaml(
             min_size: MNG_MIN_SIZE,
             max_size: MNG_MAX_SIZE,
             desired_capacity: MNG_DESIRED_CAPACITY,
+            ami_family: AmiFamily::Bottlerocket,
         }],
     };
 
