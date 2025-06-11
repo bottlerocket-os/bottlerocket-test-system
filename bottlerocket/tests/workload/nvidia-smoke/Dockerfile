@@ -1,7 +1,7 @@
 # Builder for the CUDA Sample binaries. The image we run to perform the tests
 # doesn't need everything that is included in the "devel" image. So we build with
 # the larger image, then copy them to the lightweight image we use to run.
-FROM nvidia/cuda:12.8.0-devel-ubi9 AS builder
+FROM nvidia/cuda:12.9.0-devel-amzn2023 AS builder
 
 RUN dnf makecache \
   && dnf -y install \
@@ -11,7 +11,7 @@ RUN dnf makecache \
   && rm -fr /var/cache/dnf
 
 # Clone the samples, pinned to a version we know should work
-RUN git clone --branch v12.8 --depth 1 https://github.com/NVIDIA/cuda-samples.git
+RUN git clone --branch v12.9 --depth 1 https://github.com/NVIDIA/cuda-samples.git
 RUN mkdir -p /samples
 
 # There is a Makefile in the 'cuda-samples' project, but it will
@@ -33,7 +33,14 @@ RUN cd /cuda-samples/Samples/6_Performance/UnifiedMemoryPerf/ && cmake . && make
 
 # We only need the base image to run the tests. It contains the necessary
 # drivers and runtime environment we need.
-FROM nvidia/cuda:12.8.0-base-ubi9
+FROM nvidia/cuda:12.9.0-base-amzn2023
+RUN dnf makecache && \
+    dnf install -y \
+      gzip \
+      tar \
+    && \
+    dnf clean all && \
+    rm -rf /var/cache/dnf
 COPY ./run.sh /
 COPY --from=builder /samples/* /samples/
 RUN chmod +x ./run.sh
