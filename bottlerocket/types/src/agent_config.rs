@@ -196,31 +196,6 @@ pub struct VSphereK8sClusterConfig {
     pub mgmt_cluster_kubeconfig_base64: String,
 }
 
-/// The configuration information for a eks instance provider.
-#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, Default, Configuration, Builder)]
-#[serde(rename_all = "camelCase")]
-#[crd("Resource")]
-pub struct MetalK8sClusterConfig {
-    /// URL for an EKS-A release manifest that contains URLs for EKS-A binary archives.
-    /// Defaults to upstream EKS-A release channels.
-    pub eks_a_release_manifest_url: Option<String>,
-
-    /// Base64-encoded Kubeconfig for the CAPI management cluster
-    pub mgmt_cluster_kubeconfig_base64: String,
-
-    /// The role that should be assumed when activating SSM for the machines.
-    pub assume_role: Option<String>,
-
-    /// The base64-encoded EKS Anywhere config for this cluster.
-    pub cluster_config_base64: String,
-
-    /// The base64-encoded hardware csv that will be used for cluster creation.
-    pub hardware_csv_base64: String,
-
-    /// Custom TOML data that should be inserted into user-data settings.
-    pub custom_user_data: Option<CustomUserData>,
-}
-
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub enum CreationPolicy {
@@ -637,8 +612,8 @@ mod test {
     use testsys_model::{Resource, Test};
 
     use super::{
-        EcsWorkloadTestConfig, EksClusterConfig, MetalK8sClusterConfig, SonobuoyConfig,
-        VSphereK8sClusterConfig, VSphereVmConfig, WorkloadConfig,
+        EcsWorkloadTestConfig, EksClusterConfig, SonobuoyConfig, VSphereK8sClusterConfig,
+        VSphereVmConfig, WorkloadConfig,
     };
 
     fn samples_dir() -> PathBuf {
@@ -1009,31 +984,6 @@ mod test {
         let ec2_resource: Resource = serde_yaml::from_str(yaml).unwrap();
         let _: VSphereVmConfig = serde_json::from_value(JsonValue::Object(
             ec2_resource.spec.agent.configuration.unwrap(),
-        ))
-        .unwrap();
-    }
-
-    #[test]
-    fn metal_sonobuoy_test() {
-        let s = read_eks_file("metal-sonobuoy-test.yaml");
-        let s = s
-            .replace("${SONOBUOY_MODE}", "quick")
-            .replace("${", "<")
-            .replace('}', ">")
-            .replace('\\', "");
-
-        let docs: Vec<&str> = s.split("---").collect();
-        let &yaml = docs.first().unwrap();
-        let test_1_initial: Test = serde_yaml::from_str(yaml).unwrap();
-        let _: SonobuoyConfig = serde_json::from_value(JsonValue::Object(
-            test_1_initial.spec.agent.configuration.unwrap(),
-        ))
-        .unwrap();
-
-        let &yaml = docs.get(1).unwrap();
-        let cluster_resource: Resource = serde_yaml::from_str(yaml).unwrap();
-        let _: MetalK8sClusterConfig = serde_json::from_value(JsonValue::Object(
-            cluster_resource.spec.agent.configuration.unwrap(),
         ))
         .unwrap();
     }

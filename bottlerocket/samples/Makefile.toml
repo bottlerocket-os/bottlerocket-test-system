@@ -46,12 +46,6 @@ SINGLE_IMAGE_REPO = { value = "false", condition = { env_not_set = ["SINGLE_IMAG
 # GOVC_RESOURCE_POOL = 
 # GOVC_FOLDER = 
 
-# The following variables need values only if a metal test file is being created.
-
-# MGMT_CLUSTER_KUBECONFIG_PATH = 
-# HARDWARE_CSV_PATH = 
-# CLUSTER_CONFIG_PATH = 
-
 [tasks.install-cli]
 script=['''
 cargo install --path "${CARGO_MAKE_WORKING_DIRECTORY}/../../cli"
@@ -79,7 +73,6 @@ SONOBUOY_TEST_AGENT_IMAGE_URI = { value = "${AGENT_IMAGE_REGISTRY}/sonobuoy-test
 EKS_RESOURCE_AGENT_IMAGE_URI = { value = "${AGENT_IMAGE_REGISTRY}/eks-resource-agent:v${AGENT_IMAGE_VERSION}", condition = { env_not_set = ["EKS_RESOURCE_AGENT_IMAGE_URI"] } }
 VSPHERE_K8S_CLUSTER_RESOURCE_AGENT_IMAGE_URI = { value = "${AGENT_IMAGE_REGISTRY}/vsphere-k8s-cluster-resource-agent:v${AGENT_IMAGE_VERSION}", condition = { env_not_set = ["VSPHERE_K8S_CLUSTER_RESOURCE_AGENT_IMAGE_URI"] } }
 VSPHERE_VM_RESOURCE_AGENT_IMAGE_URI = { value = "${AGENT_IMAGE_REGISTRY}/vsphere-vm-resource-agent:v${AGENT_IMAGE_VERSION}", condition = { env_not_set = ["VSPHERE_VM_RESOURCE_AGENT_IMAGE_URI"] } }
-METAL_K8S_CLUSTER_RESOURCE_AGENT_IMAGE_URI = { value = "${AGENT_IMAGE_REGISTRY}/metal-k8s-cluster-resource-agent:v${AGENT_IMAGE_VERSION}", condition = { env_not_set = ["METAL_K8S_CLUSTER_RESOURCE_AGENT_IMAGE_URI"] } }
 CONTROLLER_IMAGE_URI = { value = "${AGENT_IMAGE_REGISTRY}/controller:v${AGENT_IMAGE_VERSION}", condition = { env_not_set = ["CONTROLLER_IMAGE_URI"] } }
 
 [tasks.set-agent-images-single-repo]
@@ -97,7 +90,6 @@ SONOBUOY_TEST_AGENT_IMAGE_URI = { value = "${AGENT_IMAGE_REGISTRY}/${AGENT_IMAGE
 EKS_RESOURCE_AGENT_IMAGE_URI = { value = "${AGENT_IMAGE_REGISTRY}/${AGENT_IMAGE_REPO}:eks-resource-agent-v${AGENT_IMAGE_VERSION}", condition = { env_not_set = ["EKS_RESOURCE_AGENT_IMAGE_URI"] } }
 VSPHERE_K8S_CLUSTER_RESOURCE_AGENT_IMAGE_URI = { value = "${AGENT_IMAGE_REGISTRY}/${AGENT_IMAGE_REPO}:vsphere-k8s-cluster-resource-agent-v${AGENT_IMAGE_VERSION}", condition = { env_not_set = ["VSPHERE_K8S_CLUSTER_RESOURCE_AGENT_IMAGE_URI"] } }
 VSPHERE_VM_RESOURCE_AGENT_IMAGE_URI = { value = "${AGENT_IMAGE_REGISTRY}/${AGENT_IMAGE_REPO}:vsphere-vm-resource-agent-v${AGENT_IMAGE_VERSION}", condition = { env_not_set = ["VSPHERE_VM_RESOURCE_AGENT_IMAGE_URI"] } }
-METAL_K8S_CLUSTER_RESOURCE_AGENT_IMAGE_URI = { value = "${AGENT_IMAGE_REGISTRY}/${AGENT_IMAGE_REPO}:metal-k8s-cluster-resource-agent-v${AGENT_IMAGE_VERSION}", condition = { env_not_set = ["VSPHERE_K8S_CLUSTER_RESOURCE_AGENT_IMAGE_URI"] } }
 CONTROLLER_IMAGE_URI = { value = "${AGENT_IMAGE_REGISTRY}/${AGENT_IMAGE_REPO}:controller-v${AGENT_IMAGE_VERSION}", condition = { env_not_set = ["CONTROLLER_IMAGE_URI"] } }
 
 [tasks.metadata-url.env]
@@ -350,6 +342,3 @@ VARIANT = { value = "vmware-k8s-1.32", condition = { env_not_set = ["VARIANT"] }
 
 [tasks.vmware-sonobuoy-test.env]
 VARIANT = { value = "vmware-k8s-1.32", condition = { env_not_set = ["VARIANT"] } }
-
-[tasks.metal-sonobuoy-test.env]
-VARIANT = { value = "metal-k8s-1.32", condition = { env_not_set = ["VARIANT"] } }
