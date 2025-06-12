@@ -177,31 +177,6 @@ COPY --from=build-src /usr/share/licenses/testsys /licenses/testsys
 CMD dockerd --storage-driver vfs &>/dev/null & ./vsphere-k8s-cluster-resource-agent
 
 # =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^=
-# Builds the Metal K8s cluster resource agent image
-FROM public.ecr.aws/amazonlinux/amazonlinux:2 as metal-k8s-cluster-resource-agent
-
-RUN yum install -y \
-        openssh-clients \
-        tar \
-    && yum clean all
-RUN amazon-linux-extras install -y docker
-
-# Copy eksctl
-COPY --from=tools /eksctl /usr/bin/eksctl
-COPY --from=tools /licenses/eksctl /licenses/eksctl
-
-# Copy kubectl
-COPY --from=tools /kubectl /usr/local/bin/kubectl
-COPY --from=tools /licenses/kubernetes /licenses/kubernetes
-
-# Copy binary
-COPY --from=build-src /src/bottlerocket/agents/bin/metal-k8s-cluster-resource-agent ./
-# Copy licenses
-COPY --from=build-src /usr/share/licenses/testsys /licenses/testsys
-
-CMD dockerd --storage-driver vfs &>/dev/null & ./metal-k8s-cluster-resource-agent
-
-# =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^= =^..^=
 # Builds the ECS test agent image
 FROM public.ecr.aws/amazonlinux/amazonlinux:2 as ecs-test-agent
 # Copy binary
