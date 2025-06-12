@@ -26,6 +26,16 @@ for sample in *; do
     "./${sample}" 2>&1 | tee "${results_dir}/${sample}.log"
 done
 
+# Exercise egl backend
+moderngl_script="$(mktemp --suffix='.py')"
+cat >"${moderngl_script}" <<EOF
+import moderngl
+ctx = moderngl.create_standalone_context(backend="egl")
+print(ctx.info)
+EOF
+python "${moderngl_script}" 2>&1 |
+    tee "${results_dir}/ModernGL.log"
+
 # Collect the results
 tar czf "${results_tar}" -C "${results_dir}" .
 mv "${results_tar}" "${results_dir}/"
