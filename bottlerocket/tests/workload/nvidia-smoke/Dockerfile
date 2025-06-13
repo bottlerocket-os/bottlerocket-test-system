@@ -3,12 +3,17 @@
 # the larger image, then copy them to the lightweight image we use to run.
 FROM nvidia/cuda:12.9.0-devel-amzn2023 AS builder
 
-RUN dnf makecache \
-  && dnf -y install \
-    cmake \
-    git-core \
-  && dnf clean all \
-  && rm -fr /var/cache/dnf
+RUN dnf makecache && \
+  dnf install -y \
+  cmake \
+  g++ \
+  git-core \
+  libX11-devel \
+  python-devel \
+  python-pip \
+  && \
+  dnf clean all && \
+  rm -rf /var/cache/dnf
 
 # Clone the samples, pinned to a version we know should work
 RUN git clone --branch v12.9 --depth 1 https://github.com/NVIDIA/cuda-samples.git
@@ -31,17 +36,24 @@ RUN cd /cuda-samples/Samples/3_CUDA_Features/warpAggregatedAtomicsCG/ && cmake .
 RUN cd /cuda-samples/Samples/3_CUDA_Features/globalToShmemAsyncCopy/ && cmake . && make -j$(nproc) && cp $(basename $(pwd)) /samples/
 RUN cd /cuda-samples/Samples/6_Performance/UnifiedMemoryPerf/ && cmake . && make -j$(nproc) && cp $(basename $(pwd)) /samples/
 
+# Install moderngl
+RUN pip install moderngl --user
+
 # We only need the base image to run the tests. It contains the necessary
 # drivers and runtime environment we need.
 FROM nvidia/cuda:12.9.0-base-amzn2023
+ENV NVIDIA_DRIVER_CAPABILITIES=all
 RUN dnf makecache && \
-    dnf install -y \
-      gzip \
-      tar \
-    && \
-    dnf clean all && \
-    rm -rf /var/cache/dnf
+  dnf install -y \
+  gzip \
+  libglvnd-devel \
+  python\
+  tar \
+  && \
+  dnf clean all && \
+  rm -rf /var/cache/dnf
 COPY ./run.sh /
 COPY --from=builder /samples/* /samples/
+COPY --from=builder /root/.local/lib/. /root/.local/lib/
 RUN chmod +x ./run.sh
 ENTRYPOINT ["./run.sh"]
