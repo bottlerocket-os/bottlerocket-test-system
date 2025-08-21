@@ -156,8 +156,9 @@ impl TestManager {
             .get_all()
             .await
             .allow_not_found(|_| ())
-            .context(error::ClientSnafu {
-                action: "get all resources",
+            .map_err(|e| error::Error::Client {
+                action: "get all resources".to_string(),
+                source: Box::new(e),
             })?
             .unwrap_or_default()
             .is_empty()
@@ -175,17 +176,28 @@ impl TestManager {
         let mut test = test_client
             .get(name)
             .await
-            .context(error::ClientSnafu { action: "get test" })?;
+            .map_err(|e| error::Error::Client {
+                action: "get test".to_string(),
+                source: Box::new(e),
+            })?;
         // Created objects are not allowed to have `resource_version` set.
         test.metadata.resource_version = None;
         test.status = None;
-        test_client.delete(name).await.context(error::ClientSnafu {
-            action: "delete test",
-        })?;
+        test_client
+            .delete(name)
+            .await
+            .map_err(|e| error::Error::Client {
+                action: "delete test".to_string(),
+                source: Box::new(e),
+            })?;
         test_client.wait_for_deletion(name).await;
-        test_client.create(test).await.context(error::ClientSnafu {
-            action: "create new test",
-        })?;
+        test_client
+            .create(test)
+            .await
+            .map_err(|e| error::Error::Client {
+                action: "create new test".to_string(),
+                source: Box::new(e),
+            })?;
         Ok(())
     }
 
@@ -271,18 +283,21 @@ impl TestManager {
         for object in objects {
             match object {
                 Crd::Test(test) => {
-                    self.test_client().delete(test.name_any()).await.context(
-                        error::ClientSnafu {
-                            action: "delete test",
-                        },
-                    )?;
+                    self.test_client()
+                        .delete(test.name_any())
+                        .await
+                        .map_err(|e| error::Error::Client {
+                            action: "delete test".to_string(),
+                            source: Box::new(e),
+                        })?;
                 }
                 Crd::Resource(resource) => {
                     self.resource_client()
                         .force_delete(resource.name_any())
                         .await
-                        .context(error::ClientSnafu {
-                            action: "delete test",
+                        .map_err(|e| error::Error::Client {
+                            action: "delete test".to_string(),
+                            source: Box::new(e),
                         })?;
                 }
             };

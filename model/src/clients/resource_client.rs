@@ -255,7 +255,14 @@ impl ResourceClient {
     }
 
     async fn resolve_input_string(&self, input: String) -> Result<Value> {
-        if let Some((resource_name, field_name)) = resource_name_and_field_name(&input)? {
+        if let Some((resource_name, field_name)) =
+            resource_name_and_field_name(&input).map_err(|e| {
+                error::ConfigResolutionSnafu {
+                    what: e.to_string(),
+                }
+                .build()
+            })?
+        {
             let resource = self.get(resource_name).await?;
             let results = resource
                 .created_resource()
@@ -274,22 +281,20 @@ impl ResourceClient {
     }
 }
 
-fn resource_name_and_field_name(input: &str) -> Result<Option<(String, String)>> {
+fn resource_name_and_field_name(
+    input: &str,
+) -> std::result::Result<Option<(String, String)>, Box<dyn std::error::Error + Send + Sync>> {
     let captures = match REGEX.captures(input) {
         None => return Ok(None),
         Some(some) => some,
     };
     let resource_name = captures
         .get(1)
-        .context(error::ConfigResolutionSnafu {
-            what: "Resource name could not be extracted from capture.".to_string(),
-        })?
+        .ok_or("Resource name could not be extracted from capture.")?
         .as_str();
     let field_name = captures
         .get(2)
-        .context(error::ConfigResolutionSnafu {
-            what: "Resource value could not be extracted from capture.".to_string(),
-        })?
+        .ok_or("Resource value could not be extracted from capture.")?
         .as_str();
     Ok(Some((resource_name.to_string(), field_name.to_string())))
 }

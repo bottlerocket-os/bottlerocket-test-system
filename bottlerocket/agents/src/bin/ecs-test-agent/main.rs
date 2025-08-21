@@ -81,7 +81,9 @@ where
             .launch_type(LaunchType::Ec2)
             .send()
             .await
-            .context(error::TaskRunCreationSnafu)?;
+            .map_err(|source| Error::TaskRunCreation {
+                source: Box::new(source),
+            })?;
         let task_arns: Vec<String> = run_task_output
             .tasks()
             .iter()
@@ -146,7 +148,9 @@ async fn test_results(
         .set_tasks(Some(task_arns.to_vec()))
         .send()
         .await
-        .context(error::TaskDescribeSnafu)?
+        .map_err(|source| Error::TaskDescribe {
+            source: Box::new(source),
+        })?
         .tasks()
         .to_owned();
     let running_count = tasks
@@ -184,7 +188,9 @@ async fn wait_for_registered_containers(
             .clusters(cluster)
             .send()
             .await
-            .context(error::ClusterDescribeSnafu)?
+            .map_err(|source| Error::ClusterDescribe {
+                source: Box::new(source),
+            })?
             .clusters()
             .first()
             .context(error::NoTaskSnafu)?
@@ -234,7 +240,9 @@ async fn create_task_definition(ecs_client: &aws_sdk_ecs::Client) -> Result<Stri
         .memory("512")
         .send()
         .await
-        .context(error::TaskDefinitionCreationSnafu)?;
+        .map_err(|source| Error::TaskDefinitionCreation {
+            source: Box::new(source),
+        })?;
     let revision = task_info
         .task_definition()
         .context(error::TaskDefinitionMissingSnafu)?
@@ -249,7 +257,9 @@ async fn latest_task_revision(ecs_client: &aws_sdk_ecs::Client) -> Result<String
         .task_definition(DEFAULT_TASK_DEFINITION)
         .send()
         .await
-        .context(error::TaskDefinitionDescribeSnafu)?;
+        .map_err(|source| Error::TaskDefinitionDescribe {
+            source: Box::new(source),
+        })?;
     let revision = task_info
         .task_definition()
         .context(error::TaskDefinitionMissingSnafu)?

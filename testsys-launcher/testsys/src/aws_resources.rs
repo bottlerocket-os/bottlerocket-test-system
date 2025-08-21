@@ -53,7 +53,7 @@ where
 {
     // Create the `aws_config` that will be used to search EC2 for AMIs.
     // TODO: Follow chain of assumed roles for creating config like pubsys uses.
-    let config = aws_config::from_env()
+    let config = aws_config::defaults(aws_config::BehaviorVersion::v2025_08_07())
         .region(Region::new(region.into()))
         .load()
         .await;

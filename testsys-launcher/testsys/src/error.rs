@@ -99,6 +99,7 @@ pub enum Error {
     Unsupported { what: String },
 
     #[snafu(display("Unable to parse url from '{}': {}", url, source))]
+    #[allow(dead_code)]
     UrlParse {
         url: String,
         source: url::ParseError,

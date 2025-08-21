@@ -335,9 +335,9 @@ dependencies = [
 
 [[package]]
 name = "aws-sdk-cloudformation"
-version = "1.90.0"
+version = "1.89.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "994a1ba3d7bbd22434883f1569d4e12eec9e24a1f6406a71d1a614c4d368390f"
+checksum = "7aa6e704909e0024e26f886c2ecd3259796a4e3a500d48abe28347c2f8b88acd"
 dependencies = [
  "aws-credential-types",
  "aws-runtime",
@@ -358,9 +358,9 @@ dependencies = [
 
 [[package]]
 name = "aws-sdk-cloudwatchlogs"
-version = "1.99.0"
+version = "1.98.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "971dcaf0eca0b6887ed3e3251815e0456a79baa729f05dc87c5284a6a4ad9829"
+checksum = "3c641af2b0ff6e561a1bf0a52d5ee2cca5b376ea016f5be80c255394027dd882"
 dependencies = [
  "aws-credential-types",
  "aws-runtime",
@@ -381,9 +381,9 @@ dependencies = [
 
 [[package]]
 name = "aws-sdk-ec2"
-version = "1.160.0"
+version = "1.159.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4300d66be2c4e275d3a037576dacce6efaf9af24bfbd2460a848ea39299c979c"
+checksum = "ed753fc534bbb68760d5b2e3e46f81e5ccb9a96d8359b9ce793e123cb3073e8e"
 dependencies = [
  "aws-credential-types",
  "aws-runtime",
@@ -404,9 +404,9 @@ dependencies = [
 
 [[package]]
 name = "aws-sdk-ecs"
-version = "1.94.0"
+version = "1.93.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "13f49428ea7e58ae2bceac7e3fa1a26394d907a8676fdb78345ff201bfbbf4f2"
+checksum = "4ad82e2d5c729d0ee9d39817d69de496b2c628c431d7d1f5b81772241ebd49cb"
 dependencies = [
  "aws-credential-types",
  "aws-runtime",
@@ -426,9 +426,9 @@ dependencies = [
 
 [[package]]
 name = "aws-sdk-eks"
-version = "1.103.0"
+version = "1.102.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0488873f9fb1492a7ee787601ae87f5b02c816a43ee96f886672b71b7bd49b27"
+checksum = "d59bca16518ce2a9e1e47f7aea523ac8260609720a06e5833077611549fb3b6d"
 dependencies = [
  "aws-credential-types",
  "aws-runtime",
@@ -448,9 +448,9 @@ dependencies = [
 
 [[package]]
 name = "aws-sdk-iam"
-version = "1.87.0"
+version = "1.86.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "568dc1cf8582cfbc987c0fcfe60a6e87a67b70207d6853a60e705f9068a71af3"
+checksum = "f685fcb60bd6533f530a93d18328fb28cc8bbce90e5feea75b5dfd4b4103290d"
 dependencies = [
  "aws-credential-types",
  "aws-runtime",
@@ -471,9 +471,9 @@ dependencies = [
 
 [[package]]
 name = "aws-sdk-secretsmanager"
-version = "1.85.0"
+version = "1.84.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fe7f285ed0ee27aa5a248ac828d2c196570b44a87f60351a00535b0b4970350b"
+checksum = "fe81358a0f6d26531e2541346af4c4d747e16f55d176658f7e141c0383905f88"
 dependencies = [
  "aws-credential-types",
  "aws-runtime",
@@ -493,9 +493,9 @@ dependencies = [
 
 [[package]]
 name = "aws-sdk-ssm"
-version = "1.90.0"
+version = "1.89.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "617c6a5f6c2509144cd1c6dc76db9623d50c7eefdac8a12289a0b493bb44fa72"
+checksum = "b8dd31cfdf7ee1895fad9bef897281b04f3cb863c032b1dc9ad716ec81b98abf"
 dependencies = [
  "aws-credential-types",
  "aws-runtime",
@@ -515,9 +515,9 @@ dependencies = [
 
 [[package]]
 name = "aws-sdk-sts"
-version = "1.83.0"
+version = "1.82.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a5468593c47efc31fdbe6c902d1a5fde8d9c82f78a3f8ccfe907b1e9434748cb"
+checksum = "2194426df72592f91df0cda790cb1e571aa87d66cecfea59a64031b58145abe3"
 dependencies = [
  "aws-credential-types",
  "aws-runtime",
@@ -1808,7 +1808,7 @@ dependencies = [
  "libc",
  "percent-encoding",
  "pin-project-lite",
- "socket2 0.6.0",
+ "socket2 0.5.10",
  "tokio",
  "tower-service",
  "tracing",
@@ -2231,7 +2231,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "07033963ba89ebaf1584d767badaa2e8fcec21aedea6b8c0346d487d49c28667"
 dependencies = [
  "cfg-if",
- "windows-targets 0.53.3",
+ "windows-targets 0.48.5",
 ]
 
 [[package]]
@@ -4385,7 +4385,7 @@ version = "0.1.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0978bf7171b3d90bac376700cb56d606feb40f251a475a5d6634613564460b22"
 dependencies = [
- "windows-sys 0.60.2",
+ "windows-sys 0.48.0",
 ]
 
 [[package]]

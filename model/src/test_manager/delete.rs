@@ -48,8 +48,9 @@ impl TestManager {
         let resources = resource_client
             .get_all()
             .await
-            .context(error::ClientSnafu {
-                action: "get all resources",
+            .map_err(|e| error::Error::Client {
+                action: "get all resources".to_string(),
+                source: Box::new(e),
             })?;
         for resource in resources {
             topo_sort.insert(CrdName::Resource(resource.name_any()));
@@ -63,9 +64,13 @@ impl TestManager {
             }
         }
         let test_client = self.test_client();
-        let tests = test_client.get_all().await.context(error::ClientSnafu {
-            action: "get all tests",
-        })?;
+        let tests = test_client
+            .get_all()
+            .await
+            .map_err(|e| error::Error::Client {
+                action: "get all tests".to_string(),
+                source: Box::new(e),
+            })?;
         for test in tests {
             if test.spec.resources.is_empty() {
                 topo_sort.insert(CrdName::Test(test.name_any()));
@@ -136,8 +141,9 @@ async fn async_deletion(
                         .get(test_name)
                         .await
                         .allow_not_found(|_| ())
-                        .context(error::ClientSnafu {
+                        .map_err(|e| error::Error::Client {
                             action: format!("get '{}'", test_name),
+                            source: Box::new(e),
                         })?;
                     if test.is_some() {
                         still_awaiting.push(CrdName::Test(test_name.to_string()));
@@ -154,8 +160,9 @@ async fn async_deletion(
                         .get(resource_name)
                         .await
                         .allow_not_found(|_| ())
-                        .context(error::ClientSnafu {
+                        .map_err(|e| error::Error::Client {
                             action: format!("get '{}'", resource_name),
+                            source: Box::new(e),
                         })?;
                     if let Some(resource) = resource {
                         // If the resource errored during deletion alert the user that a problem
@@ -201,16 +208,18 @@ async fn async_deletion(
                         .delete(test_name)
                         .await
                         .allow_not_found(|_| ())
-                        .context(error::ClientSnafu {
+                        .map_err(|e| error::Error::Client {
                             action: format!("delete '{}'", test_name),
+                            source: Box::new(e),
                         })
                         .map(|_| ()),
                     CrdName::Resource(resource_name) => resource_client
                         .delete(resource_name)
                         .await
                         .allow_not_found(|_| ())
-                        .context(error::ClientSnafu {
+                        .map_err(|e| error::Error::Client {
                             action: format!("delete '{}'", resource_name),
+                            source: Box::new(e),
                         })
                         .map(|_| ()),
                 }?

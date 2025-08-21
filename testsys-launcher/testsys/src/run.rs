@@ -4,7 +4,7 @@ use crate::base64;
 use crate::crds::{CrdCreator, CrdInput};
 use crate::error;
 use crate::error::Result;
-use crate::metal_k8s::MetalK8sCreator;
+
 use crate::vmware_k8s::VmwareK8sCreator;
 use bottlerocket_variant::Variant;
 use clap::Parser;
@@ -372,27 +372,8 @@ impl Run {
                 })
             }
             "metal-k8s" => {
-                debug!("Using family 'metal-k8s'");
-                let aws_config = infra_config.aws.unwrap_or_default();
-                let region = aws_config
-                    .regions
-                    .front()
-                    .map(String::to_string)
-                    .unwrap_or_else(|| "us-west-2".to_string());
-
-                let mgmt_cluster_kubeconfig =
-                    self.mgmt_cluster_kubeconfig.context(error::InvalidSnafu {
-                        what: "A management cluster kubeconfig is required for metal testing",
-                    })?;
-                let encoded_kubeconfig = base64::encode(
-                    read_to_string(&mgmt_cluster_kubeconfig).context(error::FileSnafu {
-                        path: mgmt_cluster_kubeconfig,
-                    })?,
-                );
-                Box::new(MetalK8sCreator {
-                    region,
-                    encoded_mgmt_cluster_kubeconfig: encoded_kubeconfig,
-                    image_name: self.image_name.context(error::InvalidSnafu{what: "The image name is required for Bare Metal testing. This can be set with `BUILDSYS_NAME_FULL`."})?
+                return Err(error::Error::Unsupported {
+                    what: "metal-k8s variant is deprecated and no longer supported".to_string(),
                 })
             }
             unsupported => {

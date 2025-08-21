@@ -703,9 +703,11 @@ pub(crate) trait CrdCreator: Sync {
 /// The input used for cluster crd creation
 pub struct ClusterInput<'a> {
     pub cluster_name: &'a String,
+    #[allow(dead_code)]
     pub image_id: &'a String,
     pub crd_input: &'a CrdInput<'a>,
     pub cluster_config: &'a Option<String>,
+    #[allow(dead_code)]
     pub hardware_csv: &'a Option<String>,
 }
 

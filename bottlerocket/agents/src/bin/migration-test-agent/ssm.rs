@@ -4,7 +4,7 @@ use aws_sdk_ssm::types::{
     CommandInvocation, CommandInvocationStatus, DocumentFormat, DocumentType,
     InstanceInformationStringFilter,
 };
-use bottlerocket_agents::error;
+use bottlerocket_agents::error::{self, Error};
 use log::{debug, info};
 use maplit::hashmap;
 use sha2::{Digest, Sha256};
@@ -34,7 +34,9 @@ pub(crate) async fn wait_for_ssm_ready(
             )
             .send()
             .await
-            .context(error::SsmDescribeInstanceInfoSnafu)?;
+            .map_err(|source| Error::SsmDescribeInstanceInfo {
+                source: Box::new(source),
+            })?;
         num_ready = instance_info.instance_information_list().len();
         sleep(sec_between_checks);
     }
@@ -73,7 +75,9 @@ pub(crate) async fn create_or_update_ssm_document(
                                 .document_format(DocumentFormat::Yaml)
                                 .send()
                                 .await
-                                .context(error::SsmCreateDocumentSnafu)?;
+                                .map_err(|source| Error::SsmCreateDocument {
+                                    source: Box::new(source),
+                                })?;
                             Ok(())
                         }
                         _ => error::SsmDescribeDocumentSnafu {
@@ -120,7 +124,9 @@ pub(crate) async fn create_or_update_ssm_document(
         .document_format(DocumentFormat::Yaml)
         .send()
         .await
-        .context(error::SsmUpdateDocumentSnafu)?;
+        .map_err(|source| Error::SsmUpdateDocument {
+            source: Box::new(source),
+        })?;
     Ok(())
 }
 
@@ -135,7 +141,9 @@ async fn wait_command_finish(
             .command_id(cmd_id.to_owned())
             .send()
             .await
-            .context(error::SsmListCommandInvocationsSnafu)?;
+            .map_err(|source| Error::SsmListCommandInvocations {
+                source: Box::new(source),
+            })?;
         if let Some(invocations) = cmd_status.command_invocations {
             if invocations.is_empty()
                 || invocations.iter().any(|i| {
@@ -171,7 +179,9 @@ pub(crate) async fn ssm_run_command(
         .timeout_seconds(30)
         .send()
         .await
-        .context(error::SsmSendCommandSnafu)?
+        .map_err(|source| Error::SsmSendCommand {
+            source: Box::new(source),
+        })?
         .command()
         .and_then(|c| c.command_id().map(|s| s.to_string()))
         .context(error::SsmCommandIdSnafu)?;

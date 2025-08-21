@@ -135,7 +135,9 @@ where
                 .launch_type(LaunchType::Ec2)
                 .send()
                 .await
-                .context(error::TaskRunCreationSnafu)?;
+                .map_err(|source| Error::TaskRunCreation {
+                    source: Box::new(source),
+                })?;
             let run_task_arns: Vec<String> = run_task_output
                 .tasks()
                 .iter()
@@ -243,7 +245,9 @@ async fn test_results(
         .set_tasks(Some(task_arns.to_vec()))
         .send()
         .await
-        .context(error::TaskDescribeSnafu)?
+        .map_err(|source| Error::TaskDescribe {
+            source: Box::new(source),
+        })?
         .tasks()
         .to_owned();
     let passed_count = tasks
@@ -300,7 +304,9 @@ async fn wait_for_cluster_ready(
             .clusters(cluster)
             .send()
             .await
-            .context(error::ClusterDescribeSnafu)?
+            .map_err(|source| Error::ClusterDescribe {
+                source: Box::new(source),
+            })?
             .clusters()
             .first()
             .context(error::NoTaskSnafu)?
@@ -363,7 +369,9 @@ async fn find_task_rev(
         .family_prefix(task_def_name)
         .send()
         .await
-        .context(error::TaskDefinitionListSnafu)?;
+        .map_err(|source| Error::TaskDefinitionList {
+            source: Box::new(source),
+        })?;
     let task_revisions = task_revisions.task_definition_arns();
 
     for task_rev_arn in task_revisions {
@@ -454,7 +462,9 @@ async fn create_task_definition(
         .container_definitions(create_container_definition(test_def)?)
         .send()
         .await
-        .context(error::TaskDefinitionCreationSnafu)?;
+        .map_err(|source| Error::TaskDefinitionCreation {
+            source: Box::new(source),
+        })?;
     if let Some(task_arn) = task_info
         .task_definition()
         .context(error::TaskDefinitionMissingSnafu)?
