@@ -22,7 +22,6 @@ mod delete;
 mod error;
 mod install;
 mod logs;
-mod metal_k8s;
 mod migration;
 mod restart_test;
 mod run;

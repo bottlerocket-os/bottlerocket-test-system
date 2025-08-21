@@ -295,11 +295,6 @@ pub type Result<T> = std::result::Result<T, error::Error>;
 
 #[test]
 fn repo_expiration_deserialization_test() {
-    let path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("..")
-        .join("pubsys")
-        .join("policies")
-        .join("repo-expiration")
-        .join("2w-2w-1w.toml");
+    let path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("2w-2w-1w.toml");
     let _ = RepoExpirationPolicy::from_path(path).unwrap();
 }
