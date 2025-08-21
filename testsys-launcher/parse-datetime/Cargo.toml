@@ -1,0 +1,13 @@
+[package]
+name = "parse-datetime"
+version = "0.1.0"
+authors = ["Zac Mrowicki <mrowicki@amazon.com>"]
+license = "Apache-2.0 OR MIT"
+edition = "2021"
+publish = false
+# Don't rebuild crate just because of changes to README.
+exclude = ["README.md"]
+
+[dependencies]
+chrono = { workspace = true, features = ["clock", "std"] }
+snafu = { workspace = true, features = ["backtraces-impl-backtrace-crate"] }
