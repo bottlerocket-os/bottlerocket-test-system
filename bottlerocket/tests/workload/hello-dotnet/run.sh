@@ -31,7 +31,7 @@ EOF
 dotnet new console -o Hello
 mv "${hello_script}" Hello/Program.cs
 cd Hello
-dotnet run |
+dotnet run --no-restore |
    tee "../${results_dir}/hello.log"
 cd ..
 rm -rf Hello
