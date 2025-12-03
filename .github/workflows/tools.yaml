@@ -19,7 +19,7 @@ jobs:
       group: bottlerocket
       labels: bottlerocket_ubuntu-latest_16-core
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8
       # Build local tools container in case we are working on a new tools release
       - run: make tools
       - run: make images
