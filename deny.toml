@@ -20,7 +20,7 @@ allow = [
     #"Zlib"
 ]
 
-exceptions = [ { allow = [ "MPL-2.0" ], name = "webpki-roots" } ]
+exceptions = [ { allow = [ "CDLA-Permissive-2.0" ], name = "webpki-roots" } ]
 
 [bans]
 multiple-versions = "deny"
@@ -33,6 +33,10 @@ skip = [
 
     # tabled uses an older version of heck
     "heck@0.4.1",
+
+    # terminal_size uses older rustix/linux-raw-sys
+    "rustix@0.38",
+    "linux-raw-sys@0.4",
 ]
 
 skip-tree = [

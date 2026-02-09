@@ -8,7 +8,7 @@ SHELL = /bin/bash
 TOP := $(dir $(firstword $(MAKEFILE_LIST)))
 
 # Variables we update as newer versions are released
-BOTTLEROCKET_SDK_VERSION = v0.50.1
+BOTTLEROCKET_SDK_VERSION = v0.70.0
 BOTTLEROCKET_SDK_ARCH = $(TESTSYS_BUILD_HOST_UNAME_ARCH)
 BOTTLEROCKET_TOOLS_VERSION ?= v0.10.0
 
@@ -91,7 +91,7 @@ print-image-names:
 
 define BUILD_SCRIPT
 cargo fmt -- --check
-cargo clippy --locked -- -D warnings
+cargo clippy --locked -- -D warnings -A clippy::result_large_err
 cargo build --locked
 
 cargo test --locked --lib --bins --tests

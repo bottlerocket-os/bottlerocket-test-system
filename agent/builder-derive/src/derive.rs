@@ -33,7 +33,7 @@ pub(crate) fn build_struct(ast: &syn::DeriveInput) -> TokenStream {
                 None
             }
         })
-        .last()
+        .next_back()
         .expect("`crd` is a required attribute (Test, Resource)")
         .value();
 

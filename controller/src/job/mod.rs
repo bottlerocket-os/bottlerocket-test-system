@@ -177,7 +177,7 @@ pub(crate) async fn archive_logs(k8s_client: kube::Client, job_name: &str) -> Jo
     if !archive_logs {
         return Ok(());
     }
-    let config = aws_config::defaults(BehaviorVersion::v2025_01_17())
+    let config = aws_config::defaults(BehaviorVersion::v2026_01_12())
         .load()
         .await;
     let client = aws_sdk_cloudwatchlogs::Client::new(&config);
