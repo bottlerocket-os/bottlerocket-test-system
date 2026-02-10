@@ -10,6 +10,7 @@ allow = [
     #"BSD-2-Clause",
     "BSD-3-Clause",
     #"BSL-1.0",
+    "CDLA-Permissive-2.0",
     #"CC0-1.0",
     "ISC",
     "MIT",
@@ -20,7 +21,7 @@ allow = [
     #"Zlib"
 ]
 
-exceptions = [ { allow = [ "MPL-2.0" ], name = "webpki-roots" } ]
+# exceptions = [ { allow = [ "MPL-2.0" ], name = "webpki-roots" } ]
 
 [bans]
 multiple-versions = "deny"
@@ -33,6 +34,12 @@ skip = [
 
     # tabled uses an older version of heck
     "heck@0.4.1",
+
+    # duplicate dependencies from different dependency trees
+    "linux-raw-sys@0.4.15",
+    "rustix@0.38.44",
+    "terminal_size@0.3.0",
+    "toml@0.5.11",
 ]
 
 skip-tree = [

@@ -177,7 +177,7 @@ pub(crate) async fn archive_logs(k8s_client: kube::Client, job_name: &str) -> Jo
     if !archive_logs {
         return Ok(());
     }
-    let config = aws_config::defaults(BehaviorVersion::v2025_01_17())
+    let config = aws_config::defaults(BehaviorVersion::v2025_08_07())
         .load()
         .await;
     let client = aws_sdk_cloudwatchlogs::Client::new(&config);
@@ -215,7 +215,8 @@ pub(crate) async fn archive_logs(k8s_client: kube::Client, job_name: &str) -> Jo
         .log_stream_name(&name)
         .send()
         .await
-        .context(error::CreateLogStreamSnafu {
+        .map_err(|source| JobError::CreateLogStream {
+            source: Box::new(source),
             log_stream: name.to_string(),
         })?;
 
@@ -238,7 +239,10 @@ pub(crate) async fn archive_logs(k8s_client: kube::Client, job_name: &str) -> Jo
         )
         .send()
         .await
-        .context(error::CreateLogEventSnafu { log_event: &name })?;
+        .map_err(|source| JobError::CreateLogEvent {
+            log_event: name.clone(),
+            source: Box::new(source),
+        })?;
 
     info!("Archive of '{job_name}' can be found at '{name}'");
 

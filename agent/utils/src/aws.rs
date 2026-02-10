@@ -34,7 +34,7 @@ pub async fn aws_config(
         region
     );
 
-    let mut config_loader = aws_config::defaults(BehaviorVersion::v2025_01_17()).retry_config(
+    let mut config_loader = aws_config::defaults(BehaviorVersion::v2025_08_07()).retry_config(
         RetryConfig::standard()
             .with_retry_mode(RetryMode::Adaptive)
             .with_max_attempts(15),
@@ -95,7 +95,10 @@ pub async fn aws_config(
             .set_duration_seconds(*assume_role_session_duration)
             .send()
             .await
-            .context(error::AssumeRoleSnafu { role_arn })?
+            .map_err(|source| Error::AssumeRole {
+                role_arn: role_arn.to_string(),
+                source: Box::new(source),
+            })?
             .credentials()
             .context(error::CredentialsMissingSnafu { role_arn })?
             .clone();

@@ -10,7 +10,7 @@ pub enum Error {
     #[snafu(display("Unable to {}: {}", action, source))]
     Client {
         action: String,
-        source: crate::clients::Error,
+        source: Box<crate::clients::Error>,
     },
 
     #[snafu(display("Unable to create client: {}", source))]

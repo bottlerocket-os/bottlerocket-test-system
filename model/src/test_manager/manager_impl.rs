@@ -100,8 +100,9 @@ impl TestManager {
                     .get(resource)
                     .await
                     .allow_not_found(|_| ())
-                    .context(error::ClientSnafu {
-                        action: "get resource",
+                    .map_err(|e| error::Error::Client {
+                        action: "get resource".to_string(),
+                        source: Box::new(e),
                     })?
                 {
                     to_be_visited.push(Crd::Resource(resource_spec));
@@ -156,9 +157,13 @@ impl TestManager {
     /// Add a testsys test to the cluster.
     pub(super) async fn create_test(&self, test: Test) -> Result<()> {
         let test_client = self.test_client();
-        test_client.create(test).await.context(error::ClientSnafu {
-            action: "create new test",
-        })?;
+        test_client
+            .create(test)
+            .await
+            .map_err(|e| error::Error::Client {
+                action: "create new test".to_string(),
+                source: Box::new(e),
+            })?;
         Ok(())
     }
 
@@ -168,8 +173,9 @@ impl TestManager {
         resource_client
             .create(resource)
             .await
-            .context(error::ClientSnafu {
-                action: "create new resource",
+            .map_err(|e| error::Error::Client {
+                action: "create new resource".to_string(),
+                source: Box::new(e),
             })?;
         Ok(())
     }

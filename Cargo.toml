@@ -13,6 +13,11 @@ members = [
     "controller",
     "model",
     "selftest",
+    "testsys-launcher/parse-datetime",
+    "testsys-launcher/pubsys-config",
+    "testsys-launcher/bottlerocket-variant",
+    "testsys-launcher/testsys-config",
+    "testsys-launcher/testsys",
 ]
 
 resolver = "2"

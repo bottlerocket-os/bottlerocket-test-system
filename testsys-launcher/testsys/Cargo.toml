@@ -1,0 +1,37 @@
+[package]
+name = "testsys"
+version = "0.1.0"
+authors = [
+    "Ethan Pullen <pullenep@amazon.com>",
+    "Matt Briggs <brigmatt@amazon.com>",
+]
+license = "Apache-2.0 OR MIT"
+edition = "2021"
+publish = false
+
+[dependencies]
+async-trait = "0.1"
+aws-config = { version = "1", default-features = false, features = ["credentials-process", "default-https-client", "rt-tokio" ] }
+aws-sdk-ec2 = { version = "1", default-features = false, features = ["default-https-client", "rt-tokio"] }
+base64 = "0.22"
+bottlerocket-types = { version = "0.0.17", path = "../../bottlerocket/types" }
+bottlerocket-variant = { version = "0.1", path = "../bottlerocket-variant" }
+clap = { version = "4", features = ["derive", "env"] }
+env_logger = "0.11"
+futures = "0.3"
+handlebars = "5"
+log = "0.4"
+maplit = "1"
+testsys-model = { version = "0.0.17", path = "../../model" }
+pubsys-config = { version = "0.1", path = "../pubsys-config" }
+fastrand = "2"
+serde = "1"
+serde_json = "1"
+serde_plain = "1"
+serde_yaml = "0.9"
+snafu = "0.8"
+terminal_size = "0.4"
+testsys-config = { version = "0.1", path = "../testsys-config" }
+tokio = { version = "1", features = ["fs", "macros", "rt-multi-thread"] }
+unescape = "0.1"
+url = "2"

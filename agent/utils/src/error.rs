@@ -15,7 +15,7 @@ use std::string::FromUtf8Error;
 pub enum Error {
     AssumeRole {
         role_arn: String,
-        source: StsSdkError<AssumeRoleError>,
+        source: Box<StsSdkError<AssumeRoleError>>,
     },
 
     #[snafu(display(
@@ -27,7 +27,7 @@ pub enum Error {
     AttachRolePolicy {
         role_name: String,
         policy_arn: String,
-        source: IamSdkError<aws_sdk_iam::operation::attach_role_policy::AttachRolePolicyError>,
+        source: Box<IamSdkError<aws_sdk_iam::operation::attach_role_policy::AttachRolePolicyError>>,
     },
 
     #[snafu(display("Failed to decode base64 blob: {}", source))]
@@ -48,7 +48,7 @@ pub enum Error {
 
     #[snafu(display("Failed to send create SSM command: {}", source))]
     CreateSsmActivation {
-        source: aws_sdk_ssm::error::SdkError<CreateActivationError>,
+        source: Box<aws_sdk_ssm::error::SdkError<CreateActivationError>>,
     },
 
     #[snafu(display(
@@ -60,7 +60,7 @@ pub enum Error {
     CreateRole {
         role_name: String,
         role_policy: String,
-        source: IamSdkError<CreateRoleError>,
+        source: Box<IamSdkError<CreateRoleError>>,
     },
 
     #[snafu(display("Credentials were missing for assumed role '{}'", role_arn))]
@@ -71,13 +71,13 @@ pub enum Error {
 
     #[snafu(display("Unable to get managed instance information: {}", source))]
     GetManagedInstanceInfo {
-        source: SsmSdkError<DescribeInstanceInformationError>,
+        source: Box<SsmSdkError<DescribeInstanceInformationError>>,
     },
 
     #[snafu(display("Unable to get SSM role '{}': {}", role_name, source))]
     GetSSMRole {
         role_name: String,
-        source: IamSdkError<GetRoleError>,
+        source: Box<IamSdkError<GetRoleError>>,
     },
 
     #[snafu(display("{} was missing from {}", what, from))]

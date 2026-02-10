@@ -21,8 +21,10 @@ pub(crate) enum JobError {
     #[snafu(display("Unable to create log event '{}': {:?}", log_event, source))]
     CreateLogEvent {
         log_event: String,
-        source: aws_sdk_cloudwatchlogs::error::SdkError<
-            aws_sdk_cloudwatchlogs::operation::put_log_events::PutLogEventsError,
+        source: Box<
+            aws_sdk_cloudwatchlogs::error::SdkError<
+                aws_sdk_cloudwatchlogs::operation::put_log_events::PutLogEventsError,
+            >,
         >,
     },
 
@@ -32,8 +34,10 @@ pub(crate) enum JobError {
     #[snafu(display("Unable to create log stream '{}': {:?}", log_stream, source))]
     CreateLogStream {
         log_stream: String,
-        source: aws_sdk_cloudwatchlogs::error::SdkError<
-            aws_sdk_cloudwatchlogs::operation::create_log_stream::CreateLogStreamError,
+        source: Box<
+            aws_sdk_cloudwatchlogs::error::SdkError<
+                aws_sdk_cloudwatchlogs::operation::create_log_stream::CreateLogStreamError,
+            >,
         >,
     },
 

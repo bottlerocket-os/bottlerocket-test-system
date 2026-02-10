@@ -1,4 +1,4 @@
-use crate::error::{self, Result};
+use crate::error::{self, Error, Result};
 use aws_sdk_iam::error::SdkError as IamSdkError;
 use aws_sdk_ssm::types::{InstanceInformation, InstanceInformationStringFilter, Tag};
 use log::info;
@@ -40,15 +40,16 @@ pub async fn ensure_ssm_service_role(iam_client: &aws_sdk_iam::Client) -> Result
                     .assume_role_policy_document(&assume_role_doc)
                     .send()
                     .await
-                    .context(error::CreateRoleSnafu {
-                        role_name: SSM_MANAGED_INSTANCE_SERVICE_ROLE_NAME,
+                    .map_err(|source| Error::CreateRole {
+                        source: Box::new(source),
+                        role_name: SSM_MANAGED_INSTANCE_SERVICE_ROLE_NAME.to_string(),
                         role_policy: assume_role_doc,
                     })?;
             }
             e => {
-                return Err(error::Error::GetSSMRole {
+                return Err(Error::GetSSMRole {
                     role_name: SSM_MANAGED_INSTANCE_SERVICE_ROLE_NAME.to_string(),
-                    source: e,
+                    source: Box::new(e),
                 });
             }
         }
@@ -61,9 +62,10 @@ pub async fn ensure_ssm_service_role(iam_client: &aws_sdk_iam::Client) -> Result
         .policy_arn(SSM_MANAGED_INSTANCE_POLICY_ARN)
         .send()
         .await
-        .context(error::AttachRolePolicySnafu {
-            role_name: SSM_MANAGED_INSTANCE_SERVICE_ROLE_NAME,
-            policy_arn: SSM_MANAGED_INSTANCE_POLICY_ARN,
+        .map_err(|source| Error::AttachRolePolicy {
+            source: Box::new(source),
+            role_name: SSM_MANAGED_INSTANCE_SERVICE_ROLE_NAME.to_string(),
+            policy_arn: SSM_MANAGED_INSTANCE_POLICY_ARN.to_string(),
         })?;
 
     Ok(())
@@ -87,7 +89,9 @@ pub async fn create_ssm_activation(
         )
         .send()
         .await
-        .context(error::CreateSsmActivationSnafu {})?;
+        .map_err(|source| Error::CreateSsmActivation {
+            source: Box::new(source),
+        })?;
     let activation_id = activations.activation_id.context(error::MissingSnafu {
         what: "activation id",
         from: "activations",
@@ -118,7 +122,9 @@ pub async fn wait_for_ssm_ready(
             )
             .send()
             .await
-            .context(error::GetManagedInstanceInfoSnafu {})?;
+            .map_err(|source| Error::GetManagedInstanceInfo {
+                source: Box::new(source),
+            })?;
         if let Some(info) = instance_info
             .instance_information_list()
             .iter()
