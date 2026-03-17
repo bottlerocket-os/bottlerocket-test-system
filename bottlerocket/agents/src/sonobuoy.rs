@@ -17,6 +17,7 @@ const SONOBUOY_STATUS_TIMEOUT: u64 = 900;
 
 /// Runs the sonobuoy conformance tests according to the provided configuration and returns a test
 /// result at the end.
+#[allow(clippy::needless_borrows_for_generic_args)]
 pub async fn run_sonobuoy<I>(
     kubeconfig_path: &str,
     e2e_repo_config_path: Option<&str>,

@@ -12,16 +12,6 @@ use tabled::settings::{
 };
 use tabled::Table;
 
-#[derive(Clone)]
-pub struct StatusColumn {
-    header: String,
-    //  If the Vec contains more than 1 value, each value will occupy a single box stacked
-    //  vertically. If no value should be printed an empty Vec should be returned.
-    values: fn(&Crd) -> Vec<String>,
-    alignment: TextAlignment,
-    width: Option<usize>,
-}
-
 impl std::fmt::Debug for StatusColumn {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("AdditionalColumn")
@@ -32,10 +22,22 @@ impl std::fmt::Debug for StatusColumn {
     }
 }
 
+type CondensedValuesFn = fn(&[Crd]) -> Vec<String>;
+
+#[derive(Clone)]
+pub struct StatusColumn {
+    header: String,
+    values: fn(&Crd) -> Vec<String>,
+    condensed_values: Option<CondensedValuesFn>,
+    alignment: TextAlignment,
+    width: Option<usize>,
+}
+
 impl Default for StatusColumn {
     fn default() -> Self {
         Self {
             values: |_| Default::default(),
+            condensed_values: None,
             header: Default::default(),
             alignment: Default::default(),
             width: Default::default(),
@@ -103,10 +105,8 @@ impl StatusSnapshot {
                         _ => continue,
                     };
                     match resource.destruction_task_state() {
-                        TaskState::Unknown | TaskState::Running => {
-                            // Indicate that some pods still may be running.
-                            finished = false
-                        }
+                        TaskState::Unknown | TaskState::Running => finished = false,
+                        // Indicate that some pods still may be running.
                         _ => continue,
                     }
                 }
@@ -142,6 +142,132 @@ impl StatusSnapshot {
         self.columns = columns;
         self
     }
+
+    pub fn use_crds(&self) -> &Vec<Crd> {
+        &self.crds
+    }
+
+    // Extracts data from one CRD
+    fn extract_crd_data(crd: &Crd) -> Vec<Vec<String>> {
+        vec![
+            crd_type(crd),
+            crd.labels()
+                .get("testsys/type")
+                .cloned()
+                .into_iter()
+                .collect(),
+            crd.labels()
+                .get("testsys/cluster")
+                .cloned()
+                .into_iter()
+                .collect(),
+            crd.labels()
+                .get("testsys/arch")
+                .cloned()
+                .into_iter()
+                .collect(),
+            crd.labels()
+                .get("testsys/variant")
+                .cloned()
+                .into_iter()
+                .collect(),
+            crd_state(crd),
+            crd_results(crd, ResultType::Passed),
+            crd_results(crd, ResultType::Failed),
+            crd_results(crd, ResultType::Skipped),
+        ]
+    }
+
+    pub fn extract_full_crd_data(&self) -> Vec<Vec<String>> {
+        self.crds
+            .iter()
+            .map(|crd| {
+                Self::extract_crd_data(crd)
+                    .into_iter()
+                    .flat_map(|v| {
+                        if v.is_empty() {
+                            vec![String::from("")]
+                        } else {
+                            v
+                        }
+                    })
+                    .collect()
+            })
+            .collect()
+    }
+
+    // Uses the full CRD dataset and condenses the output if a 5-stage migration test fully passes
+    pub fn condense_crd_data(&self) -> Vec<Vec<String>> {
+        let full_crd_data = self.extract_full_crd_data();
+        let mut result_data: Vec<Vec<String>> = vec![vec![]; 9];
+        for i in 0..full_crd_data.len() {
+            let curr_arch = &full_crd_data[i][3];
+            let curr_variant = &full_crd_data[i][4];
+            let curr_cluster = &full_crd_data[i][2];
+            if full_crd_data[i][1] != "migration" {
+                Self::add_row(&mut result_data, &full_crd_data, i);
+            } else if i + 4 < full_crd_data.len()
+                && full_crd_data[i + 4][1] == "migration"
+                && (*curr_arch == full_crd_data[i + 4][3])
+                && (*curr_variant == full_crd_data[i + 4][4])
+                && (*curr_cluster == full_crd_data[i + 4][2])
+            {
+                if !full_crd_data[i + 4][6].is_empty()
+                    && full_crd_data[i + 4][6].parse::<i32>().unwrap_or(0) > 0
+                    && full_crd_data[i + 4][7].parse::<i32>().unwrap_or(0) == 0
+                {
+                    let sum_passed: String = (0..=4)
+                        .map(|j| full_crd_data[i + j][6].parse::<i32>().unwrap_or(0))
+                        .sum::<i32>()
+                        .to_string();
+                    let sum_skipped: String = (0..=4)
+                        .map(|j| full_crd_data[i + j][8].parse::<i32>().unwrap_or(0))
+                        .sum::<i32>()
+                        .to_string();
+                    Self::add_row_with_sums(
+                        &mut result_data,
+                        &full_crd_data,
+                        i,
+                        sum_passed,
+                        sum_skipped,
+                    );
+                } else {
+                    for j in 0..=4 {
+                        Self::add_row(&mut result_data, &full_crd_data, i + j);
+                    }
+                }
+            }
+        }
+        result_data
+    }
+
+    fn add_row(result_data: &mut [Vec<String>], full_crd_data: &[Vec<String>], i: usize) {
+        if full_crd_data[i][0] == "Resource" {
+            for (j, item) in result_data.iter_mut().enumerate().take(6) {
+                item.push(full_crd_data[i][j].clone());
+            }
+        } else {
+            for (j, item) in result_data.iter_mut().enumerate().take(9) {
+                item.push(full_crd_data[i][j].clone());
+            }
+        }
+    }
+
+    #[allow(clippy::needless_range_loop)]
+    fn add_row_with_sums(
+        result_data: &mut [Vec<String>],
+        full_crd_data: &[Vec<String>],
+        i: usize,
+        sum_passed: String,
+        sum_skipped: String,
+    ) {
+        for j in 0..6 {
+            result_data[j].push(full_crd_data[i][j].clone());
+        }
+        result_data[6].push(sum_passed);
+        result_data[7].push(full_crd_data[i][7].clone());
+        result_data[8].push(sum_skipped);
+    }
 }
 
 impl From<&StatusSnapshot> for Table {
@@ -151,26 +277,52 @@ impl From<&StatusSnapshot> for Table {
             .iter()
             .map(|column| vec![column.header.to_string()])
             .collect();
-        let status_data = snapshot
-            .crds
+
+        let status_data = if snapshot
+            .columns
             .iter()
-            .map(|crd| snapshot.columns.iter().map(|column| (column.values)(crd)))
-            .fold(headers, |data, x| {
-                let mut row_count = 0;
-                // Determine how many rows this CRD will take in the status table.
-                for col in x.clone() {
-                    row_count = max(row_count, col.len());
-                }
-                data.into_iter()
-                    .zip(x)
-                    .map(|(mut data_col, mut crd_data)| {
-                        // Extend each Vec from this CRD to have the same number of rows.
-                        crd_data.resize(row_count, "".into());
-                        data_col.extend(crd_data);
-                        data_col
-                    })
-                    .collect()
-            });
+            .any(|col| col.condensed_values.is_some())
+        {
+            headers
+                .into_iter()
+                .zip(snapshot.columns.iter().map(|column| {
+                    if let Some(condensed_fn) = column.condensed_values {
+                        condensed_fn(&snapshot.crds)
+                    } else {
+                        snapshot
+                            .crds
+                            .iter()
+                            .flat_map(|crd| (column.values)(crd))
+                            .collect()
+                    }
+                }))
+                .map(|(mut header, data)| {
+                    header.extend(data);
+                    header
+                })
+                .collect()
+        } else {
+            snapshot
+                .crds
+                .iter()
+                .map(|crd| snapshot.columns.iter().map(|column| (column.values)(crd)))
+                .fold(headers, |data, x| {
+                    let mut row_count = 0;
+                    // Determine how many rows this CRD will take in the status table.
+                    for col in x.clone() {
+                        row_count = max(row_count, col.len());
+                    }
+                    data.into_iter()
+                        .zip(x)
+                        .map(|(mut data_col, mut crd_data)| {
+                            // Extend each Vec from this CRD to have the same number of rows.
+                            crd_data.resize(row_count, "".into());
+                            data_col.extend(crd_data);
+                            data_col
+                        })
+                        .collect()
+                })
+        };
 
         let mut table = Builder::from_iter(status_data)
             .index()
@@ -252,6 +404,7 @@ impl StatusColumn {
         StatusColumn {
             header: "PASSED".to_string(),
             values: |crd| crd_results(crd, ResultType::Passed),
+            condensed_values: None,
             alignment: TextAlignment::Right,
             width: Some(6),
         }
@@ -261,6 +414,7 @@ impl StatusColumn {
         StatusColumn {
             header: "FAILED".to_string(),
             values: |crd| crd_results(crd, ResultType::Failed),
+            condensed_values: None,
             alignment: TextAlignment::Right,
             width: Some(6),
         }
@@ -270,6 +424,7 @@ impl StatusColumn {
         StatusColumn {
             header: "SKIPPED".to_string(),
             values: |crd| crd_results(crd, ResultType::Skipped),
+            condensed_values: None,
             alignment: TextAlignment::Right,
             width: Some(7),
         }
@@ -279,6 +434,7 @@ impl StatusColumn {
         StatusColumn {
             header: "LAST UPDATE".to_string(),
             values: crd_time,
+            condensed_values: None,
             alignment: TextAlignment::Left,
             width: Some(20),
         }
@@ -288,6 +444,114 @@ impl StatusColumn {
         StatusColumn {
             header: "PROGRESS".to_string(),
             values: crd_progress,
+            ..Default::default()
+        }
+    }
+
+    pub fn condensed_crd_type() -> StatusColumn {
+        StatusColumn {
+            header: "CRD-TYPE".to_string(),
+            values: |_| vec![],
+            condensed_values: Some(|crds| {
+                let snapshot = StatusSnapshot::new(crds.to_vec());
+                snapshot.condense_crd_data()[0].clone()
+            }),
+            ..Default::default()
+        }
+    }
+
+    pub fn condensed_test_type() -> StatusColumn {
+        StatusColumn {
+            header: "TEST-TYPE".to_string(),
+            values: |_| vec![],
+            condensed_values: Some(|crds| {
+                let snapshot = StatusSnapshot::new(crds.to_vec());
+                snapshot.condense_crd_data()[1].clone()
+            }),
+            ..Default::default()
+        }
+    }
+
+    pub fn condensed_cluster() -> StatusColumn {
+        StatusColumn {
+            header: "CLUSTER".to_string(),
+            values: |_| vec![],
+            condensed_values: Some(|crds| {
+                let snapshot = StatusSnapshot::new(crds.to_vec());
+                snapshot.condense_crd_data()[2].clone()
+            }),
+            ..Default::default()
+        }
+    }
+
+    pub fn condensed_arch() -> StatusColumn {
+        StatusColumn {
+            header: "ARCH".to_string(),
+            values: |_| vec![],
+            condensed_values: Some(|crds| {
+                let snapshot = StatusSnapshot::new(crds.to_vec());
+                snapshot.condense_crd_data()[3].clone()
+            }),
+            ..Default::default()
+        }
+    }
+
+    pub fn condensed_variant() -> StatusColumn {
+        StatusColumn {
+            header: "VARIANT".to_string(),
+            values: |_| vec![],
+            condensed_values: Some(|crds| {
+                let snapshot = StatusSnapshot::new(crds.to_vec());
+                snapshot.condense_crd_data()[4].clone()
+            }),
+            ..Default::default()
+        }
+    }
+
+    pub fn condensed_status() -> StatusColumn {
+        StatusColumn {
+            header: "STATUS".to_string(),
+            values: |_| vec![],
+            condensed_values: Some(|crds| {
+                let snapshot = StatusSnapshot::new(crds.to_vec());
+                snapshot.condense_crd_data()[5].clone()
+            }),
+            ..Default::default()
+        }
+    }
+
+    pub fn condensed_passed() -> StatusColumn {
+        StatusColumn {
+            header: "PASSED".to_string(),
+            values: |_| vec![],
+            condensed_values: Some(|crds| {
+                let snapshot = StatusSnapshot::new(crds.to_vec());
+                snapshot.condense_crd_data()[6].clone()
+            }),
+            ..Default::default()
+        }
+    }
+
+    pub fn condensed_failed() -> StatusColumn {
+        StatusColumn {
+            header: "FAILED".to_string(),
+            values: |_| vec![],
+            condensed_values: Some(|crds| {
+                let snapshot = StatusSnapshot::new(crds.to_vec());
+                snapshot.condense_crd_data()[7].clone()
+            }),
+            ..Default::default()
+        }
+    }
+
+    pub fn condensed_skipped() -> StatusColumn {
+        StatusColumn {
+            header: "SKIPPED".to_string(),
+            values: |_| vec![],
+            condensed_values: Some(|crds| {
+                let snapshot = StatusSnapshot::new(crds.to_vec());
+                snapshot.condense_crd_data()[8].clone()
+            }),
             ..Default::default()
         }
     }
@@ -309,7 +573,7 @@ fn crd_time(crd: &Crd) -> Vec<String> {
 }
 
 /// Determine the type of the CRD
-fn crd_type(crd: &Crd) -> Vec<String> {
+pub fn crd_type(crd: &Crd) -> Vec<String> {
     match crd {
         Crd::Test(_) => vec!["Test".to_string()],
         Crd::Resource(_) => vec!["Resource".to_string()],
@@ -317,7 +581,7 @@ fn crd_type(crd: &Crd) -> Vec<String> {
 }
 
 /// Determine the state of the CRD
-fn crd_state(crd: &Crd) -> Vec<String> {
+pub fn crd_state(crd: &Crd) -> Vec<String> {
     match crd {
         Crd::Test(test) => vec![test.test_user_state().to_string()],
         Crd::Resource(resource) => {
@@ -336,14 +600,14 @@ fn crd_state(crd: &Crd) -> Vec<String> {
     }
 }
 
-enum ResultType {
+pub enum ResultType {
     Passed,
     Failed,
     Skipped,
 }
 
-/// Collect the
-fn crd_results(crd: &Crd, res_type: ResultType) -> Vec<String> {
+/// Collect the CRD results
+pub fn crd_results(crd: &Crd, res_type: ResultType) -> Vec<String> {
     match crd {
         Crd::Resource(_) => Default::default(),
         Crd::Test(test) => {

@@ -5,7 +5,7 @@ pub use error::{Error, Result};
 pub use manager::{read_manifest, TestManager};
 use serde::{Deserialize, Serialize};
 use serde_plain::derive_fromstr_from_deserialize;
-pub use status::{StatusColumn, StatusSnapshot};
+pub use status::{crd_results, crd_state, crd_type, ResultType, StatusColumn, StatusSnapshot};
 use std::collections::HashMap;
 
 mod delete;
